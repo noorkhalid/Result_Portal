@@ -1,0 +1,118 @@
+{% extends "dashboards/_layout.html" %}
+
+{% block title %}Data Entry Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <h3 class="mb-0">Data Entry Dashboard</h3>
+    <div class="text-muted">Enter marks manually or import from Excel (unlocked batches only).</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-sm btn-outline-secondary" href="/admin/" target="_blank" rel="noopener">Admin</a>
+    <a class="btn btn-sm btn-primary" href="{% url 'data_entry_import_marks' %}">Import Marks (Excel)</a>
+  </div>
+</div>
+
+<div class="row g-3 mb-3">
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card p-3">
+      <div class="text-muted small">Students</div>
+      <div class="fs-4 fw-semibold">{{ totals.students }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card p-3">
+      <div class="text-muted small">Enrollments</div>
+      <div class="fs-4 fw-semibold">{{ totals.enrollments }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-2">
+    <div class="card p-3">
+      <div class="text-muted small">Result Batches</div>
+      <div class="fs-4 fw-semibold">{{ totals.batches }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-3">
+    <div class="card p-3">
+      <div class="text-muted small">Course Results</div>
+      <div class="fs-4 fw-semibold">{{ totals.course_results }}</div>
+    </div>
+  </div>
+  <div class="col-6 col-md-4 col-lg-3">
+    <div class="card p-3">
+      <div class="text-muted small">Unlocked / Locked Batches</div>
+      <div class="fs-4 fw-semibold">{{ totals.unlocked_batches }} <span class="text-muted">/</span> {{ totals.locked_batches }}</div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-7">
+    <div class="card p-3">
+      <div class="d-flex align-items-center justify-content-between">
+        <h6 class="mb-2">Quick Actions</h6>
+        <span class="badge text-bg-light">Opens in Admin</span>
+      </div>
+      <div class="row g-2">
+        <div class="col-md-6">
+          <a class="btn btn-outline-dark w-100" href="/admin/results/resultbatch/" target="_blank" rel="noopener">Manage Result Batches</a>
+        </div>
+        <div class="col-md-6">
+          <a class="btn btn-outline-dark w-100" href="/admin/results/courseresult/add/" target="_blank" rel="noopener">Enter Marks (Manual)</a>
+        </div>
+        <div class="col-md-6">
+          <a class="btn btn-outline-dark w-100" href="/admin/results/courseresult/" target="_blank" rel="noopener">View Entered Marks</a>
+        </div>
+        <div class="col-md-6">
+          <a class="btn btn-outline-dark w-100" href="/admin/students/student/" target="_blank" rel="noopener">Students</a>
+        </div>
+        <div class="col-md-6">
+          <a class="btn btn-outline-dark w-100" href="/admin/students/enrollment/" target="_blank" rel="noopener">Enrollments</a>
+        </div>
+        <div class="col-md-6">
+          <a class="btn btn-outline-dark w-100" href="/admin/academics/course/" target="_blank" rel="noopener">Courses</a>
+        </div>
+      </div>
+      <hr class="my-3">
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-primary" href="{% url 'data_entry_import_marks' %}">Import Marks (Excel)</a>
+        <a class="btn btn-sm btn-outline-secondary" href="/admin/results/resultbatch/add/" target="_blank" rel="noopener">Create New Batch</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-lg-5">
+    <div class="card p-3">
+      <h6 class="mb-2">Unlocked batches with no marks yet</h6>
+      {% if todo_batches %}
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead>
+              <tr>
+                <th>Program</th>
+                <th>Session</th>
+                <th>Sem</th>
+                <th>Type</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for b in todo_batches %}
+                <tr>
+                  <td class="text-truncate" style="max-width:190px;">{{ b.program }}</td>
+                  <td>{{ b.session.start_year }}</td>
+                  <td>{{ b.semester_number }}</td>
+                  <td class="text-capitalize">{{ b.result_type }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+        <div class="small text-muted mt-2">Tip: Start with these batches (they currently have 0 entered marks).</div>
+      {% else %}
+        <div class="text-muted">No empty unlocked batches found 🎉</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

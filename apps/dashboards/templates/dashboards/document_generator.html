@@ -1,0 +1,31 @@
+{% extends "dashboards/_layout.html" %}
+
+{% block title %}Document Generator Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <h3 class="mb-0">Document Generator Dashboard</h3>
+    <div class="text-muted">Generate notifications, PDFs, and letters</div>
+  </div>
+  <a class="btn btn-sm btn-outline-secondary" href="/admin/">Admin</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h6 class="mb-2">Generate</h6>
+      <ul class="mb-0">
+        <li><a href="/admin/documents/">Documents</a></li>
+        <li><a href="/admin/results/resultbatch/">Result Batches</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="col-md-6">
+    <div class="card p-3">
+      <h6 class="mb-2">Notes</h6>
+      <p class="text-muted mb-0">We can add buttons here for one-click document generation.</p>
+    </div>
+  </div>
+</div>
+{% endblock %}

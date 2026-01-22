@@ -1,0 +1,44 @@
+{% extends "dashboards/_layout.html" %}
+
+{% block title %}System Admin Dashboard{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <h3 class="mb-0">System Admin Dashboard</h3>
+    <div class="text-muted">Full system control</div>
+  </div>
+  <a class="btn btn-sm btn-outline-secondary" href="/admin/">Django Admin</a>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-4">
+    <div class="card p-3">
+      <h6 class="mb-2">Security & Access</h6>
+      <ul class="mb-0">
+        <li><a href="/admin/auth/user/">Users</a></li>
+        <li><a href="/admin/auth/group/">Groups</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card p-3">
+      <h6 class="mb-2">Core Data</h6>
+      <ul class="mb-0">
+        <li><a href="/admin/academics/">Academics</a></li>
+        <li><a href="/admin/students/">Students</a></li>
+        <li><a href="/admin/results/">Results</a></li>
+      </ul>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card p-3">
+      <h6 class="mb-2">Operations</h6>
+      <ul class="mb-0">
+        <li><a href="/admin/documents/">Documents</a></li>
+        <li><a href="/admin/audit/">Audit Logs</a></li>
+      </ul>
+    </div>
+  </div>
+</div>
+{% endblock %}
