@@ -1,0 +1,79 @@
+{% extends "dashboards/_layout.html" %}
+
+{% block content %}
+
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="mb-0">
+    {% if program %}
+      Edit Program
+    {% else %}
+      Add Program
+    {% endif %}
+  </h3>
+</div>
+
+<div class="card p-4" style="max-width: 600px;">
+  <form method="post">
+    {% csrf_token %}
+
+    <!-- Program Name -->
+    <div class="mb-3">
+      <label class="form-label">Program Name</label>
+      <input
+        type="text"
+        name="name"
+        class="form-control"
+        placeholder="e.g. B.Ed, BS, ADP"
+        value="{% if program %}{{ program.name }}{% endif %}"
+        required
+      >
+    </div>
+
+    <!-- Total Semesters -->
+    <div class="mb-3">
+      <label class="form-label">Total Semesters</label>
+      <input
+        type="number"
+        name="total_semesters"
+        class="form-control"
+        placeholder="e.g. 4, 6, 8"
+        value="{% if program %}{{ program.total_semesters }}{% endif %}"
+        required
+      >
+    </div>
+
+    <!-- Active -->
+    <div class="form-check mb-4">
+      <input
+        class="form-check-input"
+        type="checkbox"
+        name="is_active"
+        id="is_active"
+        {% if program %}
+          {% if program.is_active %}checked{% endif %}
+        {% else %}
+          checked
+        {% endif %}
+      >
+      <label class="form-check-label" for="is_active">
+        Active
+      </label>
+    </div>
+
+    <!-- Actions -->
+    <button type="submit" class="btn btn-success">
+      {% if program %}
+        Update Program
+      {% else %}
+        Save Program
+      {% endif %}
+    </button>
+
+    <a href="{% url 'admin_program_list' %}" class="btn btn-secondary ms-2">
+      Cancel
+    </a>
+
+  </form>
+</div>
+
+{% endblock %}

@@ -1,0 +1,44 @@
+{% extends "dashboards/_layout.html" %}
+
+{% block content %}
+<div class="card p-4" style="max-width: 600px;">
+    
+    <h4 class="text-danger mb-3">Confirm Delete</h4>
+
+    {% if delete_blocked %}
+        <!-- ❌ Delete Blocked -->
+        <div class="alert alert-warning">
+            <strong>Deletion not allowed.</strong><br>
+            This program has enrolled students and cannot be deleted.
+        </div>
+
+        <p>
+            Program: <strong>{{ program.name }}</strong><br>
+            Total Semesters: {{ program.total_semesters }}
+        </p>
+
+        <a href="{% url 'admin_program_list' %}" class="btn btn-secondary">
+            Back to Programs
+        </a>
+
+    {% else %}
+        <!-- ✅ Safe to Delete -->
+        <p>
+            Are you sure you want to delete the program
+            <strong>{{ program.name }}</strong>
+            ({{ program.total_semesters }} semesters)?
+        </p>
+
+        <form method="post">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-danger">
+                Yes, Delete
+            </button>
+            <a href="{% url 'admin_program_list' %}" class="btn btn-secondary ms-2">
+                Cancel
+            </a>
+        </form>
+    {% endif %}
+
+</div>
+{% endblock %}

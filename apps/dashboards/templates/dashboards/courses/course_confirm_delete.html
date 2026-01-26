@@ -1,0 +1,27 @@
+{% extends "dashboards/_layout.html" %}
+
+{% block content %}
+<div class="card p-4" style="max-width: 560px;">
+  <h4 class="mb-3 text-danger">Confirm Delete</h4>
+
+  <p class="mb-4">
+    Are you sure you want to delete the course
+    <strong>{{ course.title }}</strong>
+    (Code: {{ course.code }})?
+  </p>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="d-flex gap-2">
+      <button type="submit" class="btn btn-danger">
+        Yes, Delete
+      </button>
+
+      <a href="{% url 'admin_course_list' %}" class="btn btn-secondary">
+        Cancel
+      </a>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,38 @@
+<div class="card p-3">
+  <h6 class="text-uppercase text-muted mb-3">System Admin</h6>
+
+  <div class="list-group list-group-flush">
+
+    <!-- Dashboard -->
+    <a href="{% url 'dash_system_admin' %}"
+       class="list-group-item list-group-item-action
+       {% if request.path == '/admin-dashboard/' %}
+         active
+       {% endif %}">
+      Dashboard
+    </a>
+
+    <!-- Courses -->
+    <a href="{% url 'admin_course_list' %}"
+       class="list-group-item list-group-item-action
+       {% if '/admin-dashboard/courses/' in request.path %}
+         active
+       {% endif %}">
+      Courses
+    </a>
+
+    <!-- Programs -->
+    <a href="{% url 'admin_program_list' %}"
+       class="list-group-item list-group-item-action
+       {% if '/admin-dashboard/programs/' in request.path %}
+         active
+       {% endif %}">
+      Programs
+    </a>
+
+    <!-- Coming Soon -->
+    <span class="list-group-item text-muted">Students (coming)</span>
+    <span class="list-group-item text-muted">Results (coming)</span>
+
+  </div>
+</div>

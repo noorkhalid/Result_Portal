@@ -1,23 +1,14 @@
-"""
-URL configuration for config project.
-"""
-
 from django.contrib import admin
-from django.urls import include, path
+from django.urls import path, include
 
-from dashboards import views as dashboard_views
+from dashboards.views.core import home
 
 urlpatterns = [
-    # Home / dashboards
-    path("", dashboard_views.home, name="home"),
-    path("", include("dashboards.urls")),
+    path("", home, name="home"),
 
-    # Authentication
+    # Django auth (login, logout, password reset, etc.)
     path("accounts/", include("django.contrib.auth.urls")),
 
-    # Results (✅ REQUIRED for Result Notification PDF)
-    path("results/", include("results.urls")),
-
-    # Admin
+    path("", include("dashboards.urls")),
     path("admin/", admin.site.urls),
 ]
