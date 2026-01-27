@@ -14,7 +14,8 @@ def batch_list(request):
     session_id = (request.GET.get("session") or "").strip()
     semester_no = (request.GET.get("semester") or "").strip()
 
-    batches = ResultBatch.objects.select_related("program", "session").all().order_by("-created_at")
+    base = ResultBatch.objects.select_related("program", "session").all()
+    batches = base.order_by("-created_at")
 
     if program_id:
         batches = batches.filter(program_id=program_id)
@@ -24,9 +25,33 @@ def batch_list(request):
         batches = batches.filter(semester_number=semester_no)
 
     programs = Program.objects.all().order_by("name")
-    sessions = Session.objects.all().order_by("-start_year")
+
+    # Dependent filter options (narrow based on selected values)
+    base_for_sessions = base
+    if program_id:
+        base_for_sessions = base_for_sessions.filter(program_id=program_id)
+
+    # sessions should narrow when program selected
+    sessions = Session.objects.filter(
+        id__in=base_for_sessions.values_list("session_id", flat=True).distinct()
+    ).order_by("-start_year")
+
+    # If selected session is not valid for this program, reset it (and semester)
+    if session_id and not sessions.filter(id=session_id).exists():
+        session_id = ""
+        semester_no = ""
+        # also reset batches filter
+        batches = base.order_by("-created_at")
+        if program_id:
+            batches = batches.filter(program_id=program_id)
+
+    base_for_semesters = base_for_sessions
+    if session_id:
+        base_for_semesters = base_for_semesters.filter(session_id=session_id)
+
+    # semester numbers should narrow based on program (+ session)
     semester_numbers = (
-        Semester.objects.values_list("number", flat=True).distinct().order_by("number")
+        base_for_semesters.values_list("semester_number", flat=True).distinct().order_by("semester_number")
     )
 
     return render(

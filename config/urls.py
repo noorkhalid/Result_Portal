@@ -10,5 +10,8 @@ urlpatterns = [
     path("accounts/", include("django.contrib.auth.urls")),
 
     path("", include("dashboards.urls")),
+
+    # PDF / prints
+    path("results/", include("results.urls")),
     path("admin/", admin.site.urls),
 ]

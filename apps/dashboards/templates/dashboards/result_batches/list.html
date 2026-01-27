@@ -9,10 +9,10 @@
   <a href="{% url 'admin_batch_add' %}" class="btn btn-primary">+ Add Batch</a>
 </div>
 
-<form class="row g-2 mb-3" method="get">
+<form id="batchFiltersForm" class="row g-2 mb-3" method="get">
   <div class="col-md-5">
     <label class="form-label small text-muted mb-1">Program</label>
-    <select name="program" class="form-select" onchange="this.form.submit()">
+    <select id="programFilter" name="program" class="form-select">
       <option value="">All Programs</option>
       {% for p in programs %}
         <option value="{{ p.id }}" {% if program_id and p.id|stringformat:"s" == program_id %}selected{% endif %}>{{ p.name }}</option>
@@ -21,7 +21,7 @@
   </div>
   <div class="col-md-2">
     <label class="form-label small text-muted mb-1">Session</label>
-    <select name="session" class="form-select" onchange="this.form.submit()">
+    <select id="sessionFilter" name="session" class="form-select">
       <option value="">All Sessions</option>
       {% for s in sessions %}
         <option value="{{ s.id }}" {% if session_id and s.id|stringformat:"s" == session_id %}selected{% endif %}>{{ s.start_year }}</option>
@@ -30,7 +30,7 @@
   </div>
   <div class="col-md-2">
     <label class="form-label small text-muted mb-1">Semester</label>
-    <select name="semester" class="form-select" onchange="this.form.submit()">
+    <select id="semesterFilter" name="semester" class="form-select">
       <option value="">All Semesters</option>
       {% for no in semester_numbers %}
         <option value="{{ no }}" {% if semester_no and no|stringformat:"s" == semester_no %}selected{% endif %}>{{ no }}</option>
@@ -41,6 +41,36 @@
     <button class="btn btn-outline-secondary w-100">Go</button>
   </div>
 </form>
+
+<script>
+  (function(){
+    // IMPORTANT: don't use querySelector('form') because the layout may contain
+    // other forms (e.g., logout). We only want to submit the filter form.
+    const form = document.getElementById('batchFiltersForm');
+    const program = document.getElementById('programFilter');
+    const session = document.getElementById('sessionFilter');
+    const semester = document.getElementById('semesterFilter');
+
+    if (!form || !program || !session || !semester) return;
+
+    program.addEventListener('change', function(){
+      // when program changes, reset dependent filters
+      session.value = '';
+      semester.value = '';
+      form.submit();
+    });
+
+    session.addEventListener('change', function(){
+      // when session changes, reset semester
+      semester.value = '';
+      form.submit();
+    });
+
+    semester.addEventListener('change', function(){
+      form.submit();
+    });
+  })();
+</script>
 
 <div class="card">
   <div class="table-responsive">
@@ -53,7 +83,7 @@
           <th>Type</th>
           <th>Notification</th>
           <th>Locked</th>
-          <th style="width: 160px;">Actions</th>
+          <th style="width: 240px;">Actions</th>
         </tr>
       </thead>
       <tbody>
@@ -74,6 +104,7 @@
             {% if b.is_locked %}<span class="badge bg-danger">Locked</span>{% else %}<span class="badge bg-success">Open</span>{% endif %}
           </td>
           <td>
+            <a href="{% url 'result_notification_pdf' b.id %}" target="_blank" class="btn btn-sm btn-outline-primary">Print</a>
             <a href="{% url 'admin_batch_edit' b.id %}" class="btn btn-sm btn-warning">Edit</a>
             <a href="{% url 'admin_batch_delete' b.id %}" class="btn btn-sm btn-danger">Delete</a>
           </td>

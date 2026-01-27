@@ -75,6 +75,10 @@ from dashboards.views.department_views import (
     department_delete,
 )
 
+from dashboards.views.result_notification_views import (
+    result_notifications,
+)
+
 urlpatterns = [
     # Home / router
     path("", core.home, name="home"),
@@ -158,4 +162,11 @@ urlpatterns = [
     path("admin-dashboard/grade-scales/add/", grade_scale_create, name="admin_grade_scale_add"),
     path("admin-dashboard/grade-scales/<int:pk>/edit/", grade_scale_update, name="admin_grade_scale_edit"),
     path("admin-dashboard/grade-scales/<int:pk>/delete/", grade_scale_delete, name="admin_grade_scale_delete"),
+
+    # System Admin — Documents
+    path(
+        "admin-dashboard/documents/result-notifications/",
+        result_notifications,
+        name="admin_result_notifications",
+    ),
 ]

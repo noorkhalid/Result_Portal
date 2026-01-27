@@ -138,6 +138,12 @@ def result_notification_pdf(request, batch_id):
 
     show_cgpa = (sem_no != 1)
 
+    # -------------------------------------------------
+    # 6) Result type label for header
+    #    UI wants: Regular OR Reappeared/Improved
+    # -------------------------------------------------
+    result_type_label = "Regular" if batch.result_type == "regular" else "Reappeared/Improved"
+
     html = render_to_string(
         "results/result_notification.html",
         {
@@ -147,6 +153,7 @@ def result_notification_pdf(request, batch_id):
             "grades_map": grades_map,
             "session_display": session_display,
             "show_cgpa": show_cgpa,
+            "result_type_label": result_type_label,
         },
         request=request,
     )
