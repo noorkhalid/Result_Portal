@@ -1,0 +1,24 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Delete Department{% endblock %}
+{% block content %}
+
+<div class="card p-4" style="max-width: 760px;">
+  <h4 class="mb-2">Delete Department</h4>
+  <p class="text-muted mb-3">Department: <strong>{{ dept.name }}</strong></p>
+
+  {% if delete_blocked %}
+    <div class="alert alert-warning">
+      You cannot delete this department because it has programs/students/enrollments or program-course mappings linked to it.
+    </div>
+    <a href="{% url 'admin_department_list' %}" class="btn btn-outline-secondary">Back</a>
+  {% else %}
+    <div class="alert alert-danger">This action cannot be undone.</div>
+    <form method="post">
+      {% csrf_token %}
+      <button class="btn btn-danger">Yes, delete</button>
+      <a href="{% url 'admin_department_list' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+    </form>
+  {% endif %}
+</div>
+
+{% endblock %}

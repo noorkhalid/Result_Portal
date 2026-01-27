@@ -1,0 +1,49 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="card p-4" style="max-width: 980px;">
+  <h4 class="mb-3">{{ title }}</h4>
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="row g-3">
+      <div class="col-md-12">
+        <label class="form-label">Department</label>
+        {{ form.department }}
+        <div class="form-text">Student and Program lists are filtered by the selected department.</div>
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Student</label>
+        {{ form.student }}
+      </div>
+      <div class="col-md-6">
+        <label class="form-label">Program</label>
+        {{ form.program }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Session</label>
+        {{ form.session }}
+      </div>
+      <div class="col-md-4">
+        <label class="form-label">Roll No</label>
+        {{ form.roll_no }}
+      </div>
+      <div class="col-md-4 d-flex align-items-end">
+        <div class="form-check">
+          {{ form.is_active }}
+          <label class="form-check-label">Active</label>
+        </div>
+      </div>
+    </div>
+
+    {% if form.non_field_errors %}
+      <div class="alert alert-danger mt-3">{{ form.non_field_errors }}</div>
+    {% endif %}
+
+    <div class="d-flex gap-2 mt-3">
+      <button class="btn btn-primary">Save</button>
+      <a href="{% url 'admin_enrollment_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </div>
+  </form>
+</div>
+{% endblock %}

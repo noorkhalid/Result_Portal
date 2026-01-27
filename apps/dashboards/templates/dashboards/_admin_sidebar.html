@@ -1,38 +1,72 @@
 <div class="card p-3">
   <h6 class="text-uppercase text-muted mb-3">System Admin</h6>
+<div class="list-group list-group-flush">
 
-  <div class="list-group list-group-flush">
-
-    <!-- Dashboard -->
     <a href="{% url 'dash_system_admin' %}"
-       class="list-group-item list-group-item-action
-       {% if request.path == '/admin-dashboard/' %}
-         active
-       {% endif %}">
+       class="list-group-item list-group-item-action {% if request.path == '/admin-dashboard/' %}active{% endif %}">
       Dashboard
     </a>
 
-    <!-- Courses -->
-    <a href="{% url 'admin_course_list' %}"
-       class="list-group-item list-group-item-action
-       {% if '/admin-dashboard/courses/' in request.path %}
-         active
-       {% endif %}">
-      Courses
+	<li class="sidebar-section">ACADEMICS</li>
+
+    <a href="{% url 'admin_department_list' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/departments/' in request.path %}active{% endif %}">
+      Departments
     </a>
 
-    <!-- Programs -->
     <a href="{% url 'admin_program_list' %}"
-       class="list-group-item list-group-item-action
-       {% if '/admin-dashboard/programs/' in request.path %}
-         active
-       {% endif %}">
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/programs/' in request.path %}active{% endif %}">
       Programs
     </a>
 
-    <!-- Coming Soon -->
-    <span class="list-group-item text-muted">Students (coming)</span>
-    <span class="list-group-item text-muted">Results (coming)</span>
+    <a href="{% url 'admin_course_list' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/courses/' in request.path %}active{% endif %}">
+      Courses
+    </a>
+
+    <a href="{% url 'admin_program_course_list' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/program-courses/' in request.path %}active{% endif %}">
+      Program Courses
+    </a>
+
+    <a href="{% url 'admin_session_list' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/sessions/' in request.path %}active{% endif %}">
+      Sessions
+    </a>
+
+    <a href="{% url 'admin_semester_list' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/semesters/' in request.path %}active{% endif %}">
+      Semesters
+    </a>
+
+	<li class="sidebar-section"> STUDENTS </li>
+
+    <a href="{% url 'admin_student_list' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/students/' in request.path %}active{% endif %}">
+      Students
+    </a>
+
+    <a href="{% url 'admin_enrollment_list' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/enrollments/' in request.path %}active{% endif %}">
+      Enrollments
+    </a>
+
+	<li class="sidebar-section">RESULTS</li>
+
+    <a href="{% url 'admin_batch_list' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/result-batches/' in request.path %}active{% endif %}">
+      Result Batches
+    </a>
+
+    <a href="{% url 'admin_grade_scale_list' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/grade-scales/' in request.path %}active{% endif %}">
+      Grade Scales
+    </a>
+
+    <a href="{% url 'data_entry_import_marks' %}"
+       class="list-group-item list-group-item-action {% if '/data-entry/import/' in request.path %}active{% endif %}">
+      Import Marks (Excel)
+    </a>
 
   </div>
 </div>

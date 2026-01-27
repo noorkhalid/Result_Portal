@@ -16,6 +16,20 @@
   <form method="post">
     {% csrf_token %}
 
+    <!-- Department -->
+    <div class="mb-3">
+      <label class="form-label">Department</label>
+      <select name="department" class="form-select" required>
+        {% for d in departments %}
+          {% if program %}
+            <option value="{{ d.id }}" {% if d.id == program.department_id %}selected{% endif %}>{{ d.name }}</option>
+          {% else %}
+            <option value="{{ d.id }}" {% if forloop.first %}selected{% endif %}>{{ d.name }}</option>
+          {% endif %}
+        {% endfor %}
+      </select>
+    </div>
+
     <!-- Program Name -->
     <div class="mb-3">
       <label class="form-label">Program Name</label>

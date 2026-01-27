@@ -1,0 +1,15 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Delete Grade Scale{% endblock %}
+{% block content %}
+<div class="card p-4" style="max-width: 980px;">
+  <h4 class="mb-2">Delete Grade Scale</h4>
+  <div class="text-muted mb-3">{{ scale.min_percentage }} - {{ scale.max_percentage }} : {{ scale.letter_grade }}</div>
+
+  <div class="alert alert-danger">Are you sure you want to delete this grade scale?</div>
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn btn-danger">Yes, Delete</button>
+    <a href="{% url 'admin_grade_scale_list' %}" class="btn btn-outline-secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

@@ -1,0 +1,55 @@
+{% extends "dashboards/_layout.html" %}
+
+{% block title %}Import Result{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
+  <div>
+    <h3 class="mb-0">Import Completed</h3>
+    <div class="text-muted">Summary of your Excel import.</div>
+  </div>
+  <div class="d-flex gap-2">
+    <a class="btn btn-sm btn-outline-secondary" href="{% url 'data_entry_import_marks' %}">Import Another</a>
+    <a class="btn btn-sm btn-primary" href="{% url 'dash_data_entry' %}">Back to Dashboard</a>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h6 class="mb-3">Summary</h6>
+      <div class="d-flex justify-content-between"><span>Created</span><strong>{{ created }}</strong></div>
+      <div class="d-flex justify-content-between"><span>Updated</span><strong>{{ updated }}</strong></div>
+      <div class="d-flex justify-content-between"><span>Errors / Skipped</span><strong>{{ error_count }}</strong></div>
+      <div class="d-flex justify-content-between"><span>Recompute</span><strong>{% if recompute %}Yes{% else %}No{% endif %}</strong></div>
+
+      {% if batches %}
+        <hr class="my-3">
+        <h6 class="mb-2">Touched batches</h6>
+        <ul class="mb-0">
+          {% for b in batches %}
+            <li>{{ b }}</li>
+          {% endfor %}
+        </ul>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="col-lg-6">
+    <div class="card p-3">
+      <h6 class="mb-2">Errors (first 200)</h6>
+      {% if errors %}
+        <div class="small" style="max-height:340px; overflow:auto;">
+          <ol class="mb-0">
+            {% for e in errors %}
+              <li>{{ e }}</li>
+            {% endfor %}
+          </ol>
+        </div>
+      {% else %}
+        <div class="text-muted">No errors 🎉</div>
+      {% endif %}
+    </div>
+  </div>
+</div>
+{% endblock %}

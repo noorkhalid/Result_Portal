@@ -1,0 +1,62 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Semesters{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="mb-0">Semesters</h3>
+  <a href="{% url 'admin_semester_add' %}" class="btn btn-primary">+ Add Semester</a>
+</div>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-5">
+    <label class="form-label small text-muted mb-1">Program</label>
+    <select name="program" class="form-select" onchange="this.form.submit()">
+      <option value="">All Programs</option>
+      {% for p in programs %}
+        <option value="{{ p.id }}" {% if program_id and p.id|stringformat:"s" == program_id %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
+    <label class="form-label small text-muted mb-1">Session</label>
+    <select name="session" class="form-select" onchange="this.form.submit()">
+      <option value="">All Sessions</option>
+      {% for s in sessions %}
+        <option value="{{ s.id }}" {% if session_id and s.id|stringformat:"s" == session_id %}selected{% endif %}>{{ s.start_year }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2 align-self-end">
+    <button class="btn btn-outline-secondary w-100">Filter</button>
+  </div>
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-striped align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Program</th>
+          <th>Session</th>
+          <th>Semester No</th>
+          <th style="width: 160px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for s in semesters %}
+        <tr>
+          <td>{{ s.program.name }}</td>
+          <td>{{ s.session.start_year }}</td>
+          <td>{{ s.number }}</td>
+          <td>
+            <a href="{% url 'admin_semester_edit' s.id %}" class="btn btn-sm btn-warning">Edit</a>
+            <a href="{% url 'admin_semester_delete' s.id %}" class="btn btn-sm btn-danger">Delete</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="4" class="text-center text-muted py-4">No semesters found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

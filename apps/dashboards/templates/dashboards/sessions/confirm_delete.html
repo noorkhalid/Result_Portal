@@ -1,0 +1,22 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Delete Session{% endblock %}
+{% block content %}
+<div class="card p-4" style="max-width: 720px;">
+  <h4 class="mb-2">Delete Session</h4>
+  <div class="text-muted mb-3">Session: <strong>{{ session.start_year }}</strong></div>
+
+  {% if delete_blocked %}
+    <div class="alert alert-warning">
+      Cannot delete this session because it is linked with enrollments, semesters, or result batches.
+    </div>
+    <a href="{% url 'admin_session_list' %}" class="btn btn-outline-secondary">Back</a>
+  {% else %}
+    <div class="alert alert-danger">Are you sure you want to delete this session?</div>
+    <form method="post">
+      {% csrf_token %}
+      <button class="btn btn-danger">Yes, Delete</button>
+      <a href="{% url 'admin_session_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

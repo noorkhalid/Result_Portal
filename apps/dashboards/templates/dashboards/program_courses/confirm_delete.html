@@ -1,0 +1,15 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Delete Mapping{% endblock %}
+{% block content %}
+<div class="card p-4" style="max-width: 920px;">
+  <h4 class="mb-2">Delete Program Course Mapping</h4>
+  <div class="text-muted mb-3">{{ item.program.name }} | Sem {{ item.semester_number }} | {{ item.course.code }} - {{ item.course.title }}</div>
+
+  <div class="alert alert-danger">Are you sure you want to delete this mapping?</div>
+  <form method="post">
+    {% csrf_token %}
+    <button class="btn btn-danger">Yes, Delete</button>
+    <a href="{% url 'admin_program_course_list' %}" class="btn btn-outline-secondary">Cancel</a>
+  </form>
+</div>
+{% endblock %}

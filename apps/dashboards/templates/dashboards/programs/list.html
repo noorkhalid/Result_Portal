@@ -3,17 +3,35 @@
 {% block content %}
 
 <div class="d-flex justify-content-between align-items-center mb-4">
-    <h3 class="mb-0">Programs</h3>
+    <div>
+      <h3 class="mb-0">Programs</h3>
+</div>
     <a href="{% url 'admin_program_add' %}" class="btn btn-primary">
         + Add Program
     </a>
 </div>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-4">
+    <label class="form-label small text-muted mb-1">Department</label>
+    <select name="department" class="form-select" onchange="this.form.submit()">
+      <option value="">All Departments</option>
+      {% for d in departments %}
+        <option value="{{ d.id }}" {% if department_id and d.id|stringformat:"s" == department_id %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2 align-self-end">
+    <button class="btn btn-outline-secondary w-100">Filter</button>
+  </div>
+</form>
 
 <div class="card">
     <div class="table-responsive">
         <table class="table table-striped align-middle mb-0">
             <thead>
                 <tr>
+                    <th>Department</th>
                     <th>Name</th>
                     <th>Total Semesters</th>
                     <th>Status</th>
@@ -23,6 +41,7 @@
             <tbody>
                 {% for program in programs %}
                 <tr>
+                    <td>{{ program.department.name }}</td>
                     <td>{{ program.name }}</td>
                     <td>{{ program.total_semesters }}</td>
                     <td>
@@ -50,7 +69,7 @@
                 </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="4" class="text-center text-muted py-4">
+                    <td colspan="5" class="text-center text-muted py-4">
                         No programs found
                     </td>
                 </tr>

@@ -1,55 +1,38 @@
 {% extends "dashboards/_layout.html" %}
-
-{% block title %}Import Result{% endblock %}
-
+{% block title %}Import Marks (Excel){% endblock %}
 {% block content %}
 <div class="d-flex align-items-end justify-content-between flex-wrap gap-2 mb-3">
   <div>
-    <h3 class="mb-0">Import Completed</h3>
-    <div class="text-muted">Summary of your Excel import.</div>
+    <h3 class="mb-0">Import Marks (Excel)</h3>
+    <div class="text-muted">Upload .xlsx and import marks into Result Batches.</div>
   </div>
-  <div class="d-flex gap-2">
-    <a class="btn btn-sm btn-outline-secondary" href="{% url 'data_entry_import_marks' %}">Import Another</a>
-    <a class="btn btn-sm btn-primary" href="{% url 'dash_data_entry' %}">Back to Dashboard</a>
-  </div>
+  <a class="btn btn-sm btn-outline-secondary" href="{% url 'dash_data_entry' %}">Back</a>
 </div>
 
-<div class="row g-3">
-  <div class="col-lg-6">
-    <div class="card p-3">
-      <h6 class="mb-3">Summary</h6>
-      <div class="d-flex justify-content-between"><span>Created</span><strong>{{ created }}</strong></div>
-      <div class="d-flex justify-content-between"><span>Updated</span><strong>{{ updated }}</strong></div>
-      <div class="d-flex justify-content-between"><span>Errors / Skipped</span><strong>{{ error_count }}</strong></div>
-      <div class="d-flex justify-content-between"><span>Recompute</span><strong>{% if recompute %}Yes{% else %}No{% endif %}</strong></div>
-
-      {% if batches %}
-        <hr class="my-3">
-        <h6 class="mb-2">Touched batches</h6>
-        <ul class="mb-0">
-          {% for b in batches %}
-            <li>{{ b }}</li>
-          {% endfor %}
-        </ul>
-      {% endif %}
-    </div>
+<div class="card p-4" style="max-width: 900px;">
+  <div class="mb-3">
+    <a href="{% url 'data_entry_marks_template' %}">Download Excel template</a>
   </div>
+  <form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
 
-  <div class="col-lg-6">
-    <div class="card p-3">
-      <h6 class="mb-2">Errors (first 200)</h6>
-      {% if errors %}
-        <div class="small" style="max-height:340px; overflow:auto;">
-          <ol class="mb-0">
-            {% for e in errors %}
-              <li>{{ e }}</li>
-            {% endfor %}
-          </ol>
-        </div>
-      {% else %}
-        <div class="text-muted">No errors 🎉</div>
-      {% endif %}
+    <div class="mb-3">
+      <label class="form-label">Excel File (.xlsx)</label>
+      <input type="file" name="file" class="form-control" accept=".xlsx" required>
+      <div class="form-text">
+        Required columns: registration_no, program, session, semester, terminal_marks, maxmarks.
+        Optional: course_code or course_title, sessional_marks, midterm_marks, examtype.
+      </div>
     </div>
-  </div>
+
+    <div class="form-check mb-3">
+      <input class="form-check-input" type="checkbox" id="recompute" name="recompute">
+      <label class="form-check-label" for="recompute">
+        Recompute GPA/CGPA after import
+      </label>
+    </div>
+
+    <button class="btn btn-primary">Import</button>
+  </form>
 </div>
 {% endblock %}

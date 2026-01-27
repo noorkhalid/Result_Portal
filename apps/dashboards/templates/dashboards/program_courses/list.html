@@ -1,0 +1,62 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Program Courses{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-0">Program Courses</h3>
+    <div class="text-muted">Course mapping per program & semester</div>
+</div>
+  <div class="d-flex gap-2 flex-wrap">
+  <a href="{% url 'admin_import_program_courses' %}" class="btn btn-outline-secondary">Import from Excel</a>
+  <a href="{% url 'admin_template_program_courses' %}" class="btn btn-outline-secondary">Download Excel Template</a>
+  <a href="{% url 'admin_program_course_add' %}" class="btn btn-primary">+ Add Mapping</a>
+</div>
+</div>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-5">
+    <label class="form-label small text-muted mb-1">Program</label>
+    <select name="program" class="form-select" onchange="this.form.submit()">
+      <option value="">All Programs</option>
+      {% for p in programs %}
+        <option value="{{ p.id }}" {% if program_id and p.id|stringformat:"s" == program_id %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-2 align-self-end">
+    <button class="btn btn-outline-secondary w-100">Filter</button>
+  </div>
+</form>
+
+<div class="card">
+  <div class="table-responsive">
+    <table class="table table-striped align-middle mb-0">
+      <thead>
+        <tr>
+          <th>Department</th>
+          <th>Program</th>
+          <th>Semester</th>
+          <th>Course</th>
+          <th style="width: 160px;">Actions</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for it in items %}
+        <tr>
+          <td>{{ it.department.name }}</td>
+          <td>{{ it.program.name }}</td>
+          <td>{{ it.semester_number }}</td>
+          <td>{{ it.course.code }} - {{ it.course.title }}</td>
+          <td>
+            <a href="{% url 'admin_program_course_edit' it.id %}" class="btn btn-sm btn-warning">Edit</a>
+            <a href="{% url 'admin_program_course_delete' it.id %}" class="btn btn-sm btn-danger">Delete</a>
+          </td>
+        </tr>
+        {% empty %}
+        <tr><td colspan="5" class="text-center text-muted py-4">No mappings found</td></tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+</div>
+{% endblock %}

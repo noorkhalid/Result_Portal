@@ -1,0 +1,75 @@
+/* =========================================================
+   Dashboard UI – Sidebar styled like Django Admin
+   File: static/css/dashboard.css
+   ========================================================= */
+
+/* ---------- Base page look (safe defaults) ---------- */
+body {
+  background: #f6f7fb;
+}
+
+/* ---------- Sidebar: remove bullets + reset spacing ---------- */
+.sidebar ul,
+.sidebar ol,
+.sidebar li,
+.list-group,
+.list-group-item {
+  list-style: none !important;
+  margin: 0;
+  padding: 0;
+}
+
+/* ---------- Sidebar section headings (ACADEMICS / STUDENTS / RESULTS) ---------- */
+/* Django admin-like full-width colored bar */
+.sidebar-section {
+  display: block;
+  margin: 14px 0 8px;
+  padding: 8px 14px;
+
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+
+  background: #dbeaf0;     /* heading background (admin-ish) */
+  color: #0f4c5c;          /* heading text (matches your topbar) */
+
+  border-radius: 6px;
+}
+
+/* First heading should not have extra top margin */
+.sidebar-section:first-of-type {
+  margin-top: 0;
+}
+
+/* ---------- Sidebar links (Bootstrap list-group links) ---------- */
+.list-group-item {
+  border: 0;
+  border-radius: 6px;
+  padding: 8px 14px;
+
+  color: #111827;
+  background: transparent;
+
+  text-decoration: none;
+}
+
+/* Hover state */
+.list-group-item:hover {
+  background: #f3f4f6;
+  color: #111827;
+}
+
+/* Active state */
+.list-group-item.active,
+.list-group-item.active:hover {
+  background: #0f4c5c;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+/* Optional: small divider line between groups (if you use <hr>) */
+.sidebar hr {
+  margin: 10px 0;
+  border-color: #e5e7eb;
+}

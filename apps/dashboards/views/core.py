@@ -11,6 +11,7 @@ from django.core.files.storage import FileSystemStorage
 from django.db import transaction
 from django.db.models import Count
 from django.shortcuts import redirect, render
+from django.http import HttpResponse
 
 from academics.models import Course, Program, Session
 from results.models import CourseResult, ResultBatch
@@ -19,13 +20,13 @@ from students.models import Enrollment, Student
 
 from dashboards.decorators import group_required
 
+
 # ======================================================
 # PUBLIC / ENTRY
 # ======================================================
 
 def home(request):
-    """
-    Public entry point.
+    """Public entry point.
     If logged in → route to dashboard
     Else → login
     """
@@ -40,51 +41,27 @@ def home(request):
 
 @login_required
 def dashboard(request):
-    """
-    Route logged-in users to the correct dashboard
-    based on role/group.
-    """
-    user = request.user
-
-    # System Admin has top priority
-@login_required
-def dashboard(request):
-    """
-    Route the logged-in user to the correct dashboard.
+    """Route the logged-in user to the correct dashboard.
     System Admin ALWAYS has priority.
     """
     user = request.user
 
-    # 🔴 Highest priority: System Admin
+    # Highest priority: System Admin
     if user.is_superuser or user.groups.filter(name="System Admin").exists():
-       return redirect("dash_system_admin")
+        return redirect("dash_system_admin")
 
-    # Other roles (only checked if NOT System Admin)
     if user.groups.filter(name="Controller").exists():
-       return redirect("dash_controller")
+        return redirect("dash_controller")
 
     if user.groups.filter(name="Data Entry").exists():
-       return redirect("dash_data_entry")
+        return redirect("dash_data_entry")
 
     if user.groups.filter(name="Document Generator").exists():
-       return redirect("dash_document_generator")
+        return redirect("dash_document_generator")
 
     if user.groups.filter(name="Result Checker").exists():
-       return redirect("dash_result_checker")
+        return redirect("dash_result_checker")
 
-    return render(request, "dashboards/no_group.html")
-
-
-    if user.groups.filter(name="Data Entry").exists():
-       return redirect("dash_data_entry")
-
-    if user.groups.filter(name="Document Generator").exists():
-       return redirect("dash_document_generator")
-
-    if user.groups.filter(name="Result Checker").exists():
-       return redirect("dash_result_checker")
-
-    # No group assigned
     return render(request, "dashboards/no_group.html")
 
 
@@ -99,10 +76,7 @@ def controller_dashboard(request):
 
 @group_required("Data Entry")
 def data_entry_dashboard(request):
-    """
-    Data Entry dashboard with quick stats
-    and pending batches.
-    """
+    """Data Entry dashboard with quick stats and pending batches."""
     unlocked_batches = ResultBatch.objects.filter(is_locked=False).count()
     locked_batches = ResultBatch.objects.filter(is_locked=True).count()
 
@@ -126,10 +100,7 @@ def data_entry_dashboard(request):
     return render(
         request,
         "dashboards/data_entry.html",
-        {
-            "totals": totals,
-            "todo_batches": todo_batches,
-        },
+        {"totals": totals, "todo_batches": todo_batches},
     )
 
 
@@ -145,11 +116,17 @@ def result_checker_dashboard(request):
 
 @group_required("System Admin")
 def system_admin_dashboard(request):
-    """
-    System Admin dashboard.
-    Acts as replacement for Django Admin home.
-    """
-    return render(request, "dashboards/system_admin.html")
+    """System Admin dashboard: replacement for Django Admin home."""
+    totals = {
+        "programs": Program.objects.count(),
+        "courses": Course.objects.count(),
+        "sessions": Session.objects.count(),
+        "students": Student.objects.count(),
+        "enrollments": Enrollment.objects.count(),
+        "batches": ResultBatch.objects.count(),
+        "course_results": CourseResult.objects.count(),
+    }
+    return render(request, "dashboards/system_admin.html", {"totals": totals})
 
 
 # ======================================================
@@ -170,10 +147,7 @@ def _to_float_or_zero(v):
 @group_required("Data Entry")
 @transaction.atomic
 def data_entry_import_marks(request):
-    """
-    Upload Excel (.xlsx) file and import marks.
-    Logic mirrors results import command.
-    """
+    """Upload Excel (.xlsx) file and import marks."""
     if request.method != "POST":
         return render(request, "dashboards/data_entry_import.html")
 
@@ -188,7 +162,6 @@ def data_entry_import_marks(request):
         messages.error(request, "Only .xlsx files are supported.")
         return redirect("data_entry_import_marks")
 
-    # Save upload
     imports_dir = os.path.join(settings.MEDIA_ROOT, "imports")
     os.makedirs(imports_dir, exist_ok=True)
 
@@ -282,7 +255,7 @@ def data_entry_import_marks(request):
                     errors.append(f"Row {row_num}: course not found")
                     continue
 
-                examtype = str(row[exam_i]).lower() if exam_i is not None else "regular"
+                examtype = str(row[exam_i]).lower() if exam_i is not None and row[exam_i] else "regular"
                 result_type = "regular" if examtype not in ("repeat", "improved") else examtype
 
                 key = (program.id, session.id, semester_number, result_type)
@@ -345,5 +318,33 @@ def data_entry_import_marks(request):
             "error_count": len(errors),
             "errors": errors[:200],
             "batches": list(touched_batches.values()),
+            "recompute": recompute,
         },
     )
+
+
+@group_required("Data Entry")
+def data_entry_marks_template(request):
+    """Download an Excel template for marks import."""
+    wb = openpyxl.Workbook()
+    ws = wb.active
+    ws.title = "Marks"
+    ws.append([
+        "registration_no",
+        "program",
+        "session",
+        "semester",
+        "course_code",
+        "course_title",
+        "sessional_marks",
+        "midterm_marks",
+        "terminal_marks",
+        "maxmarks",
+        "examtype",
+    ])
+    ws.append(["2021-ABC-001", "BS Computer Science", 2021, 1, "CS101", "Introduction to Computing", 10, 20, 50, 100, "Regular"])
+
+    resp = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    resp["Content-Disposition"] = 'attachment; filename="marks_template.xlsx"'
+    wb.save(resp)
+    return resp
