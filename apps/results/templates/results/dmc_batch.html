@@ -5,17 +5,30 @@
 <head>
   <meta charset="utf-8">
   <style>
-    @page { size: A4 portrait; margin: 16mm 14mm; }
+    /* -----------------------------
+       A4 Portrait – Print Safe
+       ----------------------------- */
+    /* Use slightly wider safe margins to avoid edge clipping on real printers */
+    @page { size: A4 portrait; margin: 20mm 18mm; }
+
+    *{ box-sizing: border-box; }
 
     body{
       font-family: "Times New Roman", serif;
       font-size: 12px;
       color:#000;
+      margin: 0;
     }
 
-    .page{
-      position: relative;
+    /* 95–97% of printable width, centered */
+    .dmc-page{
+      width: 100%;
+      /* Keep comfortably inside printable area (printers differ in non-printable edges) */
+      max-width: 168mm;
+      margin: 0 auto;
     }
+
+    .page{ position: relative; }
 
     .header{
       display:flex;
@@ -27,7 +40,7 @@
     .header .right{
       width:40%;
       font-weight:700;
-      font-size: 24px;
+      font-size: 22px;
       letter-spacing: .5px;
     }
     .header .left{ text-align:left; }
@@ -85,12 +98,13 @@
 
     table.student{
       width:100%;
-      margin-top:14px;
+      margin-top:12px;
       font-size: 14px;
+      table-layout: fixed;
     }
     table.student td{
       border:1px solid #000;
-      padding:8px 10px;
+      padding:7px 9px;
       vertical-align:middle;
     }
     table.student .label{
@@ -103,13 +117,14 @@
 
     table.marks{
       width:100%;
-      margin-top:18px;
+      margin-top:14px;
       font-size: 14px;
       table-layout: fixed;
+      page-break-inside: avoid; /* never split the subject table */
     }
     table.marks th, table.marks td{
       border:1px solid #000;
-      padding:10px 8px;
+      padding:6px 6px; /* fit 10 subjects without shrinking font */
       vertical-align:middle;
     }
     table.marks th{
@@ -127,22 +142,31 @@
       margin-top:18px;
       display:flex;
       justify-content:space-between;
-      gap:16px;
+      gap:18px;
       align-items:flex-end;
     }
 
+    /* Give the summary box a bit more room so labels never wrap */
+    .footer .left-foot{ flex: 0 0 60%; }
+    .footer .right-foot{ flex: 0 0 40%; }
+
     table.summary{
-      width:48%;
+      width:100%;
       font-size: 14px;
     }
     table.summary td{
       border:1px solid #000;
-      padding:6px 10px;
+      padding:4px 6px; /* tighter spacing */
+    }
+    table.summary td:first-child{
+      width:55%;
+      white-space: nowrap; /* keep “Date of Result” on one line */
     }
     table.summary td.value{
-      width:40%;
-      text-align:center;
+      width:45%;
+      text-align:left; /* keep value close to label */
       font-weight:700;
+      padding-left:8px;
     }
 
     .errors{
@@ -152,7 +176,7 @@
     }
 
     .sig{
-      width:48%;
+      width:100%;
       text-align:center;
       font-size: 14px;
       font-weight:700;
@@ -165,6 +189,7 @@
 <body>
 
 {% for d in dmcs %}
+  <div class="dmc-page">
   <div class="page">
     <div class="header">
       <div class="left">GOMAL UNIVERSITY</div>
@@ -212,7 +237,8 @@
         </tr>
       </thead>
       <tbody>
-        {% for row in d.course_rows %}
+        {# Print layout is strictly optimized for max 10 subjects #}
+        {% for row in d.course_rows|slice:":10" %}
           <tr>
             <td class="title">{{ row.title }}</td>
             <td>{{ row.credit_hours|floatformat:0 }}</td>
@@ -226,21 +252,16 @@
     </table>
 
     <div class="footer">
-      <div>
+      <div class="left-foot">
         <table class="summary">
-          {% for sem_no, gpa in d.gpa_history %}
-            <tr>
-              <td>GPA of {{ sem_no|ordinal }} Semester</td>
-              <td class="value">{{ gpa|floatformat:2 }}</td>
-            </tr>
-          {% endfor %}
-
-          {% if show_cgpa %}
-            <tr>
-              <td>CGPA upto {{ batch.semester_number|ordinal }} Semester</td>
-              <td class="value">{{ d.semester_result.cgpa|floatformat:2 }}</td>
-            </tr>
-          {% endif %}
+          <tr>
+            <td><strong>GPA</strong></td>
+            <td class="value">{{ d.semester_result.gpa|floatformat:2 }}</td>
+          </tr>
+          <tr>
+            <td><strong>CGPA</strong></td>
+            <td class="value">{{ d.semester_result.cgpa|floatformat:2 }}</td>
+          </tr>
 
           <tr>
             <td>Grade</td>
@@ -259,12 +280,13 @@
         <div class="errors">Errors and Omission Accepted.</div>
       </div>
 
-      <div class="sig">
+      <div class="sig right-foot">
         <div style="height:52px;"></div>
         <div>Controller of Examinations</div>
         <div>Gomal University D.I.Khan</div>
       </div>
     </div>
+  </div>
   </div>
 
   {% if not forloop.last %}

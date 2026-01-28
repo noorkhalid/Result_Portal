@@ -242,6 +242,7 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
         .select_related("course")
     }
 
+    # DMC layout is optimized for a strict maximum of 10 subjects.
     course_rows = []
     for pc in columns:
         cr = course_map.get(pc.course_id)
@@ -260,14 +261,11 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
             }
         )
 
-    # GPA history and CGPA rules
-    gpa_history = _build_gpa_history(enrollment_id=enrollment_id, batch=batch)
-    try:
-        current_sem = int(batch.semester_number)
-    except Exception:
-        current_sem = 0
+    # Hard limit for print-fit: max 10 subjects per semester.
+    course_rows = course_rows[:10]
 
-    show_cgpa = current_sem != 1
+    # NOTE: DMC footer must show ONLY current semester GPA, and CGPA label as "CGPA".
+    # CGPA logic remains "up to this semester" (SemesterResult.cgpa).
 
     html = render_to_string(
         "results/dmc_batch.html",
@@ -280,10 +278,8 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
                     "student": sem_res.enrollment.student,
                     "semester_result": sem_res,
                     "course_rows": course_rows,
-                    "gpa_history": gpa_history,
                 }
             ],
-            "show_cgpa": show_cgpa,
         },
         request=request,
     )
@@ -345,22 +341,16 @@ def dmc_batch_pdf(request, batch_id):
                 }
             )
 
-        gpa_history = _build_gpa_history(enrollment_id=enrollment_id, batch=batch)
+        # Hard limit for print-fit: max 10 subjects per semester.
+        course_rows = course_rows[:10]
         dmcs.append(
             {
                 "enrollment": sr.enrollment,
                 "student": sr.enrollment.student,
                 "semester_result": sr,
                 "course_rows": course_rows,
-                "gpa_history": gpa_history,
             }
         )
-
-    try:
-        current_sem = int(batch.semester_number)
-    except Exception:
-        current_sem = 0
-    show_cgpa = current_sem != 1
 
     html = render_to_string(
         "results/dmc_batch.html",
@@ -368,7 +358,6 @@ def dmc_batch_pdf(request, batch_id):
             "batch": batch,
             "session_display": batch.session.display_for_program(batch.program),
             "dmcs": dmcs,
-            "show_cgpa": show_cgpa,
         },
         request=request,
     )
