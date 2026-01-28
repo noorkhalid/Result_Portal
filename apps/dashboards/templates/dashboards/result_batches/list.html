@@ -105,6 +105,7 @@
           </td>
           <td>
             <a href="{% url 'result_notification_pdf' b.id %}" target="_blank" class="btn btn-sm btn-outline-primary">Print</a>
+            <a href="{% url 'dmc_batch_pdf' b.id %}" target="_blank" class="btn btn-sm btn-outline-secondary">Print DMCs</a>
             <a href="{% url 'admin_batch_edit' b.id %}" class="btn btn-sm btn-warning">Edit</a>
             <a href="{% url 'admin_batch_delete' b.id %}" class="btn btn-sm btn-danger">Delete</a>
           </td>
