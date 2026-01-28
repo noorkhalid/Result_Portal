@@ -1,5 +1,21 @@
 {% extends "dashboards/_layout.html" %}
-{% block title %}Result Batches{% endblock %}
+{% block title %}Result Batches
+<style>
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background-color: #f5f5f5; }
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".clickable-row").forEach(function (row) {
+    row.addEventListener("click", function (e) {
+      if (e.target.tagName.toLowerCase() === "a") return;
+      window.location = row.dataset.href;
+    });
+  });
+});
+</script>
+
+{% endblock %}
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
@@ -74,7 +90,7 @@
 
 <div class="card">
   <div class="table-responsive">
-    <table class="table table-striped align-middle mb-0">
+        <table class="table table-striped align-middle mb-0">
       <thead>
         <tr>
           <th>Program</th>
@@ -83,13 +99,12 @@
           <th>Type</th>
           <th>Notification</th>
           <th>Locked</th>
-          <th style="width: 240px;">Actions</th>
         </tr>
       </thead>
       <tbody>
         {% for b in batches %}
-        <tr>
-          <td>{{ b.program.name }}</td>
+        <tr class="clickable-row" data-href="{% url 'admin_batch_detail' b.id %}">
+          <td><a href="{% url 'admin_batch_detail' b.id %}">{{ b.program.name }}</a></td>
           <td>{{ b.session.start_year }}</td>
           <td>{{ b.semester_number }}</td>
           <td><span class="badge bg-dark">{{ b.get_result_type_display }}</span></td>
@@ -103,18 +118,29 @@
           <td>
             {% if b.is_locked %}<span class="badge bg-danger">Locked</span>{% else %}<span class="badge bg-success">Open</span>{% endif %}
           </td>
-          <td>
-            <a href="{% url 'result_notification_pdf' b.id %}" target="_blank" class="btn btn-sm btn-outline-primary">Print</a>
-            <a href="{% url 'dmc_batch_pdf' b.id %}" target="_blank" class="btn btn-sm btn-outline-secondary">Print DMCs</a>
-            <a href="{% url 'admin_batch_edit' b.id %}" class="btn btn-sm btn-warning">Edit</a>
-            <a href="{% url 'admin_batch_delete' b.id %}" class="btn btn-sm btn-danger">Delete</a>
-          </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="text-center text-muted py-4">No result batches found</td></tr>
+        <tr><td colspan="6" class="text-center text-muted py-4">No result batches found</td></tr>
         {% endfor %}
       </tbody>
     </table>
+
   </div>
 </div>
+
+<style>
+.clickable-row { cursor: pointer; }
+.clickable-row:hover { background-color: #f5f5f5; }
+</style>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+  document.querySelectorAll(".clickable-row").forEach(function (row) {
+    row.addEventListener("click", function (e) {
+      if (e.target.tagName.toLowerCase() === "a") return;
+      window.location = row.dataset.href;
+    });
+  });
+});
+</script>
+
 {% endblock %}

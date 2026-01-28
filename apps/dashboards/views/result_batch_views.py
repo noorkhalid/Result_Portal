@@ -133,3 +133,13 @@ def batch_delete(request, pk):
         "dashboards/result_batches/confirm_delete.html",
         {"batch": batch, "delete_blocked": delete_blocked},
     )
+
+
+@group_required("System Admin")
+def batch_detail(request, pk):
+    batch = get_object_or_404(ResultBatch, pk=pk)
+    return render(
+        request,
+        "dashboards/result_batches/detail.html",
+        {"batch": batch},
+    )
