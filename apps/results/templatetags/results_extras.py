@@ -25,3 +25,24 @@ def ordinal(value):
         suffix = {1: "st", 2: "nd", 3: "rd"}.get(n % 10, "th")
 
     return f"{n}{suffix}"
+
+
+@register.filter
+def idx(seq, i):
+    """Safely get seq[i] for lists/tuples. Returns None if out of range."""
+    try:
+        return seq[int(i)]
+    except Exception:
+        return None
+
+
+@register.filter
+def pair_max_range(left_rows, right_rows):
+    """Return a list [0..max(len(left_rows), len(right_rows))-1] for paired rendering."""
+    try:
+        l = len(left_rows or [])
+        r = len(right_rows or [])
+        m = max(l, r)
+        return list(range(m))
+    except Exception:
+        return []

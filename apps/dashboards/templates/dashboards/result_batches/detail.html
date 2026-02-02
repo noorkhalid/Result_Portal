@@ -17,6 +17,21 @@
     <a href="{% url 'result_notification_pdf' batch.id %}" target="_blank" class="btn btn-outline-primary">Print Notification</a>
     <a href="{% url 'dmc_batch_pdf' batch.id %}" target="_blank" class="btn btn-outline-secondary">Print DMCs</a>
     <a href="{% url 'admin_dmc_single' %}?batch={{ batch.id }}" class="btn btn-outline-secondary">Print DMC (Single)</a>
+
+    <form method="post" action="{% url 'admin_batch_recompute' batch.id %}" class="m-0">
+      {% csrf_token %}
+      <button
+        type="submit"
+        class="btn btn-outline-info"
+        {% if not has_marks %}disabled{% endif %}
+        onclick="return confirm('Recompute GPA/CGPA for this batch now?');"
+      >
+        Recompute GPA / CGPA
+      </button>
+    </form>
+    {% if is_last_semester %}
+      <a href="{% url 'admin_transcript_single' %}?batch={{ batch.id }}" class="btn btn-outline-secondary">Print Transcript (Single)</a>
+    {% endif %}
     <a href="{% url 'admin_batch_edit' batch.id %}" class="btn btn-warning">Edit</a>
     <a href="{% url 'admin_batch_delete' batch.id %}" class="btn btn-danger">Delete</a>
     <a href="{% url 'admin_batch_list' %}" class="btn btn-outline-dark">Back</a>

@@ -19,4 +19,11 @@ urlpatterns = [
         views.dmc_single_pdf,
         name="dmc_single_pdf",
     ),
+
+    # Transcript (single student, full program+session)
+    path(
+        "transcript/<int:enrollment_id>/pdf/",
+        views.transcript_pdf,
+        name="transcript_pdf",
+    ),
 ]

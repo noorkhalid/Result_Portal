@@ -6,6 +6,8 @@ from dashboards.decorators import group_required
 from dashboards.forms import ResultBatchForm
 from results.models import ResultBatch
 from academics.models import Program, Session, Semester
+from django.db.models import Max
+from results.services import recompute_batch
 
 
 @group_required("System Admin")
@@ -138,8 +140,62 @@ def batch_delete(request, pk):
 @group_required("System Admin")
 def batch_detail(request, pk):
     batch = get_object_or_404(ResultBatch, pk=pk)
+
+    # "Last semester" for Transcript availability is defined as the highest semester
+    # number configured for the program in the Semester table.
+    #
+    # We try program+session first (if semesters are configured per session). If no
+    # semesters exist for that session, we gracefully fall back to program-only.
+    max_sem = (
+        Semester.objects.filter(program=batch.program, session=batch.session)
+        .aggregate(m=Max("number"))
+        .get("m")
+    )
+    if not max_sem:
+        max_sem = (
+            Semester.objects.filter(program=batch.program)
+            .aggregate(m=Max("number"))
+            .get("m")
+        )
+    max_sem = max_sem or 0
+
+    is_last_semester = bool(max_sem and int(batch.semester_number) == int(max_sem))
+    has_marks = batch.course_results.exists()
     return render(
         request,
         "dashboards/result_batches/detail.html",
-        {"batch": batch},
+        {
+            "batch": batch,
+            "is_last_semester": is_last_semester,
+            "max_sem": max_sem,
+            "has_marks": has_marks,
+        },
     )
+
+
+@group_required("System Admin")
+def batch_recompute(request, pk):
+    """Recompute GPA/CGPA for a result batch.
+
+    This is needed when marks were imported without ticking the "Recompute" option.
+    We keep this action POST-only to avoid accidental recomputation by link clicks.
+    """
+    batch = get_object_or_404(ResultBatch, pk=pk)
+
+    if request.method != "POST":
+        messages.error(request, "Invalid request method.")
+        return redirect("admin_batch_detail", pk=batch.pk)
+
+    if not batch.course_results.exists():
+        messages.error(request, "Cannot recompute: no marks exist in this batch.")
+        return redirect("admin_batch_detail", pk=batch.pk)
+
+    try:
+        recompute_batch(batch)
+    except Exception as e:
+        messages.error(request, f"Recompute failed: {e}")
+        return redirect("admin_batch_detail", pk=batch.pk)
+
+    messages.success(request, "GPA / CGPA recomputed successfully for this batch.")
+    return redirect("admin_batch_detail", pk=batch.pk)
+

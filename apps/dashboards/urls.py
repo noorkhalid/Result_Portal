@@ -66,6 +66,7 @@ from dashboards.views.result_batch_views import (
     batch_update,
     batch_delete,
     batch_detail,
+    batch_recompute,
 )
 
 from dashboards.views.department_views import (
@@ -82,6 +83,10 @@ from dashboards.views.result_notification_views import (
 
 from dashboards.views.dmc_views import (
     dmc_single,
+)
+
+from dashboards.views.transcript_views import (
+    transcript_single,
 )
 
 urlpatterns = [
@@ -163,6 +168,12 @@ urlpatterns = [
     path("admin-dashboard/result-batches/<int:pk>/edit/", batch_update, name="admin_batch_edit"),
     path("admin-dashboard/result-batches/<int:pk>/", batch_detail, name="admin_batch_detail"),
 
+    path(
+        "admin-dashboard/result-batches/<int:pk>/recompute/",
+        batch_recompute,
+        name="admin_batch_recompute",
+    ),
+
     path("admin-dashboard/result-batches/<int:pk>/delete/", batch_delete, name="admin_batch_delete"),
 
     path("admin-dashboard/grade-scales/", grade_scale_list, name="admin_grade_scale_list"),
@@ -181,5 +192,11 @@ urlpatterns = [
         "admin-dashboard/documents/dmc-single/",
         dmc_single,
         name="admin_dmc_single",
+    ),
+
+    path(
+        "admin-dashboard/documents/transcript-single/",
+        transcript_single,
+        name="admin_transcript_single",
     ),
 ]

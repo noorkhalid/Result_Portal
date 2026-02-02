@@ -1,4 +1,5 @@
 from collections import defaultdict
+from decimal import Decimal
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import IntegerField
@@ -6,11 +7,14 @@ from django.db.models.functions import Cast, Substr
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
+from django.db.models import Max
+from django.db import models
 
 from weasyprint import HTML
 
-from academics.models import ProgramCourse
-from .models import ResultBatch, SemesterResult, CourseResult
+from academics.models import ProgramCourse, Semester
+from students.models import Enrollment
+from .models import ResultBatch, SemesterResult, CourseResult, GradeScale
 
 
 def _course_columns_for_batch(batch: ResultBatch):
@@ -69,6 +73,42 @@ def _build_gpa_history(enrollment_id: int, batch: ResultBatch):
 def _roll_suffix_annotation():
     """Annotation used for natural sorting of roll numbers like BD1524-10."""
     return Cast(Substr("enrollment__roll_no", 8), IntegerField())
+
+
+def _max_semester_for_program_session(program_id: int, session_id: int) -> int:
+    """Highest semester number according to the Semester table.
+
+    In this project, the "last semester" is defined as the highest semester number
+    configured for the Program in the Semester table (not per-session).
+
+    We keep this helper for backward-compatibility, but intentionally fall back to
+    program-only if program+session rows don't exist.
+    """
+
+    mx = (
+        Semester.objects.filter(program_id=program_id, session_id=session_id)
+        .aggregate(m=Max("number"))
+        .get("m")
+    )
+    if not mx:
+        mx = Semester.objects.filter(program_id=program_id).aggregate(m=Max("number")).get("m")
+    return int(mx or 0)
+
+
+def _is_program_completed(enrollment: Enrollment, max_semester: int) -> bool:
+    if not max_semester:
+        return False
+    done = (
+        SemesterResult.objects.filter(
+            enrollment=enrollment,
+            batch__program=enrollment.program,
+            batch__session=enrollment.session,
+            batch__semester_number__lte=max_semester,
+        )
+        .values_list("batch__semester_number", flat=True)
+        .distinct()
+    )
+    return len(list(done)) >= int(max_semester)
 
 
 @login_required
@@ -365,4 +405,217 @@ def dmc_batch_pdf(request, batch_id):
     pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = f'inline; filename="DMC_Batch_{batch.id}.pdf"'
+    return response
+
+
+def _program_max_semester(program_id: int) -> int:
+    """Highest semester number defined in the Semester table for a program.
+
+    IMPORTANT: In this project, "last semester" is defined as the highest semester
+    number configured for the Program in the Semester table (not per-session).
+    """
+
+    return (
+        Semester.objects.filter(program_id=program_id)
+        .aggregate(m=Max("number"))
+        .get("m")
+        or 0
+    )
+
+
+def _enrollment_is_completed(enrollment: Enrollment, max_sem: int) -> bool:
+    """Completed means: at least one SemesterResult exists for every semester 1..max_sem."""
+    if max_sem <= 0:
+        return False
+
+    done = (
+        SemesterResult.objects.filter(
+            enrollment=enrollment,
+            batch__program_id=enrollment.program_id,
+            batch__session_id=enrollment.session_id,
+            batch__semester_number__lte=max_sem,
+        )
+        .values_list("batch__semester_number", flat=True)
+        .distinct()
+    )
+    return len(list(done)) >= max_sem
+
+
+@login_required
+def transcript_pdf(request, enrollment_id: int):
+    """Generate a full transcript PDF for an enrollment (Program+Session).
+
+    Rules:
+      - Last semester is the highest semester number defined for the Program in academics.Semester.
+      - Transcript is allowed only when the student has results for ALL semesters (1..last semester).
+      - Layout:
+          * <= 3 semesters  -> single column (stacked)
+          * >  3 semesters  -> two columns (paired semesters)
+      - Footer Letter Grade and Remarks are calculated from OVERALL percentage marks
+        across ALL semesters (using GradeScale table).
+    """
+
+    enrollment = get_object_or_404(
+        Enrollment.objects.select_related("student", "program", "session", "department"),
+        id=enrollment_id,
+    )
+
+    max_sem = _program_max_semester(enrollment.program_id)
+    if max_sem <= 0:
+        return HttpResponse(
+            "Transcript is not available because semesters are not defined for this program.",
+            status=400,
+        )
+
+    if not _enrollment_is_completed(enrollment, max_sem):
+        return HttpResponse(
+            "Transcript is not available because all semester results are not completed yet.",
+            status=403,
+        )
+
+    # Pick ONE SemesterResult per semester: latest batch by created_at (repeat/improved supported).
+    qs = (
+        SemesterResult.objects.filter(
+            enrollment=enrollment,
+            batch__program_id=enrollment.program_id,
+            batch__session_id=enrollment.session_id,
+            batch__semester_number__lte=max_sem,
+        )
+        .select_related("batch")
+        .order_by("batch__semester_number", "-batch__created_at")
+    )
+
+    picked = {}
+    for sr in qs:
+        sem = int(sr.batch.semester_number)
+        if sem not in picked:
+            picked[sem] = sr
+
+    semesters = []
+    picked_batches = []
+    cumulative_ch = Decimal("0")
+    for sem_no in sorted(picked.keys()):
+        sr = picked[sem_no]
+        picked_batches.append(sr.batch_id)
+
+        ordered_pcs = list(_course_columns_for_batch(sr.batch))
+        ordered_course_ids = [pc.course_id for pc in ordered_pcs]
+
+        cr_qs = (
+            CourseResult.objects.filter(batch=sr.batch, enrollment=enrollment)
+            .select_related("course")
+            .order_by("id")
+        )
+        cr_map = {cr.course_id: cr for cr in cr_qs}
+
+        course_rows = []
+        sem_ch_total = Decimal("0")
+        for course_id in ordered_course_ids:
+            cr = cr_map.get(course_id)
+            if not cr:
+                continue
+            ch = cr.course.credit_hours
+            sem_ch_total += Decimal(str(ch))
+            gp_total = (cr.grade_point or 0) * ch
+            course_rows.append(
+                {
+                    "code": cr.course.code,
+                    "title": cr.course.title,
+                    "credit_hours": ch,
+                    "marks_pct": cr.percentage,
+                    "grade": cr.letter_grade,
+                    "ng": cr.grade_point,
+                    "gp_total": gp_total,
+                    "marks_obtained": cr.marks_obtained,
+                    "max_marks": cr.max_marks,
+                }
+            )
+
+        cumulative_ch += sem_ch_total
+
+        semesters.append(
+            {
+                "semester_no": sem_no,
+                "batch": sr.batch,
+                "semester_result": sr,
+                "course_rows": course_rows[:10],  # print-safe (max 10 subjects/semester)
+                "sch": sem_ch_total,
+                "cch": cumulative_ch,
+            }
+        )
+
+    # Overall totals across all picked semester batches (overall % for footer)
+    overall_obtained = Decimal("0")
+    overall_max = Decimal("0")
+    if picked_batches:
+        totals = CourseResult.objects.filter(
+            enrollment=enrollment,
+            batch_id__in=picked_batches,
+        ).aggregate(
+            obt=models.Sum("marks_obtained"),
+            mx=models.Sum("max_marks"),
+        )
+        overall_obtained = totals.get("obt") or Decimal("0")
+        overall_max = totals.get("mx") or Decimal("0")
+
+    overall_percentage = None
+    if overall_max and overall_max > 0:
+        overall_percentage = (overall_obtained / overall_max) * Decimal("100")
+        overall_percentage = overall_percentage.quantize(Decimal("0.01"))
+
+    footer_grade = None
+    footer_remarks = None
+    if overall_percentage is not None:
+        gs = (
+            GradeScale.objects.filter(
+                min_percentage__lte=overall_percentage,
+                max_percentage__gte=overall_percentage,
+            )
+            .order_by("-min_percentage")
+            .first()
+        )
+        if gs:
+            footer_grade = gs.letter_grade
+            footer_remarks = gs.remarks
+
+    final_cgpa = semesters[-1]["semester_result"].cgpa if semesters else None
+    declaration_date = None
+    if semesters:
+        declaration_date = semesters[-1]["batch"].notification_date
+
+    layout_mode = "single" if max_sem <= 3 else "double"
+    semester_pairs = []
+    if layout_mode == "double":
+        sem_map = {s["semester_no"]: s for s in semesters}
+        i = 1
+        while i <= max_sem:
+            semester_pairs.append({"left": sem_map.get(i), "right": sem_map.get(i + 1)})
+            i += 2
+
+    html = render_to_string(
+        "results/transcript.html",
+        {
+            "enrollment": enrollment,
+            "student": enrollment.student,
+            "program": enrollment.program,
+            "session": enrollment.session,
+            "session_display": enrollment.session.display_for_program(enrollment.program),
+            "max_sem": max_sem,
+            "semesters": semesters,
+            "layout_mode": layout_mode,
+            "semester_pairs": semester_pairs,
+            "final_cgpa": final_cgpa,
+            "overall_obtained": overall_obtained,
+            "overall_max": overall_max,
+            "overall_percentage": overall_percentage,
+            "footer_letter_grade": footer_grade,
+            "footer_remarks": footer_remarks,
+            "declaration_date": declaration_date,
+        },
+        request=request,
+    )
+
+    pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="Transcript_{enrollment.roll_no}.pdf"'
     return response
