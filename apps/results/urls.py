@@ -26,4 +26,11 @@ urlpatterns = [
         views.transcript_pdf,
         name="transcript_pdf",
     ),
+
+    # Transcript (batch) - one combined PDF for all students in a final-semester batch
+    path(
+        "transcript/batch/<int:batch_id>/pdf/",
+        views.transcript_batch_pdf,
+        name="transcript_batch_pdf",
+    ),
 ]

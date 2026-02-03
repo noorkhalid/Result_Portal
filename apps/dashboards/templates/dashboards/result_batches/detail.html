@@ -13,28 +13,31 @@
     <tr><th>Status</th><td>{% if batch.is_locked %}Locked{% else %}Open{% endif %}</td></tr>
   </table>
 
-  <div class="d-flex gap-2 mt-3">
-    <a href="{% url 'result_notification_pdf' batch.id %}" target="_blank" class="btn btn-outline-primary">Print Notification</a>
-    <a href="{% url 'dmc_batch_pdf' batch.id %}" target="_blank" class="btn btn-outline-secondary">Print DMCs</a>
-    <a href="{% url 'admin_dmc_single' %}?batch={{ batch.id }}" class="btn btn-outline-secondary">Print DMC (Single)</a>
+  <div class="d-flex gap-1 mt-3 align-items-center">
+    <a href="{% url 'result_notification_pdf' batch.id %}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm py-1 px-2">Print Notification</a>
+    <a href="{% url 'dmc_batch_pdf' batch.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print DMCs</a>
+    <a href="{% url 'admin_dmc_single' %}?batch={{ batch.id }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print DMC (Single)</a>
+
+    {% if is_last_semester %}
+      <a href="{% url 'transcript_batch_pdf' batch.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print Transcripts</a>
+      <a href="{% url 'admin_transcript_single' %}?batch={{ batch.id }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print Transcript (Single)</a>
+    {% endif %}
 
     <form method="post" action="{% url 'admin_batch_recompute' batch.id %}" class="m-0">
       {% csrf_token %}
       <button
         type="submit"
-        class="btn btn-outline-info"
+        class="btn btn-outline-info btn-sm py-1 px-2"
         {% if not has_marks %}disabled{% endif %}
         onclick="return confirm('Recompute GPA/CGPA for this batch now?');"
       >
         Recompute GPA / CGPA
       </button>
     </form>
-    {% if is_last_semester %}
-      <a href="{% url 'admin_transcript_single' %}?batch={{ batch.id }}" class="btn btn-outline-secondary">Print Transcript (Single)</a>
-    {% endif %}
-    <a href="{% url 'admin_batch_edit' batch.id %}" class="btn btn-warning">Edit</a>
-    <a href="{% url 'admin_batch_delete' batch.id %}" class="btn btn-danger">Delete</a>
-    <a href="{% url 'admin_batch_list' %}" class="btn btn-outline-dark">Back</a>
+
+    <a href="{% url 'admin_batch_edit' batch.id %}" class="btn btn-warning btn-sm py-1 px-2">Edit</a>
+    <a href="{% url 'admin_batch_delete' batch.id %}" class="btn btn-danger btn-sm py-1 px-2">Delete</a>
+    <a href="{% url 'admin_batch_list' %}" class="btn btn-outline-dark btn-sm py-1 px-2">Back</a>
   </div>
 </div>
 {% endblock %}

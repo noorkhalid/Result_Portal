@@ -7,6 +7,7 @@ et_xmlfile==2.0.0
 fonttools==4.61.1
 openpyxl==3.1.5
 pillow==12.1.0
+psycopg2-binary==2.9.11
 pycparser==2.23
 pydyf==0.12.1
 pyphen==0.17.2

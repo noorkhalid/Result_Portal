@@ -1,16 +1,19 @@
 from collections import defaultdict
 from decimal import Decimal
+from io import BytesIO
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import IntegerField
-from django.db.models.functions import Cast, Substr
+from django.db.models.functions import Cast, Substr, Reverse, StrIndex, Length
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
-from django.db.models import Max
+from django.db.models import Max, Value, Case, When, CharField
 from django.db import models
 
 from weasyprint import HTML
+
+# Note: We use WeasyPrint for all PDF generation. Avoid adding extra PDF merger deps.
 
 from academics.models import ProgramCourse, Semester
 from students.models import Enrollment
@@ -71,8 +74,29 @@ def _build_gpa_history(enrollment_id: int, batch: ResultBatch):
 
 
 def _roll_suffix_annotation():
-    """Annotation used for natural sorting of roll numbers like BD1524-10."""
-    return Cast(Substr("enrollment__roll_no", 8), IntegerField())
+    """
+    Natural sorting for roll numbers with hyphen suffix.
+
+    Works for:
+      BD1524-10  -> 10
+      25-01      -> 1
+      CS-2023-15 -> 15
+
+    If '-' is missing, returns 0 (so it won't crash).
+    """
+    roll = "enrollment__roll_no"
+
+    dash_from_end = StrIndex(Reverse(roll), Value("-"))
+    last_dash_pos = Length(roll) - dash_from_end + 1
+
+    suffix_text = Case(
+        # Use a safe condition that Django understands: field contains '-'
+        When(enrollment__roll_no__contains="-", then=Substr(roll, last_dash_pos + 1)),
+        default=Value("0"),
+        output_field=CharField(),
+    )
+
+    return Cast(suffix_text, IntegerField())
 
 
 def _max_semester_for_program_session(program_id: int, session_id: int) -> int:
@@ -84,7 +108,6 @@ def _max_semester_for_program_session(program_id: int, session_id: int) -> int:
     We keep this helper for backward-compatibility, but intentionally fall back to
     program-only if program+session rows don't exist.
     """
-
     mx = (
         Semester.objects.filter(program_id=program_id, session_id=session_id)
         .aggregate(m=Max("number"))
@@ -117,7 +140,6 @@ def result_notification_pdf(request, batch_id):
 
     # -------------------------------------------------
     # 1) Find which courses actually appear in THIS batch
-    #    (so we don't show blank subject columns)
     # -------------------------------------------------
     batch_course_ids = list(
         CourseResult.objects.filter(batch=batch)
@@ -197,19 +219,12 @@ def result_notification_pdf(request, batch_id):
 
     # -------------------------------------------------
     # 3) Student rows (one per enrollment)
-    #    Fix sorting: BD1524-1, BD1524-2, ... BD1524-10
+    #    FIXED: works for BD1524-10 and 25-01
     # -------------------------------------------------
-    # NOTE: This assumes roll_no format like "BD1524-10".
-    # The suffix starts at character 8 (1-based) => "BD1524-" is 7 chars.
     results = (
         SemesterResult.objects.filter(batch=batch)
         .select_related("enrollment", "enrollment__student")
-        .annotate(
-            roll_suffix=Cast(
-                Substr("enrollment__roll_no", 8),
-                IntegerField(),
-            )
-        )
+        .annotate(roll_suffix=_roll_suffix_annotation())
         .order_by("roll_suffix", "enrollment__roll_no")
     )
 
@@ -234,11 +249,10 @@ def result_notification_pdf(request, batch_id):
     except Exception:
         sem_no = 0
 
-    show_cgpa = (sem_no != 1)
+    show_cgpa = sem_no != 1
 
     # -------------------------------------------------
     # 6) Result type label for header
-    #    UI wants: Regular OR Reappeared/Improved
     # -------------------------------------------------
     result_type_label = "Regular" if batch.result_type == "regular" else "Reappeared/Improved"
 
@@ -259,9 +273,7 @@ def result_notification_pdf(request, batch_id):
     pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
 
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = (
-        f'inline; filename="Result_Notification_{batch.id}.pdf"'
-    )
+    response["Content-Disposition"] = f'inline; filename="Result_Notification_{batch.id}.pdf"'
     return response
 
 
@@ -282,7 +294,6 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
         .select_related("course")
     }
 
-    # DMC layout is optimized for a strict maximum of 10 subjects.
     course_rows = []
     for pc in columns:
         cr = course_map.get(pc.course_id)
@@ -301,11 +312,7 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
             }
         )
 
-    # Hard limit for print-fit: max 10 subjects per semester.
     course_rows = course_rows[:10]
-
-    # NOTE: DMC footer must show ONLY current semester GPA, and CGPA label as "CGPA".
-    # CGPA logic remains "up to this semester" (SemesterResult.cgpa).
 
     html = render_to_string(
         "results/dmc_batch.html",
@@ -326,9 +333,7 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
 
     pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = (
-        f'inline; filename="DMC_{batch.id}_{enrollment_id}.pdf"'
-    )
+    response["Content-Disposition"] = f'inline; filename="DMC_{batch.id}_{enrollment_id}.pdf"'
     return response
 
 
@@ -337,11 +342,9 @@ def dmc_batch_pdf(request, batch_id):
     """Generate a multi-page PDF (one page per student) for a batch."""
     batch = get_object_or_404(ResultBatch, id=batch_id)
 
-    # Courses/ordering for this semester
     columns = list(_course_columns_for_batch(batch))
     ordered_course_ids = [pc.course_id for pc in columns]
 
-    # Natural sort of roll numbers
     results = (
         SemesterResult.objects.filter(batch=batch)
         .select_related("enrollment", "enrollment__student")
@@ -349,13 +352,12 @@ def dmc_batch_pdf(request, batch_id):
         .order_by("roll_suffix", "enrollment__roll_no")
     )
 
-    # Pull all course results for batch in one go
     cr_qs = (
         CourseResult.objects.filter(batch=batch)
         .select_related("course")
         .order_by("id")
     )
-    cr_map = defaultdict(dict)  # cr_map[enrollment_id][course_id] = CourseResult
+    cr_map = defaultdict(dict)
     for cr in cr_qs:
         cr_map[cr.enrollment_id][cr.course_id] = cr
 
@@ -381,7 +383,6 @@ def dmc_batch_pdf(request, batch_id):
                 }
             )
 
-        # Hard limit for print-fit: max 10 subjects per semester.
         course_rows = course_rows[:10]
         dmcs.append(
             {
@@ -409,12 +410,7 @@ def dmc_batch_pdf(request, batch_id):
 
 
 def _program_max_semester(program_id: int) -> int:
-    """Highest semester number defined in the Semester table for a program.
-
-    IMPORTANT: In this project, "last semester" is defined as the highest semester
-    number configured for the Program in the Semester table (not per-session).
-    """
-
+    """Highest semester number defined in the Semester table for a program."""
     return (
         Semester.objects.filter(program_id=program_id)
         .aggregate(m=Max("number"))
@@ -443,18 +439,6 @@ def _enrollment_is_completed(enrollment: Enrollment, max_sem: int) -> bool:
 
 @login_required
 def transcript_pdf(request, enrollment_id: int):
-    """Generate a full transcript PDF for an enrollment (Program+Session).
-
-    Rules:
-      - Last semester is the highest semester number defined for the Program in academics.Semester.
-      - Transcript is allowed only when the student has results for ALL semesters (1..last semester).
-      - Layout:
-          * <= 3 semesters  -> single column (stacked)
-          * >  3 semesters  -> two columns (paired semesters)
-      - Footer Letter Grade and Remarks are calculated from OVERALL percentage marks
-        across ALL semesters (using GradeScale table).
-    """
-
     enrollment = get_object_or_404(
         Enrollment.objects.select_related("student", "program", "session", "department"),
         id=enrollment_id,
@@ -473,7 +457,6 @@ def transcript_pdf(request, enrollment_id: int):
             status=403,
         )
 
-    # Pick ONE SemesterResult per semester: latest batch by created_at (repeat/improved supported).
     qs = (
         SemesterResult.objects.filter(
             enrollment=enrollment,
@@ -494,6 +477,7 @@ def transcript_pdf(request, enrollment_id: int):
     semesters = []
     picked_batches = []
     cumulative_ch = Decimal("0")
+
     for sem_no in sorted(picked.keys()):
         sr = picked[sem_no]
         picked_batches.append(sr.batch_id)
@@ -538,13 +522,12 @@ def transcript_pdf(request, enrollment_id: int):
                 "semester_no": sem_no,
                 "batch": sr.batch,
                 "semester_result": sr,
-                "course_rows": course_rows[:10],  # print-safe (max 10 subjects/semester)
+                "course_rows": course_rows[:10],
                 "sch": sem_ch_total,
                 "cch": cumulative_ch,
             }
         )
 
-    # Overall totals across all picked semester batches (overall % for footer)
     overall_obtained = Decimal("0")
     overall_max = Decimal("0")
     if picked_batches:
@@ -579,9 +562,7 @@ def transcript_pdf(request, enrollment_id: int):
             footer_remarks = gs.remarks
 
     final_cgpa = semesters[-1]["semester_result"].cgpa if semesters else None
-    declaration_date = None
-    if semesters:
-        declaration_date = semesters[-1]["batch"].notification_date
+    declaration_date = semesters[-1]["batch"].notification_date if semesters else None
 
     layout_mode = "single" if max_sem <= 3 else "double"
     semester_pairs = []
@@ -618,4 +599,219 @@ def transcript_pdf(request, enrollment_id: int):
     pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = f'inline; filename="Transcript_{enrollment.roll_no}.pdf"'
+    return response
+
+
+@login_required
+def transcript_batch_pdf(request, batch_id: int):
+    batch = get_object_or_404(ResultBatch, id=batch_id)
+
+    max_sem = _program_max_semester(batch.program_id)
+    if not max_sem or int(batch.semester_number) != int(max_sem):
+        return HttpResponse("Transcripts are available only for the final semester batch.", status=403)
+
+    results = (
+        SemesterResult.objects.filter(batch=batch)
+        .select_related("enrollment", "enrollment__student")
+        .annotate(roll_suffix=_roll_suffix_annotation())
+        .order_by("roll_suffix", "enrollment__roll_no")
+    )
+
+    items = []
+    layout_mode = "single" if max_sem <= 3 else "double"
+
+    for sr in results:
+        enrollment = sr.enrollment
+        if not _enrollment_is_completed(enrollment, max_sem):
+            continue
+
+        qs = (
+            SemesterResult.objects.filter(
+                enrollment=enrollment,
+                batch__program_id=enrollment.program_id,
+                batch__session_id=enrollment.session_id,
+                batch__semester_number__lte=max_sem,
+            )
+            .select_related("batch")
+            .order_by("batch__semester_number", "-batch__created_at")
+        )
+
+        picked = {}
+        for sr2 in qs:
+            sem = int(sr2.batch.semester_number)
+            if sem not in picked:
+                picked[sem] = sr2
+
+        semesters = []
+        picked_batches = []
+        cumulative_ch = Decimal("0")
+        for sem_no in sorted(picked.keys()):
+            srp = picked[sem_no]
+            picked_batches.append(srp.batch_id)
+
+            ordered_pcs = list(_course_columns_for_batch(srp.batch))
+            ordered_course_ids = [pc.course_id for pc in ordered_pcs]
+
+            cr_qs = (
+                CourseResult.objects.filter(batch=srp.batch, enrollment=enrollment)
+                .select_related("course")
+                .order_by("id")
+            )
+            cr_map = {cr.course_id: cr for cr in cr_qs}
+
+            course_rows = []
+            sem_ch_total = Decimal("0")
+            for course_id in ordered_course_ids:
+                cr = cr_map.get(course_id)
+                if not cr:
+                    continue
+                ch = cr.course.credit_hours
+                sem_ch_total += Decimal(str(ch))
+                gp_total = (cr.grade_point or 0) * ch
+                course_rows.append(
+                    {
+                        "code": cr.course.code,
+                        "title": cr.course.title,
+                        "credit_hours": ch,
+                        "marks_pct": cr.percentage,
+                        "grade": cr.letter_grade,
+                        "ng": cr.grade_point,
+                        "gp_total": gp_total,
+                        "marks_obtained": cr.marks_obtained,
+                        "max_marks": cr.max_marks,
+                    }
+                )
+
+            cumulative_ch += sem_ch_total
+
+            semesters.append(
+                {
+                    "semester_no": sem_no,
+                    "batch": srp.batch,
+                    "semester_result": srp,
+                    "course_rows": course_rows[:10],
+                    "sch": sem_ch_total,
+                    "cch": cumulative_ch,
+                }
+            )
+
+        overall_obtained = Decimal("0")
+        overall_max = Decimal("0")
+        if picked_batches:
+            totals = CourseResult.objects.filter(
+                enrollment=enrollment,
+                batch_id__in=picked_batches,
+            ).aggregate(
+                obt=models.Sum("marks_obtained"),
+                mx=models.Sum("max_marks"),
+            )
+            overall_obtained = totals.get("obt") or Decimal("0")
+            overall_max = totals.get("mx") or Decimal("0")
+
+        overall_percentage = None
+        if overall_max and overall_max > 0:
+            overall_percentage = (overall_obtained / overall_max) * Decimal("100")
+            overall_percentage = overall_percentage.quantize(Decimal("0.01"))
+
+        footer_grade = None
+        footer_remarks = None
+        if overall_percentage is not None:
+            gs = (
+                GradeScale.objects.filter(
+                    min_percentage__lte=overall_percentage,
+                    max_percentage__gte=overall_percentage,
+                )
+                .order_by("-min_percentage")
+                .first()
+            )
+            if gs:
+                footer_grade = gs.letter_grade
+                footer_remarks = gs.remarks
+
+        final_cgpa = semesters[-1]["semester_result"].cgpa if semesters else None
+        declaration_date = semesters[-1]["batch"].notification_date if semesters else None
+
+        semester_pairs = []
+        if layout_mode == "double":
+            sem_map = {s["semester_no"]: s for s in semesters}
+            i = 1
+            while i <= max_sem:
+                semester_pairs.append({"left": sem_map.get(i), "right": sem_map.get(i + 1)})
+                i += 2
+
+        items.append(
+            {
+                "enrollment": enrollment,
+                "student": enrollment.student,
+                "program": enrollment.program,
+                "session": enrollment.session,
+                "session_display": enrollment.session.display_for_program(enrollment.program),
+                "max_sem": max_sem,
+                "semesters": semesters,
+                "layout_mode": layout_mode,
+                "semester_pairs": semester_pairs,
+                "final_cgpa": final_cgpa,
+                "overall_obtained": overall_obtained,
+                "overall_max": overall_max,
+                "overall_percentage": overall_percentage,
+                "footer_letter_grade": footer_grade,
+                "footer_remarks": footer_remarks,
+                "declaration_date": declaration_date,
+            }
+        )
+
+    if not items:
+        return HttpResponse(
+            "No eligible transcripts were found for this batch (all-semester completion required).",
+            status=400,
+        )
+
+    import re
+
+    prefix = None
+    suffix = None
+    body_parts = []
+
+    for idx, t in enumerate(items):
+        html_full = render_to_string(
+            "results/transcript.html",
+            {
+                "enrollment": t["enrollment"],
+                "student": t["student"],
+                "program": t["program"],
+                "session": t["session"],
+                "session_display": t["session_display"],
+                "max_sem": t["max_sem"],
+                "semesters": t["semesters"],
+                "layout_mode": t["layout_mode"],
+                "semester_pairs": t["semester_pairs"],
+                "final_cgpa": t["final_cgpa"],
+                "overall_obtained": t["overall_obtained"],
+                "overall_max": t["overall_max"],
+                "overall_percentage": t["overall_percentage"],
+                "footer_letter_grade": t["footer_letter_grade"],
+                "footer_remarks": t["footer_remarks"],
+                "declaration_date": t["declaration_date"],
+            },
+            request=request,
+        )
+
+        if prefix is None:
+            m = re.search(r"\A(.*?<body[^>]*>)", html_full, flags=re.S | re.I)
+            prefix = m.group(1) if m else "<!doctype html><html><head><meta charset='utf-8'></head><body>"
+            m2 = re.search(r"(</body>\s*</html>\s*)\Z", html_full, flags=re.S | re.I)
+            suffix = m2.group(1) if m2 else "</body></html>"
+
+        mb = re.search(r"<body[^>]*>(.*)</body>", html_full, flags=re.S | re.I)
+        body_inner = mb.group(1) if mb else html_full
+        body_parts.append(body_inner)
+
+        if idx != len(items) - 1:
+            body_parts.append('<div style="page-break-after: always;"></div>')
+
+    html = (prefix or "") + "".join(body_parts) + (suffix or "")
+
+    pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="Transcripts_Batch_{batch.id}.pdf"'
     return response
