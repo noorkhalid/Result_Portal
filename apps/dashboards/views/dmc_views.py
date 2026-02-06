@@ -26,9 +26,9 @@ def dmc_single(request):
     # If user comes from Result Batch list, they may only send ?batch=<id>
     # In that case, prefill the other filters from the batch.
     if batch_id and not any([dept_id, program_id, session_id, semester_no]):
-        b = ResultBatch.objects.select_related("program", "session", "program__department").filter(id=batch_id).first()
+        b = ResultBatch.objects.select_related("program", "session").filter(id=batch_id).first()
         if b:
-            dept_id = str(b.program.department_id)
+            dept_id = str(b.department_id)
             program_id = str(b.program_id)
             session_id = str(b.session_id)
             semester_no = str(b.semester_number)
@@ -45,12 +45,12 @@ def dmc_single(request):
 
     programs = Program.objects.all().order_by("name")
     if dept_id:
-        programs = programs.filter(department_id=dept_id)
+        programs = programs.filter(offerings__department_id=dept_id, offerings__is_active=True).distinct()
 
     # Base batches queryset from which we derive dependent options.
     batches = ResultBatch.objects.select_related("program", "session").order_by("-created_at")
     if dept_id:
-        batches = batches.filter(program__department_id=dept_id)
+        batches = batches.filter(department_id=dept_id)
     if program_id:
         batches = batches.filter(program_id=program_id)
     if session_id:

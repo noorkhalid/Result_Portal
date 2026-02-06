@@ -39,7 +39,7 @@ def enrollment_list(request):
     departments = Department.objects.all().order_by("name")
     programs = Program.objects.all().order_by("name")
     if department_id:
-        programs = programs.filter(department_id=department_id)
+        programs = programs.filter(offerings__department_id=department_id, offerings__is_active=True).distinct()
 
     # If selected program is not valid for this department, reset dependent filters
     invalid_program = False

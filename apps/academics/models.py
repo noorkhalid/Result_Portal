@@ -41,18 +41,13 @@ class Program(models.Model):
         (10, "5 Years (10 Semesters)"),
     ]
 
-    department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="programs")
     name = models.CharField(max_length=200)
     total_semesters = models.PositiveSmallIntegerField(choices=DURATION_CHOICES)
     is_active = models.BooleanField(default=True)
 
     class Meta:
         ordering = ["name"]
-
-    def save(self, *args, **kwargs):
-        if not self.department_id:
-            self.department = get_default_department()
-        super().save(*args, **kwargs)
+        unique_together = ("name", "total_semesters")
 
     def __str__(self):
         return f"{self.name} ({self.total_semesters} semesters)"
@@ -137,8 +132,6 @@ class Course(models.Model):
 
 class ProgramCourse(models.Model):
     """Which course is taught in which semester of a program."""
-
-    department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="program_courses")
     program = models.ForeignKey(Program, on_delete=models.CASCADE)
     semester_number = models.PositiveSmallIntegerField()
     course = models.ForeignKey(Course, on_delete=models.CASCADE)
@@ -146,15 +139,6 @@ class ProgramCourse(models.Model):
     class Meta:
         unique_together = ("program", "semester_number", "course")
         ordering = ["semester_number"]
-
-    def save(self, *args, **kwargs):
-        if not self.department_id:
-            # Keep in sync with the program's department
-            if self.program_id and getattr(self.program, "department_id", None):
-                self.department_id = self.program.department_id
-            else:
-                self.department = get_default_department()
-        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.program.name} | Sem {self.semester_number} | {self.course.title}"

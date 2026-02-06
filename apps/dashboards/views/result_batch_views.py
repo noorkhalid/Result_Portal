@@ -5,8 +5,7 @@ from django.db import IntegrityError
 from dashboards.decorators import group_required
 from dashboards.forms import ResultBatchForm
 from results.models import ResultBatch
-from academics.models import Department, Program, Session, Semester
-from django.db.models import Max
+from academics.models import Department, Program, Session
 from results.services import recompute_batch
 
 
@@ -34,7 +33,7 @@ def batch_list(request):
     programs = Program.objects.all().order_by("name")
 
     if department_id:
-        programs = programs.filter(department_id=department_id)
+        programs = programs.filter(offerings__department_id=department_id, offerings__is_active=True).distinct()
 
     # Dependent filter options (narrow based on selected values)
     base_for_sessions = base
@@ -160,23 +159,8 @@ def batch_delete(request, pk):
 def batch_detail(request, pk):
     batch = get_object_or_404(ResultBatch, pk=pk)
 
-    # "Last semester" for Transcript availability is defined as the highest semester
-    # number configured for the program in the Semester table.
-    #
-    # We try program+session first (if semesters are configured per session). If no
-    # semesters exist for that session, we gracefully fall back to program-only.
-    max_sem = (
-        Semester.objects.filter(program=batch.program, session=batch.session)
-        .aggregate(m=Max("number"))
-        .get("m")
-    )
-    if not max_sem:
-        max_sem = (
-            Semester.objects.filter(program=batch.program)
-            .aggregate(m=Max("number"))
-            .get("m")
-        )
-    max_sem = max_sem or 0
+    # "Last semester" for Transcript availability is defined by Program.total_semesters.
+    max_sem = int(getattr(batch.program, "total_semesters", 0) or 0)
 
     is_last_semester = bool(max_sem and int(batch.semester_number) == int(max_sem))
     has_marks = batch.course_results.exists()

@@ -34,12 +34,12 @@ def result_notifications(request):
 
     programs = Program.objects.all().order_by("name")
     if dept_id:
-        programs = programs.filter(department_id=dept_id)
+        programs = programs.filter(offerings__department_id=dept_id, offerings__is_active=True).distinct()
 
     # Build batches queryset first; we will derive dependent filter options from it
     batches = ResultBatch.objects.select_related("program", "session").order_by("-created_at")
     if dept_id:
-        batches = batches.filter(program__department_id=dept_id)
+        batches = batches.filter(department_id=dept_id)
     if program_id:
         batches = batches.filter(program_id=program_id)
     if session_id:

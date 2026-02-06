@@ -1,29 +1,24 @@
 from __future__ import annotations
 
 from django.contrib import messages
-from django.db.models import Count, F, Max
+from django.db.models import Count, F
 from django.shortcuts import redirect, render
 
 from dashboards.decorators import group_required
-from academics.models import Department, Program, Session, Semester
+from academics.models import Department, Program, Session
 from results.models import ResultBatch, SemesterResult
 
 
 def _max_semester_for(program_id: str | int, session_id: str | int) -> int:
-    """Return the highest configured semester number for a program.
+    """Return the authoritative max semester for a program.
 
-    Prefer program+session (if semesters are configured per session). If no
-    semesters exist for that session, gracefully fall back to program-only.
+    IMPORTANT:
+    We no longer rely on the Semester table for max-semester logic because it
+    duplicates Program.total_semesters and can go out-of-sync. Session is kept
+    in the signature for backward-compatibility with the UI flow.
     """
-
-    max_sem = (
-        Semester.objects.filter(program_id=program_id, session_id=session_id)
-        .aggregate(m=Max("number"))
-        .get("m")
-    )
-    if not max_sem:
-        max_sem = Semester.objects.filter(program_id=program_id).aggregate(m=Max("number")).get("m")
-    return int(max_sem or 0)
+    program = Program.objects.filter(id=program_id).only("total_semesters").first()
+    return int(program.total_semesters) if program else 0
 
 
 @group_required("System Admin", "Document Generator", "Controller")
@@ -32,7 +27,7 @@ def transcript_single(request):
 
     Rule:
       Transcript is only available when the student has results for ALL semesters
-      defined in Semester table for that program+session.
+      defined in all semesters (1..Program.total_semesters) for that program+session.
 
     Entry point:
       From Result Batch detail page we expect: ?batch=<id>
@@ -48,12 +43,12 @@ def transcript_single(request):
     # Prefill from batch if user comes with only ?batch=
     if batch_id and not any([dept_id, program_id, session_id]):
         b = (
-            ResultBatch.objects.select_related("program", "session", "program__department")
+            ResultBatch.objects.select_related("program", "session")
             .filter(id=batch_id)
             .first()
         )
         if b:
-            dept_id = str(b.program.department_id)
+            dept_id = str(b.department_id)
             program_id = str(b.program_id)
             session_id = str(b.session_id)
 
@@ -68,12 +63,12 @@ def transcript_single(request):
 
     programs = Program.objects.all().order_by("name")
     if dept_id:
-        programs = programs.filter(department_id=dept_id)
+        programs = programs.filter(offerings__department_id=dept_id, offerings__is_active=True).distinct()
 
     # Base batches for dependent filters
     batches_qs = ResultBatch.objects.select_related("program", "session").order_by("-created_at")
     if dept_id:
-        batches_qs = batches_qs.filter(program__department_id=dept_id)
+        batches_qs = batches_qs.filter(department_id=dept_id)
     if program_id:
         batches_qs = batches_qs.filter(program_id=program_id)
     if session_id:

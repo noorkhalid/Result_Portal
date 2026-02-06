@@ -1,62 +1,99 @@
 {% extends "dashboards/_layout.html" %}
-{% block title %}Program Courses{% endblock %}
+{% block title %}Curriculum Designer{% endblock %}
+
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
-    <h3 class="mb-0">Program Courses</h3>
-    <div class="text-muted">Course mapping per program & semester</div>
-</div>
+    <h3 class="mb-0">Curriculum Designer</h3>
+    <div class="text-muted">Design semester-wise courses for a program (global curriculum)</div>
+  </div>
+
   <div class="d-flex gap-2 flex-wrap">
-  <a href="{% url 'admin_import_program_courses' %}" class="btn btn-outline-secondary">Import from Excel</a>
-  <a href="{% url 'admin_template_program_courses' %}" class="btn btn-outline-secondary">Download Excel Template</a>
-  <a href="{% url 'admin_program_course_add' %}" class="btn btn-primary">+ Add Mapping</a>
-</div>
+    <a href="{% url 'admin_import_program_courses' %}" class="btn btn-outline-secondary">Import from Excel</a>
+    <a href="{% url 'admin_template_program_courses' %}" class="btn btn-outline-secondary">Download Excel Template</a>
+  </div>
 </div>
 
 <form class="row g-2 mb-3" method="get">
-  <div class="col-md-5">
+  <div class="col-md-6">
     <label class="form-label small text-muted mb-1">Program</label>
     <select name="program" class="form-select" onchange="this.form.submit()">
-      <option value="">All Programs</option>
+      <option value="">Select Program</option>
       {% for p in programs %}
         <option value="{{ p.id }}" {% if program_id and p.id|stringformat:"s" == program_id %}selected{% endif %}>{{ p.name }}</option>
       {% endfor %}
     </select>
   </div>
   <div class="col-md-2 align-self-end">
-    <button class="btn btn-outline-secondary w-100">Filter</button>
+    <button class="btn btn-outline-secondary w-100">Load</button>
   </div>
 </form>
 
-<div class="card">
-  <div class="table-responsive">
-    <table class="table table-striped align-middle mb-0">
-      <thead>
-        <tr>
-          <th>Department</th>
-          <th>Program</th>
-          <th>Semester</th>
-          <th>Course</th>
-          <th style="width: 160px;">Actions</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for it in items %}
-        <tr>
-          <td>{{ it.department.name }}</td>
-          <td>{{ it.program.name }}</td>
-          <td>{{ it.semester_number }}</td>
-          <td>{{ it.course.code }} - {{ it.course.title }}</td>
-          <td>
-            <a href="{% url 'admin_program_course_edit' it.id %}" class="btn btn-sm btn-warning">Edit</a>
-            <a href="{% url 'admin_program_course_delete' it.id %}" class="btn btn-sm btn-danger">Delete</a>
-          </td>
-        </tr>
-        {% empty %}
-        <tr><td colspan="5" class="text-center text-muted py-4">No mappings found</td></tr>
-        {% endfor %}
-      </tbody>
-    </table>
+{% if not selected_program %}
+  <div class="card p-4">
+    <div class="text-muted">Select a program to design its curriculum.</div>
   </div>
+{% else %}
+
+<div class="row g-3">
+  {% for sem, pcs in semesters.items %}
+  <div class="col-lg-6">
+    <div class="card">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <div>
+          <strong>Semester {{ sem }}</strong>
+        </div>
+      </div>
+
+      <div class="card-body">
+        {% if pcs %}
+          <div class="table-responsive">
+            <table class="table table-sm align-middle mb-2">
+              <thead>
+                <tr>
+                  <th>Course</th>
+                  <th style="width: 110px;">Action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for pc in pcs %}
+                <tr>
+                  <td>{{ pc.course.code }} - {{ pc.course.title }}</td>
+                  <td>
+                    <form method="post" action="{% url 'admin_program_course_delete' pc.id %}" class="d-inline">
+                      {% csrf_token %}
+                      <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        {% else %}
+          <div class="text-muted mb-2">No courses added yet.</div>
+        {% endif %}
+
+        <form method="post" action="{% url 'admin_program_course_add' %}" class="d-flex gap-2">
+          {% csrf_token %}
+          <input type="hidden" name="program" value="{{ selected_program.id }}">
+          <input type="hidden" name="semester_number" value="{{ sem }}">
+
+          <select name="course" class="form-select" required>
+            <option value="">Add a course…</option>
+            {% for c in courses %}
+              <option value="{{ c.id }}">{{ c.code }} - {{ c.title }}</option>
+            {% endfor %}
+          </select>
+
+          <button type="submit" class="btn btn-primary">Add</button>
+        </form>
+
+      </div>
+    </div>
+  </div>
+  {% endfor %}
 </div>
+
+{% endif %}
 {% endblock %}

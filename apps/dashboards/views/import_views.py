@@ -102,8 +102,8 @@ def template_program_courses(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "ProgramCourses"
-    ws.append(["department", "program", "semester_number", "course_code"])
-    ws.append(["Falcon Educational Complex, Tank", "BS Computer Science", 1, "CS101"])
+    ws.append(["program", "semester_number", "course_code"])
+    ws.append(["BS Computer Science", 1, "CS101"])
 
     resp = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -476,8 +476,7 @@ def import_program_courses(request):
     Import ProgramCourse mappings from Excel (.xlsx).
 
     Columns required:
-    - department: Department name (must exist)
-    - program: Program name (must exist; matched within department)
+    - program: Program name (must exist)
     - semester_number: integer
     - course_code: existing Course.code
 
@@ -502,7 +501,7 @@ def import_program_courses(request):
     filename = fs.save(f"program_courses_{ts}_{xlsx.name}", xlsx)
     file_path = fs.path(filename)
 
-    required_cols = {"department", "program", "semester_number", "course_code"}
+    required_cols = {"program", "semester_number", "course_code"}
 
     try:
         wb = openpyxl.load_workbook(file_path)
@@ -528,14 +527,10 @@ def import_program_courses(request):
             if row is None or all(v is None or str(v).strip() == "" for v in row):
                 continue
 
-            dept_name = str(row[idx["department"]] or "").strip()
             program_name = str(row[idx["program"]] or "").strip()
             sem_raw = row[idx["semester_number"]]
             course_code = str(row[idx["course_code"]] or "").strip()
 
-            if not dept_name:
-                validation_errors.append(f"Row {i}: department is required.")
-                continue
             if not program_name:
                 validation_errors.append(f"Row {i}: program is required.")
                 continue
@@ -546,16 +541,11 @@ def import_program_courses(request):
                 validation_errors.append(f"Row {i}: course_code is required.")
                 continue
 
-            department = Department.objects.filter(name__iexact=dept_name).first()
-            if not department:
-                validation_errors.append(f"Row {i}: department not found ('{dept_name}').")
-                continue
-
-            program = Program.objects.filter(department=department, name__iexact=program_name).first()
+            program = Program.objects.filter(name__iexact=program_name).first()
             if not program:
-                program = Program.objects.filter(department=department, name__icontains=program_name).first()
+                program = Program.objects.filter(name__icontains=program_name).first()
             if not program:
-                validation_errors.append(f"Row {i}: program not found in department ('{program_name}').")
+                validation_errors.append(f"Row {i}: program not found ('{program_name}').")
                 continue
 
             try:
@@ -569,7 +559,7 @@ def import_program_courses(request):
                 validation_errors.append(f"Row {i}: course not found by code ('{course_code}').")
                 continue
 
-            cleaned.append((department, program, semester_number, course))
+            cleaned.append((program, semester_number, course))
 
         if validation_errors:
             messages.error(
@@ -582,17 +572,14 @@ def import_program_courses(request):
         updated = 0
 
         with transaction.atomic():
-            for department, program, semester_number, course in cleaned:
+            for program, semester_number, course in cleaned:
                 obj = ProgramCourse.objects.filter(
                     program=program, semester_number=semester_number, course=course
                 ).first()
                 if obj:
-                    obj.department = department
-                    obj.save()
                     updated += 1
                 else:
                     ProgramCourse.objects.create(
-                        department=department,
                         program=program,
                         semester_number=semester_number,
                         course=course,

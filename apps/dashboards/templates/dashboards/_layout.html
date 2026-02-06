@@ -11,15 +11,59 @@
 
   <style>
     body { background:#f6f7fb; }
-    .topbar { background:#0f4c5c; color:#fff; }
-    .brand { font-weight:700; }
-    .card { border:0; box-shadow:0 6px 18px rgba(0,0,0,.06); border-radius:14px; }
+
+    .topbar {
+      background:#0f4c5c;
+      color:#fff;
+    }
+
+    .brand {
+      font-weight:700;
+    }
+
+    .card {
+      border:0;
+      box-shadow:0 6px 18px rgba(0,0,0,.06);
+      border-radius:14px;
+    }
+
     .list-group-item.active {
       background:#0f4c5c;
       border-color:#0f4c5c;
       color:#fff;
       font-weight:600;
     }
+
+    /* ==================================================
+       FULL-WIDTH MESSAGE BAR (UNDER TOPBAR)
+       ================================================== */
+    .rp-msgbar {
+      position: sticky;
+      top: 0;
+      z-index: 1500;
+    }
+
+    .rp-msgbar .alert {
+      margin: 0;
+      border-radius: 0;
+      border: 0;
+      padding: 14px 18px;
+      font-size: 1.05rem;
+      font-weight: 600;
+      box-shadow: 0 10px 22px rgba(0,0,0,.18);
+    }
+
+    .rp-msgbar .rp-title {
+      font-weight: 800;
+      letter-spacing: .5px;
+      margin-right: 10px;
+    }
+
+    /* STRONG COLORS */
+    .rp-msgbar .alert-danger  { background:#b00020; color:#ffffff; }
+    .rp-msgbar .alert-success { background:#0b6b2f; color:#ffffff; }
+    .rp-msgbar .alert-warning { background:#b26a00; color:#ffffff; }
+    .rp-msgbar .alert-info    { background:#0b4f7a; color:#ffffff; }
   </style>
 
   {% block extra_css %}{% endblock %}
@@ -27,6 +71,7 @@
 
 <body>
 
+<!-- TOP BAR -->
 <nav class="topbar py-2">
   <div class="container d-flex justify-content-between align-items-center">
     <div class="brand">Result Portal</div>
@@ -43,13 +88,39 @@
   </div>
 </nav>
 
-<main class="container my-4">
-
-  {% if messages %}
+<!-- FULL-WIDTH MESSAGE BAR -->
+{% if messages %}
+  <div class="rp-msgbar">
     {% for message in messages %}
-      <div class="alert alert-{{ message.tags }}">{{ message }}</div>
+      <div class="alert
+           {% if message.tags == 'error' %}alert-danger
+           {% elif message.tags == 'success' %}alert-success
+           {% elif message.tags == 'warning' %}alert-warning
+           {% else %}alert-info{% endif %}
+           alert-dismissible fade show"
+           role="alert">
+        <div class="container d-flex align-items-center justify-content-between">
+          <div>
+            <span class="rp-title">
+              {% if message.tags == 'error' %}ERROR
+              {% elif message.tags == 'success' %}SUCCESS
+              {% elif message.tags == 'warning' %}WARNING
+              {% else %}INFO{% endif %}
+            </span>
+            <span>{{ message }}</span>
+          </div>
+          <button type="button"
+                  class="btn-close btn-close-white"
+                  data-bs-dismiss="alert"
+                  aria-label="Close"></button>
+        </div>
+      </div>
     {% endfor %}
-  {% endif %}
+  </div>
+{% endif %}
+
+<!-- MAIN CONTENT -->
+<main class="container my-4">
 
   <div class="row">
 
@@ -68,6 +139,17 @@
 </main>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+<!-- Auto-hide message after 6 seconds -->
+<script>
+  setTimeout(() => {
+    document.querySelectorAll('.rp-msgbar .alert').forEach(el => {
+      const alert = bootstrap.Alert.getOrCreateInstance(el);
+      alert.close();
+    });
+  }, 6000);
+</script>
+
 {% block extra_js %}{% endblock %}
 
 </body>

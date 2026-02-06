@@ -44,11 +44,9 @@ class Enrollment(models.Model):
 
     def save(self, *args, **kwargs):
         if not self.department_id:
-            # Keep in sync with student/program department
+            # Keep in sync with student department (primary source)
             if self.student_id and getattr(self.student, "department_id", None):
                 self.department_id = self.student.department_id
-            elif self.program_id and getattr(self.program, "department_id", None):
-                self.department_id = self.program.department_id
             else:
                 self.department = get_default_department()
         super().save(*args, **kwargs)

@@ -8,14 +8,14 @@ from django.db.models.functions import Cast, Substr, Reverse, StrIndex, Length
 from django.http import HttpResponse
 from django.shortcuts import get_object_or_404
 from django.template.loader import render_to_string
-from django.db.models import Max, Value, Case, When, CharField
+from django.db.models import Value, Case, When, CharField
 from django.db import models
 
 from weasyprint import HTML
 
 # Note: We use WeasyPrint for all PDF generation. Avoid adding extra PDF merger deps.
 
-from academics.models import ProgramCourse, Semester
+from academics.models import Program, ProgramCourse
 from students.models import Enrollment
 from .models import ResultBatch, SemesterResult, CourseResult, GradeScale
 
@@ -100,22 +100,13 @@ def _roll_suffix_annotation():
 
 
 def _max_semester_for_program_session(program_id: int, session_id: int) -> int:
-    """Highest semester number according to the Semester table.
+    """Authoritative last semester for transcript/completion logic.
 
-    In this project, the "last semester" is defined as the highest semester number
-    configured for the Program in the Semester table (not per-session).
-
-    We keep this helper for backward-compatibility, but intentionally fall back to
-    program-only if program+session rows don't exist.
+    We use Program.total_semesters as the single source of truth.
+    Session is kept in the signature for backward-compatibility.
     """
-    mx = (
-        Semester.objects.filter(program_id=program_id, session_id=session_id)
-        .aggregate(m=Max("number"))
-        .get("m")
-    )
-    if not mx:
-        mx = Semester.objects.filter(program_id=program_id).aggregate(m=Max("number")).get("m")
-    return int(mx or 0)
+    program = Program.objects.filter(id=program_id).only("total_semesters").first()
+    return int(program.total_semesters) if program else 0
 
 
 def _is_program_completed(enrollment: Enrollment, max_semester: int) -> bool:
@@ -410,13 +401,10 @@ def dmc_batch_pdf(request, batch_id):
 
 
 def _program_max_semester(program_id: int) -> int:
-    """Highest semester number defined in the Semester table for a program."""
-    return (
-        Semester.objects.filter(program_id=program_id)
-        .aggregate(m=Max("number"))
-        .get("m")
-        or 0
-    )
+    """Authoritative max semester for a program (Program.total_semesters)."""
+    program = Program.objects.filter(id=program_id).only("total_semesters").first()
+    return int(program.total_semesters) if program else 0
+
 
 
 def _enrollment_is_completed(enrollment: Enrollment, max_sem: int) -> bool:
@@ -447,7 +435,7 @@ def transcript_pdf(request, enrollment_id: int):
     max_sem = _program_max_semester(enrollment.program_id)
     if max_sem <= 0:
         return HttpResponse(
-            "Transcript is not available because semesters are not defined for this program.",
+            "Transcript is not available because the program duration (total semesters) is not configured.",
             status=400,
         )
 

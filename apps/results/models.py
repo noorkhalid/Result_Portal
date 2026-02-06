@@ -47,12 +47,10 @@ class ResultBatch(models.Model):
         ordering = ["-created_at"]
 
     def save(self, *args, **kwargs):
-        # Keep department in sync with selected program.
+        # Department is an explicit field on ResultBatch.
+        # Keep a safe fallback for legacy flows.
         if not self.department_id:
-            if self.program_id and getattr(self.program, "department_id", None):
-                self.department_id = self.program.department_id
-            else:
-                self.department = get_default_department()
+            self.department = get_default_department()
         super().save(*args, **kwargs)
 
     def __str__(self):

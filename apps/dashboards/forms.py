@@ -29,9 +29,8 @@ class SemesterForm(forms.ModelForm):
 class ProgramCourseForm(forms.ModelForm):
     class Meta:
         model = ProgramCourse
-        fields = ["department", "program", "semester_number", "course"]
+        fields = ["program", "semester_number", "course"]
         widgets = {
-            "department": forms.Select(attrs={"class": "form-select"}),
             "program": forms.Select(attrs={"class": "form-select"}),
             "semester_number": forms.NumberInput(attrs={"class": "form-control"}),
             "course": forms.Select(attrs={"class": "form-select"}),
@@ -39,30 +38,8 @@ class ProgramCourseForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-
-        # If department is known (from POST/instance/initial), filter program queryset
-        dept_id = None
-        if self.is_bound:
-            dept_id = self.data.get("department")
-        elif self.instance and getattr(self.instance, "department_id", None):
-            dept_id = self.instance.department_id
-        elif self.initial.get("department"):
-            dept_id = self.initial.get("department")
-
-        if dept_id:
-            self.fields["program"].queryset = Program.objects.filter(department_id=dept_id).order_by("name")
-        else:
-            self.fields["program"].queryset = Program.objects.all().order_by("name")
-
-        self.fields["department"].queryset = Department.objects.all().order_by("name")
-
-    def clean(self):
-        cleaned = super().clean()
-        dept = cleaned.get("department")
-        program = cleaned.get("program")
-        if dept and program and program.department_id != dept.id:
-            self.add_error("program", "Selected program does not belong to selected department.")
-        return cleaned
+        # ProgramCourse is now GLOBAL (no department)
+        self.fields["program"].queryset = Program.objects.all().order_by("name")
 
 
 class ProgramOfferingForm(forms.ModelForm):
@@ -127,7 +104,11 @@ class EnrollmentForm(forms.ModelForm):
 
         if dept_id:
             self.fields["student"].queryset = Student.objects.filter(department_id=dept_id).order_by("name")
-            self.fields["program"].queryset = Program.objects.filter(department_id=dept_id).order_by("name")
+            self.fields["program"].queryset = (
+                Program.objects.filter(offerings__department_id=dept_id, offerings__is_active=True)
+                .distinct()
+                .order_by("name")
+            )
         else:
             self.fields["student"].queryset = Student.objects.all().order_by("name")
             self.fields["program"].queryset = Program.objects.all().order_by("name")
@@ -139,8 +120,12 @@ class EnrollmentForm(forms.ModelForm):
         program = cleaned.get("program")
         if dept and student and student.department_id != dept.id:
             self.add_error("student", "Selected student does not belong to selected department.")
-        if dept and program and program.department_id != dept.id:
-            self.add_error("program", "Selected program does not belong to selected department.")
+        if dept and program:
+            ok = ProgramOffering.objects.filter(
+                department_id=dept.id, program_id=program.id, is_active=True
+            ).exists()
+            if not ok:
+                self.add_error("program", "Selected program is not offered in selected department.")
         return cleaned
 
 
@@ -204,7 +189,11 @@ class ResultBatchForm(forms.ModelForm):
             dept_id = self.initial.get("department")
 
         if dept_id:
-            self.fields["program"].queryset = Program.objects.filter(department_id=dept_id).order_by("name")
+            self.fields["program"].queryset = (
+                Program.objects.filter(offerings__department_id=dept_id, offerings__is_active=True)
+                .distinct()
+                .order_by("name")
+            )
         else:
             self.fields["program"].queryset = Program.objects.all().order_by("name")
 
@@ -212,6 +201,10 @@ class ResultBatchForm(forms.ModelForm):
         cleaned = super().clean()
         dept = cleaned.get("department")
         program = cleaned.get("program")
-        if dept and program and program.department_id != dept.id:
-            self.add_error("program", "Selected program does not belong to selected department.")
+        if dept and program:
+            ok = ProgramOffering.objects.filter(
+                department_id=dept.id, program_id=program.id, is_active=True
+            ).exists()
+            if not ok:
+                self.add_error("program", "Selected program is not offered in selected department.")
         return cleaned
