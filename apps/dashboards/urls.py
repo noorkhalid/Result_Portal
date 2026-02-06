@@ -39,6 +39,13 @@ from dashboards.views.program_course_views import (
     program_course_delete,
 )
 
+from dashboards.views.program_offering_views import (
+    program_offering_list,
+    program_offering_create,
+    program_offering_update,
+    program_offering_delete,
+)
+
 from dashboards.views.student_views import (
     student_list,
     student_create,
@@ -117,6 +124,11 @@ urlpatterns = [
     path("admin-dashboard/programs/add/", admin_program_create, name="admin_program_add"),
     path("admin-dashboard/programs/<int:pk>/edit/", admin_program_update, name="admin_program_edit"),
     path("admin-dashboard/programs/<int:pk>/delete/", admin_program_delete, name="admin_program_delete"),
+
+    path("admin-dashboard/program-offerings/", program_offering_list, name="admin_program_offering_list"),
+    path("admin-dashboard/program-offerings/add/", program_offering_create, name="admin_program_offering_add"),
+    path("admin-dashboard/program-offerings/<int:pk>/edit/", program_offering_update, name="admin_program_offering_edit"),
+    path("admin-dashboard/program-offerings/<int:pk>/delete/", program_offering_delete, name="admin_program_offering_delete"),
 
     path("admin-dashboard/courses/", course_list, name="admin_course_list"),
     path("admin-dashboard/courses/add/", course_create, name="admin_course_add"),

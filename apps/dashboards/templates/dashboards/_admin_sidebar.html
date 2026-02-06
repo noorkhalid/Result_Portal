@@ -19,6 +19,11 @@
       Programs
     </a>
 
+    <a href="{% url 'admin_program_offering_list' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/program-offerings/' in request.path %}active{% endif %}">
+      Program Offerings
+    </a>
+
     <a href="{% url 'admin_course_list' %}"
        class="list-group-item list-group-item-action {% if '/admin-dashboard/courses/' in request.path %}active{% endif %}">
       Courses

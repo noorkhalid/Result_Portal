@@ -70,8 +70,8 @@ def template_students(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Students"
-    ws.append(["registration_no", "name", "father_name", "is_active"])
-    ws.append(["2021-ABC-001", "Ali Khan", "Ahmed Khan", True])
+    ws.append(["department", "registration_no", "name", "father_name", "is_active"])
+    ws.append(["Falcon Educational Complex, Tank", "2021-ABC-001", "Ali Khan", "Ahmed Khan", True])
 
     resp = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -86,8 +86,8 @@ def template_enrollments(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Enrollments"
-    ws.append(["registration_no", "program", "session", "roll_no", "is_active"])
-    ws.append(["2021-ABC-001", "BS Computer Science", 2021, "BSCS-001", True])
+    ws.append(["department", "registration_no", "program", "session", "roll_no", "is_active"])
+    ws.append(["Falcon Educational Complex, Tank", "2021-ABC-001", "BS Computer Science", 2021, "BSCS-001", True])
 
     resp = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -277,6 +277,7 @@ def import_students(request):
         header_raw = [c.value for c in ws[1]]
         header = [_norm(h) for h in header_raw]
 
+        dept_i = _col_index(header, "department", "dept")
         reg_i = _col_index(header, "registration_no", "reg_no", "registration")
         name_i = _col_index(header, "name", "student_name")
         father_i = _col_index(header, "father_name", "father")
@@ -289,6 +290,7 @@ def import_students(request):
             return redirect("admin_import_students")
 
         for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            dept_name = str(row[dept_i] or "").strip() if dept_i is not None else ""
             registration_no = str(row[reg_i] or "").strip()
             name = str(row[name_i] or "").strip()
             father_name = str(row[father_i] or "").strip()
@@ -298,16 +300,23 @@ def import_students(request):
                 errors.append(f"Row {row_num}: missing required values")
                 continue
 
+            dept_obj = None
+            if dept_name:
+                dept_obj, _ = Department.objects.get_or_create(name=dept_name)
+
             obj = Student.objects.filter(registration_no__iexact=registration_no).first()
             if obj:
                 obj.name = name
                 obj.father_name = father_name
                 obj.is_active = is_active
+                if dept_obj:
+                    obj.department = dept_obj
                 obj.save()
                 updated += 1
             else:
                 try:
                     Student.objects.create(
+                        department=dept_obj if dept_obj else Department.objects.get_or_create(name="Falcon Educational Complex, Tank")[0],
                         registration_no=registration_no,
                         name=name,
                         father_name=father_name,
@@ -366,6 +375,7 @@ def import_enrollments(request):
         header_raw = [c.value for c in ws[1]]
         header = [_norm(h) for h in header_raw]
 
+        dept_i = _col_index(header, "department", "dept")
         reg_i = _col_index(header, "registration_no", "reg_no", "registration")
         prog_i = _col_index(header, "program", "program_name")
         sess_i = _col_index(header, "session", "session_year", "start_year")
@@ -379,6 +389,7 @@ def import_enrollments(request):
             return redirect("admin_import_enrollments")
 
         for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
+            dept_name = str(row[dept_i] or "").strip() if dept_i is not None else ""
             registration_no = str(row[reg_i] or "").strip()
             program_name = str(row[prog_i] or "").strip()
             session_year = row[sess_i]
@@ -394,6 +405,10 @@ def import_enrollments(request):
             except Exception:
                 errors.append(f"Row {row_num}: invalid session year '{session_year}'")
                 continue
+
+            dept_obj = None
+            if dept_name:
+                dept_obj, _ = Department.objects.get_or_create(name=dept_name)
 
             student = Student.objects.filter(registration_no__iexact=registration_no).first()
             if not student:
@@ -420,11 +435,14 @@ def import_enrollments(request):
                 obj.session = session
                 obj.roll_no = roll_no
                 obj.is_active = is_active
+                if dept_obj:
+                    obj.department = dept_obj
                 obj.save()
                 updated += 1
             else:
                 try:
                     Enrollment.objects.create(
+                        department=dept_obj if dept_obj else None,
                         student=student,
                         program=program,
                         session=session,

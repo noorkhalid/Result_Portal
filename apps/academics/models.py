@@ -58,6 +58,34 @@ class Program(models.Model):
         return f"{self.name} ({self.total_semesters} semesters)"
 
 
+class ProgramOffering(models.Model):
+    """Which department offers which program.
+
+    This model separates *availability* (department context) from *curriculum*
+    (ProgramCourse). It enables making Program and ProgramCourse global later,
+    while keeping department-specific access through this table.
+    """
+
+    department = models.ForeignKey(
+        Department,
+        on_delete=models.PROTECT,
+        related_name="program_offerings",
+    )
+    program = models.ForeignKey(
+        Program,
+        on_delete=models.CASCADE,
+        related_name="offerings",
+    )
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        unique_together = ("department", "program")
+        ordering = ["department__name", "program__name"]
+
+    def __str__(self):
+        return f"{self.department.name} → {self.program.name}"
+
+
 class Session(models.Model):
     """
     Example: 2023

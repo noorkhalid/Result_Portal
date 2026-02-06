@@ -34,8 +34,41 @@ def student_list(request):
     students = students.distinct()
 
     departments = Department.objects.all().order_by("name")
+
+    # Dependent filter options: Department -> Program -> Session
     programs = Program.objects.all().order_by("name")
-    sessions = Session.objects.all().order_by("-start_year")
+    if department_id:
+        programs = programs.filter(department_id=department_id)
+
+    # If selected program is not valid for this department, reset dependent filters
+    invalid_program = False
+    if program_id and not programs.filter(id=program_id).exists():
+        invalid_program = True
+        program_id = ""
+        session_id = ""
+
+    # If we reset an invalid program, rebuild the students queryset without that filter
+    if invalid_program:
+        students = Student.objects.all().order_by("name")
+        if department_id:
+            students = students.filter(department_id=department_id)
+        if q:
+            students = students.filter(Q(registration_no__icontains=q) | Q(name__icontains=q))
+        students = students.distinct()
+
+    # Sessions depend on selected department/program (via enrollments)
+    enroll_base = Student.objects.all()
+    if department_id:
+        enroll_base = enroll_base.filter(department_id=department_id)
+    if program_id:
+        enroll_base = enroll_base.filter(enrollments__program_id=program_id)
+    sessions = Session.objects.filter(
+        id__in=enroll_base.values_list("enrollments__session_id", flat=True).distinct()
+    ).order_by("-start_year")
+
+    # If selected session is not valid for current department/program, reset it
+    if session_id and not sessions.filter(id=session_id).exists():
+        session_id = ""
 
     return render(
         request,

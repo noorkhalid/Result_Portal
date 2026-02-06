@@ -26,7 +26,16 @@ document.addEventListener("DOMContentLoaded", function () {
 </div>
 
 <form id="batchFiltersForm" class="row g-2 mb-3" method="get">
-  <div class="col-md-5">
+  <div class="col-md-3">
+    <label class="form-label small text-muted mb-1">Department</label>
+    <select id="departmentFilter" name="department" class="form-select">
+      <option value="">All Departments</option>
+      {% for d in departments %}
+        <option value="{{ d.id }}" {% if department_id and d.id|stringformat:"s" == department_id %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-4">
     <label class="form-label small text-muted mb-1">Program</label>
     <select id="programFilter" name="program" class="form-select">
       <option value="">All Programs</option>
@@ -63,11 +72,20 @@ document.addEventListener("DOMContentLoaded", function () {
     // IMPORTANT: don't use querySelector('form') because the layout may contain
     // other forms (e.g., logout). We only want to submit the filter form.
     const form = document.getElementById('batchFiltersForm');
+    const department = document.getElementById('departmentFilter');
     const program = document.getElementById('programFilter');
     const session = document.getElementById('sessionFilter');
     const semester = document.getElementById('semesterFilter');
 
-    if (!form || !program || !session || !semester) return;
+    if (!form || !department || !program || !session || !semester) return;
+
+    department.addEventListener('change', function(){
+      // when department changes, reset dependent filters
+      program.value = '';
+      session.value = '';
+      semester.value = '';
+      form.submit();
+    });
 
     program.addEventListener('change', function(){
       // when program changes, reset dependent filters
@@ -93,6 +111,7 @@ document.addEventListener("DOMContentLoaded", function () {
         <table class="table table-striped align-middle mb-0">
       <thead>
         <tr>
+          <th>Department</th>
           <th>Program</th>
           <th>Session</th>
           <th>Semester</th>
@@ -104,6 +123,7 @@ document.addEventListener("DOMContentLoaded", function () {
       <tbody>
         {% for b in batches %}
         <tr class="clickable-row" data-href="{% url 'admin_batch_detail' b.id %}">
+          <td>{{ b.department.name }}</td>
           <td><a href="{% url 'admin_batch_detail' b.id %}">{{ b.program.name }}</a></td>
           <td>{{ b.session.start_year }}</td>
           <td>{{ b.semester_number }}</td>
@@ -120,7 +140,7 @@ document.addEventListener("DOMContentLoaded", function () {
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="6" class="text-center text-muted py-4">No result batches found</td></tr>
+        <tr><td colspan="7" class="text-center text-muted py-4">No result batches found</td></tr>
         {% endfor %}
       </tbody>
     </table>

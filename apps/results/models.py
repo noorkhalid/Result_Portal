@@ -1,5 +1,6 @@
 from django.db import models
-from academics.models import Program, Session, Course
+
+from academics.models import Department, Program, Session, Course, get_default_department
 from students.models import Enrollment
 
 
@@ -28,6 +29,8 @@ class ResultBatch(models.Model):
         ("improved", "Improved"),
     ]
 
+    department = models.ForeignKey(Department, on_delete=models.PROTECT, related_name="result_batches")
+
     program = models.ForeignKey(Program, on_delete=models.PROTECT)
     session = models.ForeignKey(Session, on_delete=models.PROTECT)
     semester_number = models.PositiveSmallIntegerField()
@@ -42,6 +45,15 @@ class ResultBatch(models.Model):
     class Meta:
         unique_together = ("program", "session", "semester_number", "result_type")
         ordering = ["-created_at"]
+
+    def save(self, *args, **kwargs):
+        # Keep department in sync with selected program.
+        if not self.department_id:
+            if self.program_id and getattr(self.program, "department_id", None):
+                self.department_id = self.program.department_id
+            else:
+                self.department = get_default_department()
+        super().save(*args, **kwargs)
 
     def __str__(self):
         return f"{self.program} | {self.session.start_year} | Sem {self.semester_number} | {self.result_type}"

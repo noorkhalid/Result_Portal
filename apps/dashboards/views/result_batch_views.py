@@ -5,19 +5,23 @@ from django.db import IntegrityError
 from dashboards.decorators import group_required
 from dashboards.forms import ResultBatchForm
 from results.models import ResultBatch
-from academics.models import Program, Session, Semester
+from academics.models import Department, Program, Session, Semester
 from django.db.models import Max
 from results.services import recompute_batch
 
 
 @group_required("System Admin")
 def batch_list(request):
+    department_id = (request.GET.get("department") or "").strip()
     program_id = (request.GET.get("program") or "").strip()
     session_id = (request.GET.get("session") or "").strip()
     semester_no = (request.GET.get("semester") or "").strip()
 
-    base = ResultBatch.objects.select_related("program", "session").all()
+    base = ResultBatch.objects.select_related("department", "program", "session").all()
     batches = base.order_by("-created_at")
+
+    if department_id:
+        batches = batches.filter(department_id=department_id)
 
     if program_id:
         batches = batches.filter(program_id=program_id)
@@ -26,10 +30,16 @@ def batch_list(request):
     if semester_no:
         batches = batches.filter(semester_number=semester_no)
 
+    departments = Department.objects.all().order_by("name")
     programs = Program.objects.all().order_by("name")
+
+    if department_id:
+        programs = programs.filter(department_id=department_id)
 
     # Dependent filter options (narrow based on selected values)
     base_for_sessions = base
+    if department_id:
+        base_for_sessions = base_for_sessions.filter(department_id=department_id)
     if program_id:
         base_for_sessions = base_for_sessions.filter(program_id=program_id)
 
@@ -44,6 +54,8 @@ def batch_list(request):
         semester_no = ""
         # also reset batches filter
         batches = base.order_by("-created_at")
+        if department_id:
+            batches = batches.filter(department_id=department_id)
         if program_id:
             batches = batches.filter(program_id=program_id)
 
@@ -61,9 +73,11 @@ def batch_list(request):
         "dashboards/result_batches/list.html",
         {
             "batches": batches,
+            "departments": departments,
             "programs": programs,
             "sessions": sessions,
             "semester_numbers": semester_numbers,
+            "department_id": department_id,
             "program_id": program_id,
             "session_id": session_id,
             "semester_no": semester_no,
@@ -83,7 +97,12 @@ def batch_create(request):
             except IntegrityError:
                 messages.error(request, "This batch already exists (program+session+semester+type).")
     else:
-        form = ResultBatchForm()
+        # Allow preselecting department (and thus narrowing programs) via GET
+        initial = {}
+        dept_id = (request.GET.get("department") or "").strip()
+        if dept_id:
+            initial["department"] = dept_id
+        form = ResultBatchForm(initial=initial)
 
     return render(
         request,

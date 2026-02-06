@@ -16,7 +16,16 @@
 </div>
 
 <form class="row g-2 mb-3" method="get">
-  <div class="col-md-4">
+  <div class="col-md-3">
+    <label class="form-label small text-muted mb-1">Department</label>
+    <select name="department" class="form-select" onchange="this.form.submit()">
+      <option value="">All Departments</option>
+      {% for d in departments %}
+        <option value="{{ d.id }}" {% if department_id and d.id|stringformat:"s" == department_id %}selected{% endif %}>{{ d.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+  <div class="col-md-3">
     <label class="form-label small text-muted mb-1">Program</label>
     <select name="program" class="form-select" onchange="this.form.submit()">
       <option value="">All Programs</option>
@@ -34,7 +43,7 @@
       {% endfor %}
     </select>
   </div>
-  <div class="col-md-5 align-self-end">
+  <div class="col-md-3 align-self-end">
     <input name="q" value="{{ q }}" class="form-control" placeholder="Search by roll no / registration no / student name">
   </div>
   <div class="col-md-1 align-self-end">
@@ -48,6 +57,7 @@
       <thead>
         <tr>
           <th>Student</th>
+          <th>Department</th>
           <th>Reg No</th>
           <th>Program</th>
           <th>Session</th>
@@ -60,6 +70,7 @@
         {% for e in enrollments %}
         <tr>
           <td>{{ e.student.name }}</td>
+          <td>{{ e.department.name }}</td>
           <td>{{ e.student.registration_no }}</td>
           <td>{{ e.program.name }}</td>
           <td>{{ e.session.start_year }}</td>
@@ -71,7 +82,7 @@
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="7" class="text-center text-muted py-4">No enrollments found</td></tr>
+        <tr><td colspan="8" class="text-center text-muted py-4">No enrollments found</td></tr>
         {% endfor %}
       </tbody>
     </table>

@@ -1,6 +1,6 @@
 from django import forms
 
-from academics.models import Department, Program, ProgramCourse, Session, Semester
+from academics.models import Department, Program, ProgramCourse, ProgramOffering, Session, Semester
 from results.models import GradeScale, ResultBatch
 from students.models import Enrollment, Student
 
@@ -63,6 +63,23 @@ class ProgramCourseForm(forms.ModelForm):
         if dept and program and program.department_id != dept.id:
             self.add_error("program", "Selected program does not belong to selected department.")
         return cleaned
+
+
+class ProgramOfferingForm(forms.ModelForm):
+    class Meta:
+        model = ProgramOffering
+        fields = ["department", "program", "is_active"]
+        widgets = {
+            "department": forms.Select(attrs={"class": "form-select"}),
+            "program": forms.Select(attrs={"class": "form-select"}),
+            "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
+        }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["department"].queryset = Department.objects.all().order_by("name")
+        # Keep program list ordered, global for now.
+        self.fields["program"].queryset = Program.objects.all().order_by("name")
 
 
 class StudentForm(forms.ModelForm):
@@ -152,6 +169,7 @@ class ResultBatchForm(forms.ModelForm):
     class Meta:
         model = ResultBatch
         fields = [
+            "department",
             "program",
             "session",
             "semester_number",
@@ -161,6 +179,7 @@ class ResultBatchForm(forms.ModelForm):
             "is_locked",
         ]
         widgets = {
+            "department": forms.Select(attrs={"class": "form-select"}),
             "program": forms.Select(attrs={"class": "form-select"}),
             "session": forms.Select(attrs={"class": "form-select"}),
             "semester_number": forms.NumberInput(attrs={"class": "form-control"}),
@@ -169,3 +188,30 @@ class ResultBatchForm(forms.ModelForm):
             "notification_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "is_locked": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+
+        # Dependent dropdowns: Department -> Program
+        self.fields["department"].queryset = Department.objects.all().order_by("name")
+
+        dept_id = None
+        if self.is_bound:
+            dept_id = self.data.get("department")
+        elif self.instance and getattr(self.instance, "department_id", None):
+            dept_id = self.instance.department_id
+        elif self.initial.get("department"):
+            dept_id = self.initial.get("department")
+
+        if dept_id:
+            self.fields["program"].queryset = Program.objects.filter(department_id=dept_id).order_by("name")
+        else:
+            self.fields["program"].queryset = Program.objects.all().order_by("name")
+
+    def clean(self):
+        cleaned = super().clean()
+        dept = cleaned.get("department")
+        program = cleaned.get("program")
+        if dept and program and program.department_id != dept.id:
+            self.add_error("program", "Selected program does not belong to selected department.")
+        return cleaned

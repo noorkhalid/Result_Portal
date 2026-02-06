@@ -8,6 +8,10 @@
 
     <div class="row g-3">
       <div class="col-md-4">
+        <label class="form-label">Department</label>
+        {{ form.department }}
+      </div>
+      <div class="col-md-4">
         <label class="form-label">Program</label>
         {{ form.program }}
       </div>
@@ -50,4 +54,21 @@
     </div>
   </form>
 </div>
+
+<script>
+  (function(){
+    const dept = document.querySelector('select[name="department"]');
+    if (!dept) return;
+
+    // For the create page, reload with ?department=... so the Program dropdown
+    // becomes filtered server-side.
+    dept.addEventListener('change', function(){
+      // If this form is being used for editing (POST URL), we don't auto reload.
+      // Reload is only useful when there are no posted values yet.
+      const url = new URL(window.location.href);
+      url.searchParams.set('department', dept.value || '');
+      window.location.href = url.toString();
+    });
+  })();
+</script>
 {% endblock %}
