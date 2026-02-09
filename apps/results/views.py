@@ -15,19 +15,35 @@ from weasyprint import HTML
 
 # Note: We use WeasyPrint for all PDF generation. Avoid adding extra PDF merger deps.
 
-from academics.models import Program, ProgramCourse
+from academics.models import Program, Curriculum, CurriculumCourse, ProgramCourse
 from students.models import Enrollment
 from .models import ResultBatch, SemesterResult, CourseResult, GradeScale
 
 
 def _course_columns_for_batch(batch: ResultBatch):
-    """Return ordered ProgramCourse rows for the batch, limited to courses that exist in the batch."""
+    """Return ordered course rows for the batch, limited to courses that exist in the batch.
+
+    Phase 2.1: Prefer CurriculumCourse (via batch.curriculum) as the source of truth.
+    Fallback to ProgramCourse only if a curriculum is missing (should not happen after Phase 1).
+    """
     batch_course_ids = list(
         CourseResult.objects.filter(batch=batch)
         .values_list("course_id", flat=True)
         .distinct()
     )
 
+    if getattr(batch, "curriculum_id", None):
+        return (
+            CurriculumCourse.objects.filter(
+                curriculum_id=batch.curriculum_id,
+                semester_number=batch.semester_number,
+                course_id__in=batch_course_ids,
+            )
+            .select_related("course")
+            .order_by("id")
+        )
+
+    # Safe fallback (legacy)
     return (
         ProgramCourse.objects.filter(
             program=batch.program,
@@ -99,32 +115,6 @@ def _roll_suffix_annotation():
     return Cast(suffix_text, IntegerField())
 
 
-def _max_semester_for_program_session(program_id: int, session_id: int) -> int:
-    """Authoritative last semester for transcript/completion logic.
-
-    We use Program.total_semesters as the single source of truth.
-    Session is kept in the signature for backward-compatibility.
-    """
-    program = Program.objects.filter(id=program_id).only("total_semesters").first()
-    return int(program.total_semesters) if program else 0
-
-
-def _is_program_completed(enrollment: Enrollment, max_semester: int) -> bool:
-    if not max_semester:
-        return False
-    done = (
-        SemesterResult.objects.filter(
-            enrollment=enrollment,
-            batch__program=enrollment.program,
-            batch__session=enrollment.session,
-            batch__semester_number__lte=max_semester,
-        )
-        .values_list("batch__semester_number", flat=True)
-        .distinct()
-    )
-    return len(list(done)) >= int(max_semester)
-
-
 @login_required
 def result_notification_pdf(request, batch_id):
     batch = get_object_or_404(ResultBatch, id=batch_id)
@@ -143,22 +133,37 @@ def result_notification_pdf(request, batch_id):
     # -------------------------------------------------
     columns = []
 
-    program_courses = (
-        ProgramCourse.objects.filter(
-            program=batch.program,
-            semester_number=batch.semester_number,
-            course_id__in=batch_course_ids,
+    # Phase 2.1: Prefer CurriculumCourse for the column definition
+    if getattr(batch, "curriculum_id", None):
+        program_courses = (
+            CurriculumCourse.objects.filter(
+                curriculum_id=batch.curriculum_id,
+                semester_number=batch.semester_number,
+                course_id__in=batch_course_ids,
+            )
+            .select_related("course")
+            .order_by("id")
         )
-        .select_related("course")
-        .order_by("id")
-    )
+    else:
+        program_courses = (
+            ProgramCourse.objects.filter(
+                program=batch.program,
+                semester_number=batch.semester_number,
+                course_id__in=batch_course_ids,
+            )
+            .select_related("course")
+            .order_by("id")
+        )
 
     if program_courses.exists():
         for pc in program_courses:
             course = pc.course
 
             # credit hours (prefer course.credit_hours; fallback other fields)
-            ch = getattr(course, "credit_hours", "")
+            # CH: prefer override on CurriculumCourse, else Course, else legacy ProgramCourse
+            ch = getattr(pc, "credit_hours_override", None)
+            if ch in ("", None):
+                ch = getattr(course, "credit_hours", "")
             if ch in ("", None):
                 th = getattr(course, "theory_credit", None)
                 pr = getattr(course, "practical_credit", None)
@@ -406,6 +411,14 @@ def _program_max_semester(program_id: int) -> int:
     return int(program.total_semesters) if program else 0
 
 
+def _max_semester_for_program_session(program_id: int, session_id: int) -> int:
+    """Prefer Curriculum.total_semesters for a Program+Session; fallback to Program.total_semesters."""
+    cur = Curriculum.objects.filter(program_id=program_id, session_id=session_id).only("total_semesters").first()
+    if cur:
+        return int(cur.total_semesters)
+    return _program_max_semester(program_id)
+
+
 
 def _enrollment_is_completed(enrollment: Enrollment, max_sem: int) -> bool:
     """Completed means: at least one SemesterResult exists for every semester 1..max_sem."""
@@ -428,11 +441,17 @@ def _enrollment_is_completed(enrollment: Enrollment, max_sem: int) -> bool:
 @login_required
 def transcript_pdf(request, enrollment_id: int):
     enrollment = get_object_or_404(
-        Enrollment.objects.select_related("student", "program", "session", "department"),
+        Enrollment.objects.select_related(
+            "student", "program", "session", "department", "curriculum"
+        ),
         id=enrollment_id,
     )
 
-    max_sem = _program_max_semester(enrollment.program_id)
+    # Phase 2.1: Prefer Curriculum.total_semesters (session-specific)
+    if getattr(enrollment, "curriculum_id", None) and getattr(enrollment, "curriculum", None):
+        max_sem = int(enrollment.curriculum.total_semesters)
+    else:
+        max_sem = _max_semester_for_program_session(enrollment.program_id, enrollment.session_id)
     if max_sem <= 0:
         return HttpResponse(
             "Transcript is not available because the program duration (total semesters) is not configured.",
@@ -592,9 +611,13 @@ def transcript_pdf(request, enrollment_id: int):
 
 @login_required
 def transcript_batch_pdf(request, batch_id: int):
-    batch = get_object_or_404(ResultBatch, id=batch_id)
+    batch = get_object_or_404(ResultBatch.objects.select_related("curriculum"), id=batch_id)
 
-    max_sem = _program_max_semester(batch.program_id)
+    # Phase 2.1: Prefer Curriculum.total_semesters (session-specific)
+    if getattr(batch, "curriculum_id", None) and getattr(batch, "curriculum", None):
+        max_sem = int(batch.curriculum.total_semesters)
+    else:
+        max_sem = _max_semester_for_program_session(batch.program_id, batch.session_id)
     if not max_sem or int(batch.semester_number) != int(max_sem):
         return HttpResponse("Transcripts are available only for the final semester batch.", status=403)
 

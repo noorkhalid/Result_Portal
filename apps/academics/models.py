@@ -142,3 +142,58 @@ class ProgramCourse(models.Model):
 
     def __str__(self):
         return f"{self.program.name} | Sem {self.semester_number} | {self.course.title}"
+
+
+# -----------------------------
+# Curriculum-by-Session (v2)
+# -----------------------------
+
+
+class Curriculum(models.Model):
+    """A curriculum version for a specific Program + Session.
+
+    This allows curriculum changes over time (per session) without breaking old transcripts.
+    """
+
+    program = models.ForeignKey(Program, on_delete=models.CASCADE, related_name="curricula")
+    session = models.ForeignKey(Session, on_delete=models.CASCADE, related_name="curricula")
+
+    # Snapshot of total semesters for this curriculum version
+    total_semesters = models.PositiveSmallIntegerField()
+
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        unique_together = ("program", "session")
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.program.name} | {self.session.start_year} | Curriculum"
+
+
+class CurriculumCourse(models.Model):
+    """Which course is taught in which semester of a *curriculum version*."""
+
+    curriculum = models.ForeignKey(
+        Curriculum,
+        on_delete=models.CASCADE,
+        related_name="curriculum_courses",
+    )
+    semester_number = models.PositiveSmallIntegerField()
+    course = models.ForeignKey(Course, on_delete=models.CASCADE)
+
+    # Optional overrides. If blank, use Course.credit_hours.
+    credit_hours_override = models.DecimalField(
+        max_digits=4,
+        decimal_places=1,
+        null=True,
+        blank=True,
+    )
+
+    class Meta:
+        unique_together = ("curriculum", "semester_number", "course")
+        ordering = ["semester_number", "course__code"]
+
+    def __str__(self):
+        return f"{self.curriculum} | Sem {self.semester_number} | {self.course.code}"

@@ -5,18 +5,28 @@ from django.db.models import Count, F
 from django.shortcuts import redirect, render
 
 from dashboards.decorators import group_required
-from academics.models import Department, Program, Session
+from academics.models import Department, Program, Session, Curriculum
 from results.models import ResultBatch, SemesterResult
 
 
 def _max_semester_for(program_id: str | int, session_id: str | int) -> int:
-    """Return the authoritative max semester for a program.
+    """Return the authoritative max semester for a program+session.
 
     IMPORTANT:
     We no longer rely on the Semester table for max-semester logic because it
     duplicates Program.total_semesters and can go out-of-sync. Session is kept
     in the signature for backward-compatibility with the UI flow.
     """
+    cur = Curriculum.objects.filter(program_id=program_id, session_id=session_id).only("total_semesters").first()
+    if cur:
+        return int(cur.total_semesters)
+    cur = (
+        Curriculum.objects.filter(program_id=program_id, session_id=session_id)
+        .only("total_semesters")
+        .first()
+    )
+    if cur:
+        return int(cur.total_semesters)
     program = Program.objects.filter(id=program_id).only("total_semesters").first()
     return int(program.total_semesters) if program else 0
 
