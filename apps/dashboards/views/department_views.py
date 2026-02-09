@@ -30,8 +30,18 @@ def set_active_department(request):
 
 @group_required("System Admin")
 def department_list(request):
-    departments = Department.objects.all().order_by("name")
-    return render(request, "dashboards/departments/list.html", {"departments": departments})
+    qs = Department.objects.all()
+    q = (request.GET.get("q") or "").strip()
+
+    if q:
+        qs = qs.filter(name__icontains=q)
+
+    departments = qs.order_by("name")
+    return render(
+        request,
+        "dashboards/departments/list.html",
+        {"departments": departments, "q": q},
+    )
 
 
 @group_required("System Admin")

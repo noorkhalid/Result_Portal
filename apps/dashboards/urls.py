@@ -39,6 +39,13 @@ from dashboards.views.program_course_views import (
     program_course_delete,
 )
 
+from dashboards.views.curriculum_views import (
+    curriculum_designer,
+    curriculum_course_add,
+    curriculum_course_delete,
+    curriculum_copy_previous,
+)
+
 from dashboards.views.program_offering_views import (
     program_offering_list,
     program_offering_create,
@@ -152,6 +159,28 @@ urlpatterns = [
     path("admin-dashboard/program-courses/add/", program_course_create, name="admin_program_course_add"),
     path("admin-dashboard/program-courses/<int:pk>/edit/", program_course_update, name="admin_program_course_edit"),
     path("admin-dashboard/program-courses/<int:pk>/delete/", program_course_delete, name="admin_program_course_delete"),
+
+    # System Admin — Curriculum (by Session)
+    path(
+        "admin-dashboard/curricula/",
+        curriculum_designer,
+        name="admin_curriculum_designer",
+    ),
+    path(
+        "admin-dashboard/curricula/add/",
+        curriculum_course_add,
+        name="admin_curriculum_course_add",
+    ),
+    path(
+        "admin-dashboard/curricula/<int:pk>/delete/",
+        curriculum_course_delete,
+        name="admin_curriculum_course_delete",
+    ),
+    path(
+        "admin-dashboard/curricula/copy-previous/",
+        curriculum_copy_previous,
+        name="admin_curriculum_copy_previous",
+    ),
 
     path("admin-dashboard/sessions/", session_list, name="admin_session_list"),
     path("admin-dashboard/sessions/add/", session_create, name="admin_session_add"),

@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.db.models import Q
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 
@@ -17,11 +18,20 @@ def course_list(request):
     """
     List all courses.
     """
-    courses = Course.objects.all().order_by("code")
+    q = (request.GET.get("q") or "").strip()
+
+    courses = Course.objects.all()
+    if q:
+        courses = courses.filter(Q(code__icontains=q) | Q(title__icontains=q))
+
+    courses = courses.order_by("code")
     return render(
         request,
         "dashboards/courses/course_list.html",
-        {"courses": courses},
+        {
+            "courses": courses,
+            "q": q,
+        },
     )
 
 

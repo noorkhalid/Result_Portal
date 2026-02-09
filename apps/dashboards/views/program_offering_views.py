@@ -9,8 +9,10 @@ from dashboards.forms import ProgramOfferingForm
 
 @group_required("System Admin")
 def program_offering_list(request):
-    qs = ProgramOffering.objects.select_related("department", "program").all().order_by(
-        "department__name", "program__name"
+    qs = (
+        ProgramOffering.objects.select_related("department", "program")
+        .all()
+        .order_by("department__name", "program__name")
     )
 
     department_id = (request.GET.get("department") or "").strip()
@@ -22,7 +24,18 @@ def program_offering_list(request):
         qs = qs.filter(program_id=program_id)
 
     departments = Department.objects.all().order_by("name")
-    programs = Program.objects.all().order_by("name")
+
+    # Program dropdown should depend on selected department.
+    # In this project, ProgramOffering.program uses related_name="offerings"
+    # (see Program model reverse choices list: 'offerings').
+    if department_id:
+        programs = (
+            Program.objects.filter(offerings__department_id=department_id)
+            .distinct()
+            .order_by("name")
+        )
+    else:
+        programs = Program.objects.all().order_by("name")
 
     return render(
         request,

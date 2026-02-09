@@ -20,12 +20,19 @@ def is_admin(user):
 @login_required
 @user_passes_test(is_admin)
 def admin_program_list(request):
-    programs = Program.objects.all().order_by("name")
+    qs = Program.objects.all()
+    q = (request.GET.get("q") or "").strip()
+
+    if q:
+        qs = qs.filter(name__icontains=q)
+
+    programs = qs.order_by("name")
     return render(
         request,
         "dashboards/programs/list.html",
         {
             "programs": programs,
+            "q": q,
         },
     )
 

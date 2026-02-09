@@ -11,6 +11,27 @@
     </a>
 </div>
 
+<form method="get" class="row g-2 align-items-end mb-3">
+  <div class="col-sm-6 col-md-5 col-lg-4">
+    <label class="form-label mb-1">Search</label>
+    <input
+      type="text"
+      name="q"
+      value="{{ q|default:'' }}"
+      class="form-control"
+      placeholder="Search programs..."
+    />
+  </div>
+
+  <div class="col-auto">
+    <button type="submit" class="btn btn-outline-primary">Search</button>
+  </div>
+
+  <div class="col-auto">
+    <a href="{% url 'admin_program_list' %}" class="btn btn-outline-secondary">Clear</a>
+  </div>
+</form>
+
 <div class="card">
     <div class="table-responsive">
         <table class="table table-striped align-middle mb-0">

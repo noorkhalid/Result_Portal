@@ -1,0 +1,127 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Curriculum Designer (By Session){% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-0">Curriculum Designer</h3>
+    <div class="text-muted">Design semester-wise courses for a program + session (versioned curriculum)</div>
+  </div>
+</div>
+
+<form class="row g-2 mb-3" method="get">
+  <div class="col-md-5">
+    <label class="form-label small text-muted mb-1">Program</label>
+    <select name="program" class="form-select" onchange="this.form.submit()">
+      <option value="">Select Program</option>
+      {% for p in programs %}
+        <option value="{{ p.id }}" {% if program_id and p.id|stringformat:"s" == program_id %}selected{% endif %}>{{ p.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-3">
+    <label class="form-label small text-muted mb-1">Session</label>
+    <select name="session" class="form-select" onchange="this.form.submit()">
+      <option value="">Select Session</option>
+      {% for s in sessions %}
+        <option value="{{ s.id }}" {% if session_id and s.id|stringformat:"s" == session_id %}selected{% endif %}>{{ s.start_year }}</option>
+      {% endfor %}
+    </select>
+  </div>
+
+  <div class="col-md-2 align-self-end">
+    <button class="btn btn-outline-secondary w-100">Load</button>
+  </div>
+</form>
+
+{% if selected_program and selected_session %}
+  <div class="d-flex justify-content-end mb-3">
+    <form method="post" action="{% url 'admin_curriculum_copy_previous' %}" class="d-inline">
+      {% csrf_token %}
+      <input type="hidden" name="program" value="{{ selected_program.id }}">
+      <input type="hidden" name="session" value="{{ selected_session.id }}">
+      <button type="submit" class="btn btn-outline-primary" {% if not prev_session %}disabled{% endif %}>
+        Copy Curriculum from Previous Session
+      </button>
+    </form>
+  </div>
+{% endif %}
+
+{% if selected_program and selected_session %}
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <div class="text-muted">
+      <div><strong>Program:</strong> {{ selected_program.name }}</div>
+      <div><strong>Session:</strong> {{ selected_session.start_year }}</div>
+      <div class="small">
+        {% if prev_session %}
+          Previous session detected: <strong>{{ prev_session.start_year }}</strong>
+        {% else %}
+          No previous session exists (copy button is disabled).
+        {% endif %}
+      </div>
+    </div>
+  </div>
+
+  <div class="row g-3">
+    {% for sem, items in semesters.items %}
+    <div class="col-lg-6">
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <strong>Semester {{ sem }}</strong>
+        </div>
+
+        <div class="card-body">
+          {% if items %}
+            <div class="table-responsive">
+              <table class="table table-sm align-middle mb-2">
+                <thead>
+                  <tr>
+                    <th>Course</th>
+                    <th style="width: 110px;">Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for cc in items %}
+                  <tr>
+                    <td>{{ cc.course.code }} - {{ cc.course.title }}</td>
+                    <td>
+                      <form method="post" action="{% url 'admin_curriculum_course_delete' cc.id %}" class="d-inline">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                      </form>
+                    </td>
+                  </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="text-muted mb-2">No courses added yet.</div>
+          {% endif %}
+
+          <form method="post" action="{% url 'admin_curriculum_course_add' %}" class="d-flex gap-2">
+            {% csrf_token %}
+            <input type="hidden" name="curriculum" value="{{ curriculum.id }}">
+            <input type="hidden" name="semester_number" value="{{ sem }}">
+
+            <select name="course" class="form-select" required>
+              <option value="">Add a course…</option>
+              {% for c in courses %}
+                <option value="{{ c.id }}">{{ c.code }} - {{ c.title }}</option>
+              {% endfor %}
+            </select>
+
+            <button type="submit" class="btn btn-primary">Add</button>
+          </form>
+        </div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+{% else %}
+  <div class="card p-4">
+    <div class="text-muted">Select a program and session to design its curriculum.</div>
+  </div>
+{% endif %}
+{% endblock %}

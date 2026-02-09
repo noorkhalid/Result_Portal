@@ -34,6 +34,11 @@
       Curriculum Designer
     </a>
 
+    <a href="{% url 'admin_curriculum_designer' %}"
+       class="list-group-item list-group-item-action {% if '/admin-dashboard/curricula/' in request.path %}active{% endif %}">
+      Curriculum by Session
+    </a>
+
     <a href="{% url 'admin_session_list' %}"
        class="list-group-item list-group-item-action {% if '/admin-dashboard/sessions/' in request.path %}active{% endif %}">
       Sessions
