@@ -20,7 +20,7 @@ document.addEventListener("DOMContentLoaded", function () {
 <div class="d-flex justify-content-between align-items-center mb-3">
   <div>
     <h3 class="mb-0">Result Batches</h3>
-    <div class="text-muted">Program + Session + Semester + Type</div>
+    <div class="text-muted">Program + Session + Semester + Exam Type</div>
   </div>
   <a href="{% url 'admin_batch_add' %}" class="btn btn-primary">+ Add Batch</a>
 </div>
@@ -62,6 +62,15 @@ document.addEventListener("DOMContentLoaded", function () {
       {% endfor %}
     </select>
   </div>
+  <div class="col-md-2">
+    <label class="form-label small text-muted mb-1">Exam Type</label>
+    <select id="examTypeFilter" name="exam_type" class="form-select">
+      <option value="">All Types</option>
+      {% for t in exam_types %}
+        <option value="{{ t.id }}" {% if exam_type_id and t.id|stringformat:"s" == exam_type_id %}selected{% endif %}>{{ t.name }}</option>
+      {% endfor %}
+    </select>
+  </div>
   <div class="col-md-1 align-self-end">
     <button class="btn btn-outline-secondary w-100">Go</button>
   </div>
@@ -76,14 +85,16 @@ document.addEventListener("DOMContentLoaded", function () {
     const program = document.getElementById('programFilter');
     const session = document.getElementById('sessionFilter');
     const semester = document.getElementById('semesterFilter');
+    const examType = document.getElementById('examTypeFilter');
 
-    if (!form || !department || !program || !session || !semester) return;
+    if (!form || !department || !program || !session || !semester || !examType) return;
 
     department.addEventListener('change', function(){
       // when department changes, reset dependent filters
       program.value = '';
       session.value = '';
       semester.value = '';
+      examType.value = '';
       form.submit();
     });
 
@@ -91,16 +102,23 @@ document.addEventListener("DOMContentLoaded", function () {
       // when program changes, reset dependent filters
       session.value = '';
       semester.value = '';
+      examType.value = '';
       form.submit();
     });
 
     session.addEventListener('change', function(){
       // when session changes, reset semester
       semester.value = '';
+      examType.value = '';
       form.submit();
     });
 
     semester.addEventListener('change', function(){
+      examType.value = '';
+      form.submit();
+    });
+
+    examType.addEventListener('change', function(){
       form.submit();
     });
   })();
@@ -115,7 +133,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <th>Program</th>
           <th>Session</th>
           <th>Semester</th>
-          <th>Type</th>
+          <th>Exam Type</th>
           <th>Notification</th>
           <th>Locked</th>
         </tr>
@@ -127,7 +145,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <td><a href="{% url 'admin_batch_detail' b.id %}">{{ b.program.name }}</a></td>
           <td>{{ b.session.start_year }}</td>
           <td>{{ b.semester_number }}</td>
-          <td><span class="badge bg-dark">{{ b.get_result_type_display }}</span></td>
+          <td><span class="badge bg-dark">{{ b.exam_type.name }}</span></td>
           <td>
             {% if b.notification_no %}
               {{ b.notification_no }}{% if b.notification_date %}<div class="text-muted small">{{ b.notification_date }}</div>{% endif %}

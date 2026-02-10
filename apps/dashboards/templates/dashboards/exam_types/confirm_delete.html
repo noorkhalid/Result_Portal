@@ -1,0 +1,23 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Delete Exam Type{% endblock %}
+{% block content %}
+<div class="card p-4" style="max-width: 720px;">
+  <h4 class="mb-2">Delete Exam Type</h4>
+  <div class="text-muted mb-3">
+    {{ exam_type.code }} — {{ exam_type.name }}
+  </div>
+
+  {% if delete_blocked %}
+    <div class="alert alert-warning">
+      This exam type cannot be deleted because it is used by existing Result Batches.
+    </div>
+    <a href="{% url 'admin_exam_type_list' %}" class="btn btn-light">Back</a>
+  {% else %}
+    <p>Are you sure you want to delete this exam type?</p>
+    <form method="post">{% csrf_token %}
+      <button type="submit" class="btn btn-danger">Yes, Delete</button>
+      <a href="{% url 'admin_exam_type_list' %}" class="btn btn-light">Cancel</a>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

@@ -4,7 +4,7 @@ import openpyxl
 
 from academics.models import Program, Session, Course
 from students.models import Student, Enrollment
-from results.models import ResultBatch, CourseResult
+from results.models import ExamType, ResultBatch, CourseResult
 from results.services import recompute_batch
 
 
@@ -74,7 +74,7 @@ class Command(BaseCommand):
         skipped = 0
         errors = 0
 
-        batches = {}  # cache ResultBatch by (program_id, session_id, semester, type)
+        batches = {}  # cache ResultBatch by (program_id, session_id, semester, exam_type_id)
 
         for row_num, row in enumerate(ws.iter_rows(min_row=2, values_only=True), start=2):
             try:
@@ -112,16 +112,22 @@ class Command(BaseCommand):
                 session_year = int(session_year)
                 semester_number = int(semester_number)
 
-                examtype = str(examtype).strip().lower()
-                if examtype in ("regular",):
-                    result_type = "regular"
-                elif examtype in ("repeat", "reappear"):
-                    result_type = "repeat"
-                elif examtype in ("improved", "improvement"):
-                    result_type = "improved"
+                raw = str(examtype).strip().lower()
+                # Backward compatible mappings
+                if raw in ("repeat", "reappear", "reappeared"):
+                    examtype_code = "repeat"
+                elif raw in ("improved", "improvement"):
+                    examtype_code = "improved"
+                elif not raw or raw == "regular":
+                    examtype_code = "regular"
                 else:
-                    # fallback
-                    result_type = "regular"
+                    # allow custom types; make a safe slug-ish code
+                    examtype_code = "".join(ch if ch.isalnum() else "_" for ch in raw).strip("_")[:32] or "regular"
+
+                exam_type, _ = ExamType.objects.get_or_create(
+                    code=examtype_code,
+                    defaults={"name": examtype_code.replace("_", " ").title()},
+                )
 
                 program = Program.objects.filter(name=program_name).first()
                 if not program:
@@ -167,13 +173,13 @@ class Command(BaseCommand):
                     ))
                     continue
 
-                key = (program.id, session.id, semester_number, result_type)
+                key = (program.id, session.id, semester_number, exam_type.id)
                 if key not in batches:
                     batch, _ = ResultBatch.objects.get_or_create(
                         program=program,
                         session=session,
                         semester_number=semester_number,
-                        result_type=result_type,
+                        exam_type=exam_type,
                     )
                     batches[key] = batch
                 batch = batches[key]

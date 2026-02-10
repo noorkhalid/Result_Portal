@@ -5,7 +5,15 @@ from django.db.models import Sum
 from django.urls import reverse
 from django.utils.html import format_html
 
-from .models import ResultBatch, CourseResult, SemesterResult, GradeScale
+from .models import ExamType, ResultBatch, CourseResult, SemesterResult, GradeScale
+
+
+@admin.register(ExamType)
+class ExamTypeAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "sort_order", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("code", "name")
+    ordering = ("sort_order", "name")
 
 
 # -------------------------------------------------
@@ -27,7 +35,7 @@ class ResultBatchAdmin(admin.ModelAdmin):
         "program",
         "session",
         "semester_number",
-        "result_type",
+        "exam_type",
         "is_locked",
         "notification_no",
         "notification_date",
@@ -38,7 +46,7 @@ class ResultBatchAdmin(admin.ModelAdmin):
         "program",
         "session",
         "semester_number",
-        "result_type",
+        "exam_type",
         "is_locked",
     )
     search_fields = ("notification_no",)
@@ -82,7 +90,7 @@ class CourseResultAdmin(admin.ModelAdmin):
         "batch__program",
         "batch__session",
         "batch__semester_number",
-        "batch__result_type",
+        "batch__exam_type",
         "course",
     )
     search_fields = (
@@ -114,7 +122,7 @@ class SemesterResultAdmin(admin.ModelAdmin):
         "batch__program",
         "batch__session",
         "batch__semester_number",
-        "batch__result_type",
+        "batch__exam_type",
     )
 
     search_fields = (

@@ -4,7 +4,7 @@ from django.db import IntegrityError
 
 from dashboards.decorators import group_required
 from dashboards.forms import ResultBatchForm
-from results.models import ResultBatch
+from results.models import ExamType, ResultBatch
 from academics.models import Department, Program, Session
 from results.services import recompute_batch
 
@@ -15,6 +15,7 @@ def batch_list(request):
     program_id = (request.GET.get("program") or "").strip()
     session_id = (request.GET.get("session") or "").strip()
     semester_no = (request.GET.get("semester") or "").strip()
+    exam_type_id = (request.GET.get("exam_type") or "").strip()
 
     base = ResultBatch.objects.select_related("department", "program", "session").all()
     batches = base.order_by("-created_at")
@@ -28,6 +29,8 @@ def batch_list(request):
         batches = batches.filter(session_id=session_id)
     if semester_no:
         batches = batches.filter(semester_number=semester_no)
+    if exam_type_id:
+        batches = batches.filter(exam_type_id=exam_type_id)
 
     departments = Department.objects.all().order_by("name")
     programs = Program.objects.all().order_by("name")
@@ -67,6 +70,14 @@ def batch_list(request):
         base_for_semesters.values_list("semester_number", flat=True).distinct().order_by("semester_number")
     )
 
+    base_for_exam_types = base_for_semesters
+    if semester_no:
+        base_for_exam_types = base_for_exam_types.filter(semester_number=semester_no)
+
+    exam_types = ExamType.objects.filter(
+        id__in=base_for_exam_types.values_list("exam_type_id", flat=True).distinct()
+    ).order_by("sort_order", "name")
+
     return render(
         request,
         "dashboards/result_batches/list.html",
@@ -76,10 +87,12 @@ def batch_list(request):
             "programs": programs,
             "sessions": sessions,
             "semester_numbers": semester_numbers,
+            "exam_types": exam_types,
             "department_id": department_id,
             "program_id": program_id,
             "session_id": session_id,
             "semester_no": semester_no,
+            "exam_type_id": exam_type_id,
         },
     )
 
@@ -94,7 +107,7 @@ def batch_create(request):
                 messages.success(request, "Result batch created successfully.")
                 return redirect("admin_batch_list")
             except IntegrityError:
-                messages.error(request, "This batch already exists (program+session+semester+type).")
+                messages.error(request, "This batch already exists (program+session+semester+exam type).")
     else:
         # Allow preselecting department (and thus narrowing programs) via GET
         initial = {}
@@ -122,7 +135,7 @@ def batch_update(request, pk):
                 messages.success(request, "Result batch updated successfully.")
                 return redirect("admin_batch_list")
             except IntegrityError:
-                messages.error(request, "This batch already exists (program+session+semester+type).")
+                messages.error(request, "This batch already exists (program+session+semester+exam type).")
     else:
         form = ResultBatchForm(instance=batch)
 

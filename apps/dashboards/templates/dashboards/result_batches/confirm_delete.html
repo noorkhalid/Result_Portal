@@ -3,7 +3,7 @@
 {% block content %}
 <div class="card p-4" style="max-width: 1100px;">
   <h4 class="mb-2">Delete Result Batch</h4>
-  <div class="text-muted mb-3">{{ batch.program.name }} | {{ batch.session.start_year }} | Sem {{ batch.semester_number }} | {{ batch.get_result_type_display }}</div>
+  <div class="text-muted mb-3">{{ batch.program.name }} | {{ batch.session.start_year }} | Sem {{ batch.semester_number }} | {{ batch.exam_type.name }}</div>
 
   {% if delete_blocked %}
     <div class="alert alert-warning">Cannot delete this batch because results exist in it.</div>

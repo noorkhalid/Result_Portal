@@ -4,7 +4,6 @@ from .models import (
     Department,
     Program,
     Session,
-    Semester,
     Course,
     ProgramCourse,
     ProgramOffering,
@@ -36,12 +35,6 @@ class SessionAdmin(admin.ModelAdmin):
     list_display = ("start_year", "is_active")
     list_filter = ("is_active",)
     search_fields = ("start_year",)
-
-
-@admin.register(Semester)
-class SemesterAdmin(admin.ModelAdmin):
-    list_display = ("program", "session", "number")
-    list_filter = ("program", "session")
 
 
 @admin.register(Course)

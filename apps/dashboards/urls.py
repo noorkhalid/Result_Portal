@@ -25,12 +25,6 @@ from dashboards.views.session_views import (
     session_delete,
 )
 
-from dashboards.views.semester_views import (
-    semester_list,
-    semester_create,
-    semester_update,
-    semester_delete,
-)
 
 from dashboards.views.program_course_views import (
     program_course_list,
@@ -72,6 +66,13 @@ from dashboards.views.grade_scale_views import (
     grade_scale_create,
     grade_scale_update,
     grade_scale_delete,
+)
+
+from dashboards.views.exam_type_views import (
+    exam_type_list,
+    exam_type_create,
+    exam_type_update,
+    exam_type_delete,
 )
 
 from dashboards.views.result_batch_views import (
@@ -187,10 +188,7 @@ urlpatterns = [
     path("admin-dashboard/sessions/<int:pk>/edit/", session_update, name="admin_session_edit"),
     path("admin-dashboard/sessions/<int:pk>/delete/", session_delete, name="admin_session_delete"),
 
-    path("admin-dashboard/semesters/", semester_list, name="admin_semester_list"),
-    path("admin-dashboard/semesters/add/", semester_create, name="admin_semester_add"),
-    path("admin-dashboard/semesters/<int:pk>/edit/", semester_update, name="admin_semester_edit"),
-    path("admin-dashboard/semesters/<int:pk>/delete/", semester_delete, name="admin_semester_delete"),
+    # Semesters CRUD removed: semester numbers come from Program.total_semesters
 
     # System Admin — Students
     path("admin-dashboard/students/", student_list, name="admin_student_list"),
@@ -221,6 +219,11 @@ urlpatterns = [
     path("admin-dashboard/grade-scales/add/", grade_scale_create, name="admin_grade_scale_add"),
     path("admin-dashboard/grade-scales/<int:pk>/edit/", grade_scale_update, name="admin_grade_scale_edit"),
     path("admin-dashboard/grade-scales/<int:pk>/delete/", grade_scale_delete, name="admin_grade_scale_delete"),
+
+    path("admin-dashboard/exam-types/", exam_type_list, name="admin_exam_type_list"),
+    path("admin-dashboard/exam-types/add/", exam_type_create, name="admin_exam_type_add"),
+    path("admin-dashboard/exam-types/<int:pk>/edit/", exam_type_update, name="admin_exam_type_edit"),
+    path("admin-dashboard/exam-types/<int:pk>/delete/", exam_type_delete, name="admin_exam_type_delete"),
 
     # System Admin — Documents
     path(

@@ -250,7 +250,7 @@ def result_notification_pdf(request, batch_id):
     # -------------------------------------------------
     # 6) Result type label for header
     # -------------------------------------------------
-    result_type_label = "Regular" if batch.result_type == "regular" else "Reappeared/Improved"
+    result_type_label = getattr(batch.exam_type, "name", "") or ""
 
     html = render_to_string(
         "results/result_notification.html",

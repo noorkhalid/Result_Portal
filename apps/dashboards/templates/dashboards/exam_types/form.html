@@ -1,0 +1,37 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+  <h3 class="mb-0">{{ title }}</h3>
+  <a href="{% url 'admin_exam_type_list' %}" class="btn btn-light">Back</a>
+</div>
+
+<div class="card p-4" style="max-width: 700px;">
+  <form method="post">{% csrf_token %}
+    <div class="row g-3">
+      <div class="col-md-4">
+        <label class="form-label">Code</label>
+        <input type="text" name="code" class="form-control" value="{{ exam_type.code|default:'' }}" placeholder="e.g. regular" required>
+        <div class="form-text">Short unique key used by imports & filters (lowercase).</div>
+      </div>
+      <div class="col-md-5">
+        <label class="form-label">Name</label>
+        <input type="text" name="name" class="form-control" value="{{ exam_type.name|default:'' }}" placeholder="e.g. Regular" required>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label">Sort Order</label>
+        <input type="number" name="sort_order" class="form-control" value="{{ exam_type.sort_order|default:0 }}">
+      </div>
+      <div class="col-12">
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" name="is_active" id="is_active" {% if exam_type and exam_type.is_active %}checked{% endif %}>
+          <label class="form-check-label" for="is_active">Active</label>
+        </div>
+      </div>
+    </div>
+    <div class="mt-4">
+      <button class="btn btn-primary" type="submit">Save</button>
+    </div>
+  </form>
+</div>
+{% endblock %}

@@ -1,7 +1,7 @@
 from django import forms
 
-from academics.models import Department, Program, ProgramCourse, ProgramOffering, Session, Semester
-from results.models import GradeScale, ResultBatch
+from academics.models import Department, Program, ProgramCourse, ProgramOffering, Session
+from results.models import ExamType, GradeScale, ResultBatch
 from students.models import Enrollment, Student
 
 
@@ -12,17 +12,6 @@ class SessionForm(forms.ModelForm):
         widgets = {
             "start_year": forms.NumberInput(attrs={"class": "form-control"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
-        }
-
-
-class SemesterForm(forms.ModelForm):
-    class Meta:
-        model = Semester
-        fields = ["program", "session", "number"]
-        widgets = {
-            "program": forms.Select(attrs={"class": "form-select"}),
-            "session": forms.Select(attrs={"class": "form-select"}),
-            "number": forms.NumberInput(attrs={"class": "form-control"}),
         }
 
 
@@ -158,7 +147,7 @@ class ResultBatchForm(forms.ModelForm):
             "program",
             "session",
             "semester_number",
-            "result_type",
+            "exam_type",
             "notification_no",
             "notification_date",
             "is_locked",
@@ -168,7 +157,7 @@ class ResultBatchForm(forms.ModelForm):
             "program": forms.Select(attrs={"class": "form-select"}),
             "session": forms.Select(attrs={"class": "form-select"}),
             "semester_number": forms.NumberInput(attrs={"class": "form-control"}),
-            "result_type": forms.Select(attrs={"class": "form-select"}),
+            "exam_type": forms.Select(attrs={"class": "form-select"}),
             "notification_no": forms.TextInput(attrs={"class": "form-control"}),
             "notification_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "is_locked": forms.CheckboxInput(attrs={"class": "form-check-input"}),
@@ -196,6 +185,10 @@ class ResultBatchForm(forms.ModelForm):
             )
         else:
             self.fields["program"].queryset = Program.objects.all().order_by("name")
+
+        self.fields["exam_type"].queryset = ExamType.objects.filter(is_active=True).order_by(
+            "sort_order", "name"
+        )
 
     def clean(self):
         cleaned = super().clean()

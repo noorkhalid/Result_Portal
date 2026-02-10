@@ -7,7 +7,7 @@ from django.shortcuts import redirect, render
 from dashboards.decorators import group_required
 
 from academics.models import Department, Program, Session
-from results.models import ResultBatch, SemesterResult
+from results.models import ExamType, ResultBatch, SemesterResult
 
 
 @group_required("System Admin", "Document Generator", "Controller")
@@ -19,20 +19,20 @@ def dmc_single(request):
     program_id = request.GET.get("program") or ""
     session_id = request.GET.get("session") or ""
     semester_no = request.GET.get("semester") or ""
-    ui_type = request.GET.get("result_type") or "regular"  # regular OR reappeared
+    exam_type_id = request.GET.get("exam_type") or ""
     batch_id = request.GET.get("batch") or ""
     enrollment_id = request.GET.get("enrollment") or ""
 
     # If user comes from Result Batch list, they may only send ?batch=<id>
     # In that case, prefill the other filters from the batch.
     if batch_id and not any([dept_id, program_id, session_id, semester_no]):
-        b = ResultBatch.objects.select_related("program", "session").filter(id=batch_id).first()
+        b = ResultBatch.objects.select_related("program", "session", "exam_type").filter(id=batch_id).first()
         if b:
             dept_id = str(b.department_id)
             program_id = str(b.program_id)
             session_id = str(b.session_id)
             semester_no = str(b.semester_number)
-            ui_type = "regular" if b.result_type == "regular" else "reappeared"
+            exam_type_id = str(b.exam_type_id)
 
     departments = Department.objects.all().order_by("name")
 
@@ -48,7 +48,7 @@ def dmc_single(request):
         programs = programs.filter(offerings__department_id=dept_id, offerings__is_active=True).distinct()
 
     # Base batches queryset from which we derive dependent options.
-    batches = ResultBatch.objects.select_related("program", "session").order_by("-created_at")
+    batches = ResultBatch.objects.select_related("program", "session", "exam_type").order_by("-created_at")
     if dept_id:
         batches = batches.filter(department_id=dept_id)
     if program_id:
@@ -56,11 +56,9 @@ def dmc_single(request):
     if session_id:
         batches = batches.filter(session_id=session_id)
 
-    if ui_type == "regular":
-        batches = batches.filter(result_type="regular")
-    else:
-        # UI merges repeat + improved
-        batches = batches.filter(result_type__in=["repeat", "improved"])
+    # Exam type filter (optional)
+    if exam_type_id:
+        batches = batches.filter(exam_type_id=exam_type_id)
 
     sessions = (
         Session.objects.filter(id__in=batches.values_list("session_id", flat=True))
@@ -81,6 +79,11 @@ def dmc_single(request):
 
     if semester_no:
         batches = batches.filter(semester_number=semester_no)
+
+    # Dependent exam types list (after dept/program/session/semester narrowing)
+    exam_types = ExamType.objects.filter(
+        id__in=batches.values_list("exam_type_id", flat=True).distinct()
+    ).order_by("sort_order", "name")
 
     if batch_id and not batches.filter(id=batch_id).exists():
         batch_id = ""
@@ -141,7 +144,8 @@ def dmc_single(request):
             "session_id": str(session_id) if session_id else "",
             "semesters": semesters,
             "semester_no": str(semester_no) if semester_no else "",
-            "ui_type": ui_type,
+            "exam_types": exam_types,
+            "exam_type_id": str(exam_type_id) if exam_type_id else "",
             "batches": batches,
             "batch_id": str(batch_id) if batch_id else "",
             "students": students,

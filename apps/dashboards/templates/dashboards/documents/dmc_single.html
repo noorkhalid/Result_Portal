@@ -52,10 +52,12 @@
     </div>
 
     <div class="col-md-3">
-      <label class="form-label small text-muted mb-1">Result Type</label>
-      <select name="result_type" class="form-select" onchange="clearAndSubmit(this.form, ['batch','enrollment']);">
-        <option value="regular" {% if ui_type == "regular" %}selected{% endif %}>Regular</option>
-        <option value="reappeared" {% if ui_type != "regular" %}selected{% endif %}>Reappeared/Improved</option>
+      <label class="form-label small text-muted mb-1">Exam Type</label>
+      <select name="exam_type" class="form-select" onchange="clearAndSubmit(this.form, ['batch','enrollment']);">
+        <option value="">Select Type</option>
+        {% for t in exam_types %}
+          <option value="{{ t.id }}" {% if exam_type_id and t.id|stringformat:"s" == exam_type_id %}selected{% endif %}>{{ t.name }}</option>
+        {% endfor %}
       </select>
     </div>
 
@@ -65,7 +67,7 @@
         <option value="">Select Batch</option>
         {% for b in batches %}
           <option value="{{ b.id }}" {% if b.id|stringformat:"s" == batch_id %}selected{% endif %}>
-            {{ b.program.name }} | {{ b.session.start_year }} | Sem {{ b.semester_number }} | {{ b.get_result_type_display }}
+            {{ b.program.name }} | {{ b.session.start_year }} | Sem {{ b.semester_number }} | {{ b.exam_type.name }}
           </option>
         {% endfor %}
       </select>

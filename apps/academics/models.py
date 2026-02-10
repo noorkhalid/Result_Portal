@@ -107,19 +107,6 @@ class Session(models.Model):
         return f"{self.start_year}-{end_year}"
 
 
-class Semester(models.Model):
-    program = models.ForeignKey(Program, on_delete=models.CASCADE)
-    session = models.ForeignKey(Session, on_delete=models.CASCADE)
-    number = models.PositiveSmallIntegerField()
-
-    class Meta:
-        unique_together = ("program", "session", "number")
-        ordering = ["number"]
-
-    def __str__(self):
-        return f"{self.program.name} | {self.session.start_year} | Semester {self.number}"
-
-
 class Course(models.Model):
     # Courses remain global (not attached to a department)
     code = models.CharField(max_length=30, unique=True)

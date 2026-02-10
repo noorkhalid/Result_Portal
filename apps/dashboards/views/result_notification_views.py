@@ -6,7 +6,7 @@ from django.shortcuts import redirect, render
 from dashboards.decorators import group_required
 
 from academics.models import Department, Program, Session
-from results.models import ResultBatch
+from results.models import ExamType, ResultBatch
 
 
 @group_required("System Admin")
@@ -18,8 +18,7 @@ def result_notifications(request):
     program_id = request.GET.get("program") or ""
     session_id = request.GET.get("session") or ""
     semester_no = request.GET.get("semester") or ""
-    # UI-friendly type: regular OR reappeared
-    ui_type = request.GET.get("result_type") or "regular"
+    exam_type_id = request.GET.get("exam_type") or ""
     batch_id = request.GET.get("batch") or ""
 
     departments = Department.objects.all().order_by("name")
@@ -37,7 +36,7 @@ def result_notifications(request):
         programs = programs.filter(offerings__department_id=dept_id, offerings__is_active=True).distinct()
 
     # Build batches queryset first; we will derive dependent filter options from it
-    batches = ResultBatch.objects.select_related("program", "session").order_by("-created_at")
+    batches = ResultBatch.objects.select_related("program", "session", "exam_type").order_by("-created_at")
     if dept_id:
         batches = batches.filter(department_id=dept_id)
     if program_id:
@@ -45,10 +44,8 @@ def result_notifications(request):
     if session_id:
         batches = batches.filter(session_id=session_id)
 
-    if ui_type == "regular":
-        batches = batches.filter(result_type="regular")
-    else:
-        batches = batches.filter(result_type__in=["repeat", "improved"])
+    if exam_type_id:
+        batches = batches.filter(exam_type_id=exam_type_id)
 
     # Sessions dropdown should narrow based on Department + Program (+ Type)
     sessions = Session.objects.filter(id__in=batches.values_list("session_id", flat=True)).distinct().order_by("-start_year")
@@ -68,6 +65,11 @@ def result_notifications(request):
 
     if semester_no:
         batches = batches.filter(semester_number=semester_no)
+
+    # Dependent exam types list (after dept/program/session/semester narrowing)
+    exam_types = ExamType.objects.filter(
+        id__in=batches.values_list("exam_type_id", flat=True).distinct()
+    ).order_by("sort_order", "name")
 
     # Same idea for batch: reset stale batch_id if it doesn't match current filters.
     if batch_id:
@@ -99,7 +101,8 @@ def result_notifications(request):
             "session_id": str(session_id) if session_id else "",
             "semesters": semesters,
             "semester_no": str(semester_no) if semester_no else "",
-            "ui_type": ui_type,
+            "exam_types": exam_types,
+            "exam_type_id": str(exam_type_id) if exam_type_id else "",
             "batches": batches,
             "batch_id": str(batch_id) if batch_id else "",
         },

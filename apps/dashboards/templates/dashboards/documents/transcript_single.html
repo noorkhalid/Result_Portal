@@ -53,7 +53,7 @@
         <option value="">Select Batch</option>
         {% for b in batches %}
           <option value="{{ b.id }}" {% if b.id|stringformat:"s" == batch_id %}selected{% endif %}>
-            {{ b.program.name }} | {{ b.session.start_year }} | Sem {{ b.semester_number }} | {{ b.get_result_type_display }}
+            {{ b.program.name }} | {{ b.session.start_year }} | Sem {{ b.semester_number }} | {{ b.exam_type.name }}
           </option>
         {% endfor %}
       </select>

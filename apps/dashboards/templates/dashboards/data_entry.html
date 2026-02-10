@@ -102,7 +102,7 @@
                   <td class="text-truncate" style="max-width:190px;">{{ b.program }}</td>
                   <td>{{ b.session.start_year }}</td>
                   <td>{{ b.semester_number }}</td>
-                  <td class="text-capitalize">{{ b.result_type }}</td>
+                  <td class="text-capitalize">{{ b.exam_type.name }}</td>
                 </tr>
               {% endfor %}
             </tbody>

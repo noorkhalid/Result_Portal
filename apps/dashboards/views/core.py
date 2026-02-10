@@ -14,7 +14,7 @@ from django.shortcuts import redirect, render
 from django.http import HttpResponse
 
 from academics.models import Course, Program, Session
-from results.models import CourseResult, ResultBatch
+from results.models import CourseResult, ExamType, ResultBatch
 from results.services import recompute_batch
 from students.models import Enrollment, Student
 
@@ -255,10 +255,17 @@ def data_entry_import_marks(request):
                     errors.append(f"Row {row_num}: course not found")
                     continue
 
-                examtype = str(row[exam_i]).lower() if exam_i is not None and row[exam_i] else "regular"
-                result_type = "regular" if examtype not in ("repeat", "improved") else examtype
+                examtype_code = str(row[exam_i]).strip().lower() if exam_i is not None and row[exam_i] else "regular"
+                # keep backward compatibility with existing templates/imports
+                if not examtype_code:
+                    examtype_code = "regular"
 
-                key = (program.id, session.id, semester_number, result_type)
+                exam_type, _ = ExamType.objects.get_or_create(
+                    code=examtype_code,
+                    defaults={"name": examtype_code.replace("_", " ").replace("-", " ").title()},
+                )
+
+                key = (program.id, session.id, semester_number, exam_type.id)
                 batch = touched_batches.get(key)
 
                 if not batch:
@@ -266,7 +273,7 @@ def data_entry_import_marks(request):
                         program=program,
                         session=session,
                         semester_number=semester_number,
-                        result_type=result_type,
+                        exam_type=exam_type,
                     )
                     touched_batches[key] = batch
 
