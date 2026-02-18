@@ -2,6 +2,7 @@ from django.contrib.auth.decorators import login_required, user_passes_test
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib import messages
 from django.db import IntegrityError, transaction
+from django.core.paginator import Paginator
 
 from .models import Program
 from students.models import Student  # required for delete protection
@@ -26,12 +27,22 @@ def admin_program_list(request):
     if q:
         qs = qs.filter(name__icontains=q)
 
-    programs = qs.order_by("name")
+    qs = qs.order_by("name")
+
+    paginator = Paginator(qs, 10)
+    page_obj = paginator.get_page(request.GET.get("page") or 1)
+
+    params = request.GET.copy()
+    params.pop("page", None)
+    qs_params = params.urlencode()
+
     return render(
         request,
         "dashboards/programs/list.html",
         {
-            "programs": programs,
+            "programs": page_obj.object_list,
+            "page_obj": page_obj,
+            "qs_params": qs_params,
             "q": q,
         },
     )

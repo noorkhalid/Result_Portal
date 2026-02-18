@@ -1,0 +1,96 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Batch Notifications{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h3 class="m-0">Notifications</h3>
+      <div class="text-muted">Batch: {{ batch }}</div>
+    </div>
+    <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm">Back to Batch</a>
+  </div>
+
+  <div class="row g-3">
+    <div class="col-lg-5">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title mb-3">Create Notification (Full)</h6>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_full">
+            <div class="mb-2">
+              <label class="form-label form-label-sm">Notification No</label>
+              <input name="notification_no" class="form-control form-control-sm" placeholder="e.g., FECS (43/08)/2025" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label form-label-sm">Notification Date</label>
+              <input type="date" name="notification_date" class="form-control form-control-sm" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-sm">Create Full Notification</button>
+          </form>
+        </div>
+      </div>
+
+      <div class="card mt-3">
+        <div class="card-body">
+          <h6 class="card-title mb-3">Create Clearance Notification</h6>
+          <div class="text-muted mb-2">Eligible cleared students: <b>{{ eligible_clearance_count }}</b></div>
+          <form method="post">
+            {% csrf_token %}
+            <input type="hidden" name="action" value="create_clearance">
+            <div class="mb-2">
+              <label class="form-label form-label-sm">Notification No</label>
+              <input name="notification_no" class="form-control form-control-sm" placeholder="e.g., FECS (44/08)/2025" required>
+            </div>
+            <div class="mb-2">
+              <label class="form-label form-label-sm">Notification Date</label>
+              <input type="date" name="notification_date" class="form-control form-control-sm" required>
+            </div>
+            <button type="submit" class="btn btn-outline-primary btn-sm" {% if eligible_clearance_count|add:0 == 0 %}disabled{% endif %}>Create Clearance Notification</button>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="col-lg-7">
+      <div class="card">
+        <div class="card-body">
+          <h6 class="card-title mb-3">Notification History</h6>
+
+          {% if not notifications %}
+            <div class="alert alert-warning">No notifications created yet for this batch.</div>
+          {% else %}
+            <div class="table-responsive">
+              <table class="table table-bordered align-middle">
+                <thead>
+                  <tr>
+                    <th style="width:220px;">Notification No</th>
+                    <th style="width:130px;">Notification Date</th>
+                    <th style="width:130px;">Declaration Date</th>
+                    <th style="width:90px;">Students</th>
+                    <th style="width:120px;">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for n in notifications %}
+                    <tr>
+                      <td>{{ n.notification_no }}</td>
+                      <td>{{ n.notification_date }}</td>
+                      <td>{{ n.declaration_date }}</td>
+                      <td>{{ n.items.count }}</td>
+                      <td>
+                        <a href="{% url 'result_notification_by_id_pdf' n.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print</a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

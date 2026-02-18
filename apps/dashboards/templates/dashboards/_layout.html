@@ -74,7 +74,9 @@
 <!-- TOP BAR -->
 <nav class="topbar py-2">
   <div class="container d-flex justify-content-between align-items-center">
-    <div class="brand">Result Portal</div>
+    <div class="d-flex align-items-center gap-2">
+      <div class="brand">Result Portal</div>
+    </div>
     <div>
       {% if user.is_authenticated %}
         <small class="me-3">{{ user.username }}</small>
@@ -120,17 +122,18 @@
 {% endif %}
 
 <!-- MAIN CONTENT -->
-<main class="container my-4">
+<!-- Full-width container so the left sidebar sits flush to the browser edge -->
+<main class="container-fluid px-0">
 
-  <div class="row">
+  <div class="row g-0">
 
     {% if is_system_admin %}
-      <div class="col-md-3">
+      <div class="col-12 col-md-3 p-0 sidebar-col">
         {% include "dashboards/_admin_sidebar.html" %}
       </div>
     {% endif %}
 
-    <div class="{% if is_system_admin %}col-md-9{% else %}col-12{% endif %}">
+    <div class="{% if is_system_admin %}col-12 col-md-9{% else %}col-12{% endif %} p-4 main-col">
       {% block content %}{% endblock %}
     </div>
 
@@ -149,6 +152,64 @@
     });
   }, 6000);
 </script>
+
+
+{% if is_system_admin %}
+<script>
+  (function () {
+    const KEY = "rp_sidebar_open_section";
+    const toggles = document.querySelectorAll(".sidebar-section-toggle[data-target]");
+    const groups = document.querySelectorAll(".sidebar-group[data-group]");
+
+    function closeAll() {
+      toggles.forEach(t => { t.classList.remove("is-open"); t.setAttribute("aria-expanded", "false"); });
+      groups.forEach(g => g.classList.remove("is-open"));
+    }
+
+    function openSection(name) {
+      const t = document.querySelector(`.sidebar-section-toggle[data-target='${name}']`);
+      const g = document.querySelector(`.sidebar-group[data-group='${name}']`);
+      if (!t || !g) return;
+      t.classList.add("is-open");
+      t.setAttribute("aria-expanded", "true");
+      g.classList.add("is-open");
+    }
+
+    // Decide initial open section: active link -> stored -> first
+    let initial = null;
+    const activeLink = document.querySelector(".sidebar-item.active");
+    if (activeLink) {
+      const group = activeLink.closest(".sidebar-group");
+      initial = group ? group.getAttribute("data-group") : null;
+    }
+
+    if (!initial) {
+      try { initial = localStorage.getItem(KEY); } catch (e) {}
+    }
+
+    if (!initial && toggles.length) {
+      initial = toggles[0].getAttribute("data-target");
+    }
+
+    closeAll();
+    if (initial) openSection(initial);
+
+    toggles.forEach(btn => {
+      btn.addEventListener("click", function () {
+        const name = btn.getAttribute("data-target");
+        const isOpen = btn.classList.contains("is-open");
+        closeAll();
+        if (!isOpen) {
+          openSection(name);
+          try { localStorage.setItem(KEY, name); } catch (e) {}
+        } else {
+          try { localStorage.removeItem(KEY); } catch (e) {}
+        }
+      });
+    });
+  })();
+</script>
+{% endif %}
 
 {% block extra_js %}{% endblock %}
 

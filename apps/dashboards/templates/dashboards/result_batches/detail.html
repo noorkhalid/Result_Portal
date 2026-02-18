@@ -10,12 +10,35 @@
     <tr><th>Session</th><td>{{ batch.session }}</td></tr>
     <tr><th>Semester</th><td>{{ batch.semester_number }}</td></tr>
     <tr><th>Exam Type</th><td>{{ batch.exam_type.name }}</td></tr>
-    <tr><th>Notification</th><td>{{ batch.notification_no }} {{ batch.notification_date }}</td></tr>
+    <tr>
+      <th>Declared</th>
+      <td>
+        {% if latest_notification %}
+          Yes
+        {% else %}
+          No
+        {% endif %}
+      </td>
+    </tr>
+    <tr>
+      <th>Declared via</th>
+      <td>
+        {% if latest_notification %}
+          {{ latest_notification.notification_no }} {{ latest_notification.notification_date }}
+        {% elif has_legacy_notification %}
+          <span class="text-muted">Legacy:</span> {{ batch.notification_no }} {{ batch.notification_date }}
+        {% else %}
+          <span class="text-muted">—</span>
+        {% endif %}
+      </td>
+    </tr>
     <tr><th>Status</th><td>{% if batch.is_locked %}Locked{% else %}Open{% endif %}</td></tr>
   </table>
 
   <div class="d-flex gap-1 mt-3 align-items-center">
-    <a href="{% url 'result_notification_pdf' batch.id %}" target="_blank" rel="noopener" class="btn btn-outline-primary btn-sm py-1 px-2">Print Notification</a>
+    <a href="{% url 'admin_batch_marks_select_course' batch.id %}" class="btn btn-primary btn-sm py-1 px-2">Enter / Edit Marks</a>
+    <a href="{% url 'admin_batch_students_holds' batch.id %}" class="btn btn-outline-primary btn-sm py-1 px-2">Students / Holds</a>
+    <a href="{% url 'admin_batch_notifications' batch.id %}" class="btn btn-outline-primary btn-sm py-1 px-2">Notifications</a>
     <a href="{% url 'dmc_batch_pdf' batch.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print DMCs</a>
     <a href="{% url 'admin_dmc_single' %}?batch={{ batch.id }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print DMC (Single)</a>
 

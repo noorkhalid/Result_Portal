@@ -57,8 +57,7 @@ class ProgramOffering(models.Model):
     """Which department offers which program.
 
     This model separates *availability* (department context) from *curriculum*
-    (ProgramCourse). It enables making Program and ProgramCourse global later,
-    while keeping department-specific access through this table.
+    (Curriculum-by-Session). Program offerings remain department-specific.
     """
 
     department = models.ForeignKey(
@@ -115,20 +114,6 @@ class Course(models.Model):
 
     def __str__(self):
         return f"{self.code or 'NO-CODE'} - {self.title} ({self.credit_hours} CH)"
-
-
-class ProgramCourse(models.Model):
-    """Which course is taught in which semester of a program."""
-    program = models.ForeignKey(Program, on_delete=models.CASCADE)
-    semester_number = models.PositiveSmallIntegerField()
-    course = models.ForeignKey(Course, on_delete=models.CASCADE)
-
-    class Meta:
-        unique_together = ("program", "semester_number", "course")
-        ordering = ["semester_number"]
-
-    def __str__(self):
-        return f"{self.program.name} | Sem {self.semester_number} | {self.course.title}"
 
 
 # -----------------------------

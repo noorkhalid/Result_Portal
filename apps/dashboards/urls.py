@@ -26,13 +26,6 @@ from dashboards.views.session_views import (
 )
 
 
-from dashboards.views.program_course_views import (
-    program_course_list,
-    program_course_create,
-    program_course_update,
-    program_course_delete,
-)
-
 from dashboards.views.curriculum_views import (
     curriculum_designer,
     curriculum_course_add,
@@ -59,6 +52,8 @@ from dashboards.views.enrollment_views import (
     enrollment_create,
     enrollment_update,
     enrollment_delete,
+    enrollment_detail,
+    enrollment_delete_marks_from_batch,
 )
 
 from dashboards.views.grade_scale_views import (
@@ -81,7 +76,14 @@ from dashboards.views.result_batch_views import (
     batch_update,
     batch_delete,
     batch_detail,
+    batch_students_holds,
+    batch_notifications,
     batch_recompute,
+)
+
+from dashboards.views.marks_entry_views import (
+    batch_marks_select_course,
+    batch_marks_entry,
 )
 
 from dashboards.views.department_views import (
@@ -153,15 +155,7 @@ urlpatterns = [
     path("admin-dashboard/enrollments/import/", import_views.import_enrollments, name="admin_import_enrollments"),
     path("admin-dashboard/enrollments/template/", import_views.template_enrollments, name="admin_template_enrollments"),
 
-    path("admin-dashboard/program-courses/import/", import_views.import_program_courses, name="admin_import_program_courses"),
-    path("admin-dashboard/program-courses/template/", import_views.template_program_courses, name="admin_template_program_courses"),
-
-    path("admin-dashboard/program-courses/", program_course_list, name="admin_program_course_list"),
-    path("admin-dashboard/program-courses/add/", program_course_create, name="admin_program_course_add"),
-    path("admin-dashboard/program-courses/<int:pk>/edit/", program_course_update, name="admin_program_course_edit"),
-    path("admin-dashboard/program-courses/<int:pk>/delete/", program_course_delete, name="admin_program_course_delete"),
-
-    # System Admin — Curriculum (by Session)
+    # System Admin — Curriculum (by Session) — the ONLY curriculum source in v4
     path(
         "admin-dashboard/curricula/",
         curriculum_designer,
@@ -198,14 +192,44 @@ urlpatterns = [
 
     path("admin-dashboard/enrollments/", enrollment_list, name="admin_enrollment_list"),
     path("admin-dashboard/enrollments/add/", enrollment_create, name="admin_enrollment_add"),
+    path("admin-dashboard/enrollments/<int:pk>/", enrollment_detail, name="admin_enrollment_detail"),
     path("admin-dashboard/enrollments/<int:pk>/edit/", enrollment_update, name="admin_enrollment_edit"),
     path("admin-dashboard/enrollments/<int:pk>/delete/", enrollment_delete, name="admin_enrollment_delete"),
+
+    path(
+        "admin-dashboard/enrollments/<int:enrollment_id>/batches/<int:batch_id>/delete-marks/",
+        enrollment_delete_marks_from_batch,
+        name="admin_enrollment_delete_marks_from_batch",
+    ),
 
     # System Admin — Results
     path("admin-dashboard/result-batches/", batch_list, name="admin_batch_list"),
     path("admin-dashboard/result-batches/add/", batch_create, name="admin_batch_add"),
     path("admin-dashboard/result-batches/<int:pk>/edit/", batch_update, name="admin_batch_edit"),
     path("admin-dashboard/result-batches/<int:pk>/", batch_detail, name="admin_batch_detail"),
+
+    # Manual marks entry (per batch -> per course)
+    path(
+        "admin-dashboard/result-batches/<int:pk>/marks/",
+        batch_marks_select_course,
+        name="admin_batch_marks_select_course",
+    ),
+    path(
+        "admin-dashboard/result-batches/<int:pk>/marks/<int:course_id>/",
+        batch_marks_entry,
+        name="admin_batch_marks_entry",
+    ),
+
+    path(
+        "admin-dashboard/result-batches/<int:pk>/students/",
+        batch_students_holds,
+        name="admin_batch_students_holds",
+    ),
+    path(
+        "admin-dashboard/result-batches/<int:pk>/notifications/",
+        batch_notifications,
+        name="admin_batch_notifications",
+    ),
 
     path(
         "admin-dashboard/result-batches/<int:pk>/recompute/",

@@ -15,16 +15,63 @@ from weasyprint import HTML
 
 # Note: We use WeasyPrint for all PDF generation. Avoid adding extra PDF merger deps.
 
-from academics.models import Program, Curriculum, CurriculumCourse, ProgramCourse
+from academics.models import Program, Curriculum, CurriculumCourse
 from students.models import Enrollment
-from .models import ResultBatch, SemesterResult, CourseResult, GradeScale
+from .models import ResultBatch, SemesterResult, CourseResult, GradeScale, ResultNotification, ResultNotificationItem
+from .services import find_grade_by_gpa, q2
+
+def _fail_letter_set():
+    """Return configured failing letter grades (e.g., {'F'})."""
+    s = set(GradeScale.objects.filter(is_fail=True).values_list('letter_grade', flat=True))
+    # Safe fallback if grade scales are not configured with is_fail
+    s.add('F')
+    return {str(x).strip() for x in s if str(x).strip()}
+
+
+def _display_letter_grade_for_pdf(cr: CourseResult, batch: ResultBatch, fail_letters: set[str]) -> str:
+    """
+    Display-only letter grade used in DMC/Transcript PDFs.
+
+    Rule requested:
+    - If a course was previously failed and is now passed in a REPEAT batch,
+      suffix 'F' to the obtained letter grade (e.g., 'B' -> 'BF').
+    - This does NOT change stored grades/GPA; it's only a PDF display marker.
+    """
+    lg = (cr.letter_grade or '').strip()
+    if not lg:
+        return ''
+
+    exam_code = (getattr(getattr(batch, 'exam_type', None), 'code', '') or '').strip().lower()
+    # Only for Repeat batches
+    if exam_code != 'repeat':
+        return lg
+    # Only when current attempt is a PASS
+    if lg in fail_letters:
+        return lg
+
+    # Confirm there exists an earlier FAILED attempt for the same student+course in the same
+    # program+session+semester (any earlier batch).
+    previously_failed = (
+        CourseResult.objects.filter(
+            enrollment_id=cr.enrollment_id,
+            course_id=cr.course_id,
+            batch__program_id=batch.program_id,
+            batch__session_id=batch.session_id,
+            batch__semester_number=batch.semester_number,
+        )
+        .exclude(batch_id=batch.id)
+        .filter(letter_grade__in=fail_letters)
+        .exists()
+    )
+
+    return f"{lg}F" if previously_failed else lg
+
 
 
 def _course_columns_for_batch(batch: ResultBatch):
     """Return ordered course rows for the batch, limited to courses that exist in the batch.
 
-    Phase 2.1: Prefer CurriculumCourse (via batch.curriculum) as the source of truth.
-    Fallback to ProgramCourse only if a curriculum is missing (should not happen after Phase 1).
+    Source of truth (v4): CurriculumCourse (via batch.curriculum).
     """
     batch_course_ids = list(
         CourseResult.objects.filter(batch=batch)
@@ -32,21 +79,13 @@ def _course_columns_for_batch(batch: ResultBatch):
         .distinct()
     )
 
-    if getattr(batch, "curriculum_id", None):
-        return (
-            CurriculumCourse.objects.filter(
-                curriculum_id=batch.curriculum_id,
-                semester_number=batch.semester_number,
-                course_id__in=batch_course_ids,
-            )
-            .select_related("course")
-            .order_by("id")
-        )
+    if not getattr(batch, "curriculum_id", None):
+        # Should not happen: ResultBatch.save() attaches a curriculum.
+        return CurriculumCourse.objects.none()
 
-    # Safe fallback (legacy)
     return (
-        ProgramCourse.objects.filter(
-            program=batch.program,
+        CurriculumCourse.objects.filter(
+            curriculum_id=batch.curriculum_id,
             semester_number=batch.semester_number,
             course_id__in=batch_course_ids,
         )
@@ -119,6 +158,8 @@ def _roll_suffix_annotation():
 def result_notification_pdf(request, batch_id):
     batch = get_object_or_404(ResultBatch, id=batch_id)
 
+
+    fail_letters = _fail_letter_set()
     # -------------------------------------------------
     # 1) Find which courses actually appear in THIS batch
     # -------------------------------------------------
@@ -133,27 +174,16 @@ def result_notification_pdf(request, batch_id):
     # -------------------------------------------------
     columns = []
 
-    # Phase 2.1: Prefer CurriculumCourse for the column definition
-    if getattr(batch, "curriculum_id", None):
-        program_courses = (
-            CurriculumCourse.objects.filter(
-                curriculum_id=batch.curriculum_id,
-                semester_number=batch.semester_number,
-                course_id__in=batch_course_ids,
-            )
-            .select_related("course")
-            .order_by("id")
+    # v4: columns come from CurriculumCourse only.
+    program_courses = (
+        CurriculumCourse.objects.filter(
+            curriculum_id=batch.curriculum_id,
+            semester_number=batch.semester_number,
+            course_id__in=batch_course_ids,
         )
-    else:
-        program_courses = (
-            ProgramCourse.objects.filter(
-                program=batch.program,
-                semester_number=batch.semester_number,
-                course_id__in=batch_course_ids,
-            )
-            .select_related("course")
-            .order_by("id")
-        )
+        .select_related("course")
+        .order_by("id")
+    )
 
     if program_courses.exists():
         for pc in program_courses:
@@ -225,6 +255,11 @@ def result_notification_pdf(request, batch_id):
     )
 
     # -------------------------------------------------
+    # 3.1) Hold map for RL masking (per student)
+    # -------------------------------------------------
+    hold_map = {sr.enrollment_id: (sr.hold_status or SemesterResult.HOLD_NONE) for sr in results}
+
+    # -------------------------------------------------
     # 4) grades_map[enrollment_id][course_id] = letter_grade
     # -------------------------------------------------
     grades_map = defaultdict(dict)
@@ -247,6 +282,9 @@ def result_notification_pdf(request, batch_id):
 
     show_cgpa = sem_no != 1
 
+    # When RL is used, merge marks area + GPA/CGPA into one cell
+    rl_colspan = len(columns) + 1 + (1 if show_cgpa else 0)
+
     # -------------------------------------------------
     # 6) Result type label for header
     # -------------------------------------------------
@@ -256,9 +294,12 @@ def result_notification_pdf(request, batch_id):
         "results/result_notification.html",
         {
             "batch": batch,
+            "notification": None,
             "results": results,
             "columns": columns,
             "grades_map": grades_map,
+            "hold_map": hold_map,
+            "rl_colspan": rl_colspan,
             "session_display": session_display,
             "show_cgpa": show_cgpa,
             "result_type_label": result_type_label,
@@ -270,6 +311,125 @@ def result_notification_pdf(request, batch_id):
 
     response = HttpResponse(pdf, content_type="application/pdf")
     response["Content-Disposition"] = f'inline; filename="Result_Notification_{batch.id}.pdf"'
+    return response
+
+
+@login_required
+def result_notification_by_id_pdf(request, notification_id):
+    """Print a specific notification (supports initial + clearance notifications)."""
+
+    notification = get_object_or_404(ResultNotification, id=notification_id)
+    batch = notification.batch
+
+    fail_letters = _fail_letter_set()
+
+    # Courses in this batch
+    batch_course_ids = list(
+        CourseResult.objects.filter(batch=batch)
+        .values_list("course_id", flat=True)
+        .distinct()
+    )
+
+    columns = []
+
+    # v4: columns come from CurriculumCourse only.
+    program_courses = (
+        CurriculumCourse.objects.filter(
+            curriculum_id=batch.curriculum_id,
+            semester_number=batch.semester_number,
+            course_id__in=batch_course_ids,
+        )
+        .select_related("course")
+        .order_by("id")
+    )
+
+    if program_courses.exists():
+        for pc in program_courses:
+            course = pc.course
+            looking = getattr(pc, "credit_hours_override", None)
+            ch = looking if looking not in ("", None) else getattr(course, "credit_hours", "")
+            if ch in ("", None):
+                th = getattr(course, "theory_credit", None)
+                pr = getattr(course, "practical_credit", None)
+                if th is not None or pr is not None:
+                    th = th or 0
+                    pr = pr or 0
+                    ch = f"{th} ({pr})" if pr else f"{th}"
+                else:
+                    ch = getattr(pc, "credit_hours", "")
+
+            columns.append({"course_id": pc.course_id, "title": getattr(course, "title", str(course)), "credit_hours": ch})
+    else:
+        distinct_courses = (
+            CourseResult.objects.filter(batch=batch)
+            .select_related("course")
+            .order_by("course__title")
+        )
+        seen = set()
+        for cr in distinct_courses:
+            if cr.course_id in seen:
+                continue
+            seen.add(cr.course_id)
+            course = cr.course
+            ch = getattr(course, "credit_hours", "")
+            if ch in ("", None):
+                th = getattr(course, "theory_credit", None)
+                pr = getattr(course, "practical_credit", None)
+                if th is not None or pr is not None:
+                    th = th or 0
+                    pr = pr or 0
+                    ch = f"{th} ({pr})" if pr else f"{th}"
+            columns.append({"course_id": cr.course_id, "title": getattr(course, "title", str(course)), "credit_hours": ch})
+
+    # Student rows limited to this notification
+    sr_ids = list(notification.items.values_list("semester_result_id", flat=True))
+    results = (
+        SemesterResult.objects.filter(id__in=sr_ids)
+        .select_related("enrollment", "enrollment__student")
+        .annotate(roll_suffix=_roll_suffix_annotation())
+        .order_by("roll_suffix", "enrollment__roll_no")
+    )
+
+    # grades_map
+    grades_map = defaultdict(dict)
+    cr_qs = CourseResult.objects.filter(batch=batch, enrollment_id__in=results.values_list("enrollment_id", flat=True)).select_related("enrollment", "course")
+    for cr in cr_qs:
+        grades_map[cr.enrollment_id][cr.course_id] = (cr.letter_grade or "")
+
+    # hold_map from snapshot
+    hold_map = {}
+    for item in notification.items.select_related("semester_result"):
+        hold_map[item.semester_result.enrollment_id] = item.hold_status_snapshot or SemesterResult.HOLD_NONE
+
+    session_display = batch.session.display_for_program(batch.program)
+    try:
+        sem_no = int(batch.semester_number)
+    except Exception:
+        sem_no = 0
+    show_cgpa = sem_no != 1
+    rl_colspan = len(columns) + 1 + (1 if show_cgpa else 0)
+    result_type_label = getattr(batch.exam_type, "name", "") or ""
+
+    html = render_to_string(
+        "results/result_notification.html",
+        {
+            "batch": batch,
+            "notification": notification,
+            "results": results,
+            "columns": columns,
+            "grades_map": grades_map,
+            "hold_map": hold_map,
+            "rl_colspan": rl_colspan,
+            "session_display": session_display,
+            "show_cgpa": show_cgpa,
+            "result_type_label": result_type_label,
+        },
+        request=request,
+    )
+
+    pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
+    response = HttpResponse(pdf, content_type="application/pdf")
+    response["Content-Disposition"] = f'inline; filename="Result_Notification_{notification.id}.pdf"'
     return response
 
 
@@ -290,6 +450,8 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
         .select_related("course")
     }
 
+
+    fail_letters = _fail_letter_set()
     course_rows = []
     for pc in columns:
         cr = course_map.get(pc.course_id)
@@ -302,7 +464,7 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
                 "title": cr.course.title,
                 "credit_hours": ch,
                 "marks_pct": cr.percentage,
-                "grade": cr.letter_grade,
+                "grade": _display_letter_grade_for_pdf(cr, batch, fail_letters),
                 "ng": cr.grade_point,
                 "gp_total": gp_total,
             }
@@ -341,6 +503,8 @@ def dmc_batch_pdf(request, batch_id):
     columns = list(_course_columns_for_batch(batch))
     ordered_course_ids = [pc.course_id for pc in columns]
 
+
+    fail_letters = _fail_letter_set()
     results = (
         SemesterResult.objects.filter(batch=batch)
         .select_related("enrollment", "enrollment__student")
@@ -373,7 +537,7 @@ def dmc_batch_pdf(request, batch_id):
                     "title": cr.course.title,
                     "credit_hours": ch,
                     "marks_pct": cr.percentage,
-                    "grade": cr.letter_grade,
+                    "grade": _display_letter_grade_for_pdf(cr, batch, fail_letters),
                     "ng": cr.grade_point,
                     "gp_total": gp_total,
                 }
@@ -485,6 +649,9 @@ def transcript_pdf(request, enrollment_id: int):
     picked_batches = []
     cumulative_ch = Decimal("0")
 
+    fail_letters = _fail_letter_set()
+
+
     for sem_no in sorted(picked.keys()):
         sr = picked[sem_no]
         picked_batches.append(sr.batch_id)
@@ -514,7 +681,7 @@ def transcript_pdf(request, enrollment_id: int):
                     "title": cr.course.title,
                     "credit_hours": ch,
                     "marks_pct": cr.percentage,
-                    "grade": cr.letter_grade,
+                    "grade": _display_letter_grade_for_pdf(cr, sr.batch, fail_letters),
                     "ng": cr.grade_point,
                     "gp_total": gp_total,
                     "marks_obtained": cr.marks_obtained,
@@ -553,22 +720,27 @@ def transcript_pdf(request, enrollment_id: int):
         overall_percentage = (overall_obtained / overall_max) * Decimal("100")
         overall_percentage = overall_percentage.quantize(Decimal("0.01"))
 
+    final_cgpa = semesters[-1]["semester_result"].cgpa if semesters else None
+
+    # Transcript footer grade/remarks must be based on FINAL CGPA (not overall marks %)
     footer_grade = None
     footer_remarks = None
-    if overall_percentage is not None:
-        gs = (
-            GradeScale.objects.filter(
-                min_percentage__lte=overall_percentage,
-                max_percentage__gte=overall_percentage,
+    if final_cgpa is not None:
+        prefer_a_plus_at_4 = None
+        if q2(final_cgpa) == Decimal("4.00") and picked_batches:
+            prefer_a_plus_at_4 = not (
+                CourseResult.objects.filter(
+                    enrollment=enrollment,
+                    batch_id__in=picked_batches,
+                )
+                .exclude(letter_grade="A+")
+                .exists()
             )
-            .order_by("-min_percentage")
-            .first()
-        )
-        if gs:
-            footer_grade = gs.letter_grade
-            footer_remarks = gs.remarks
 
-    final_cgpa = semesters[-1]["semester_result"].cgpa if semesters else None
+        footer_grade, _, footer_remarks, _ = find_grade_by_gpa(
+            final_cgpa,
+            prefer_a_plus_at_4=prefer_a_plus_at_4,
+        )
     declaration_date = semesters[-1]["batch"].notification_date if semesters else None
 
     layout_mode = "single" if max_sem <= 3 else "double"
@@ -685,7 +857,7 @@ def transcript_batch_pdf(request, batch_id: int):
                         "title": cr.course.title,
                         "credit_hours": ch,
                         "marks_pct": cr.percentage,
-                        "grade": cr.letter_grade,
+                        "grade": _display_letter_grade_for_pdf(cr, srp.batch, fail_letters),
                         "ng": cr.grade_point,
                         "gp_total": gp_total,
                         "marks_obtained": cr.marks_obtained,
@@ -724,22 +896,27 @@ def transcript_batch_pdf(request, batch_id: int):
             overall_percentage = (overall_obtained / overall_max) * Decimal("100")
             overall_percentage = overall_percentage.quantize(Decimal("0.01"))
 
+        final_cgpa = semesters[-1]["semester_result"].cgpa if semesters else None
+
+        # Transcript footer grade/remarks must be based on FINAL CGPA (not overall marks %)
         footer_grade = None
         footer_remarks = None
-        if overall_percentage is not None:
-            gs = (
-                GradeScale.objects.filter(
-                    min_percentage__lte=overall_percentage,
-                    max_percentage__gte=overall_percentage,
+        if final_cgpa is not None:
+            prefer_a_plus_at_4 = None
+            if q2(final_cgpa) == Decimal("4.00") and picked_batches:
+                prefer_a_plus_at_4 = not (
+                    CourseResult.objects.filter(
+                        enrollment=enrollment,
+                        batch_id__in=picked_batches,
+                    )
+                    .exclude(letter_grade="A+")
+                    .exists()
                 )
-                .order_by("-min_percentage")
-                .first()
-            )
-            if gs:
-                footer_grade = gs.letter_grade
-                footer_remarks = gs.remarks
 
-        final_cgpa = semesters[-1]["semester_result"].cgpa if semesters else None
+            footer_grade, _, footer_remarks, _ = find_grade_by_gpa(
+                final_cgpa,
+                prefer_a_plus_at_4=prefer_a_plus_at_4,
+            )
         declaration_date = semesters[-1]["batch"].notification_date if semesters else None
 
         semester_pairs = []

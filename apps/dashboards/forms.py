@@ -1,6 +1,6 @@
 from django import forms
 
-from academics.models import Department, Program, ProgramCourse, ProgramOffering, Session
+from academics.models import Department, Program, ProgramOffering, Session
 from results.models import ExamType, GradeScale, ResultBatch
 from students.models import Enrollment, Student
 
@@ -13,22 +13,6 @@ class SessionForm(forms.ModelForm):
             "start_year": forms.NumberInput(attrs={"class": "form-control"}),
             "is_active": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
-
-
-class ProgramCourseForm(forms.ModelForm):
-    class Meta:
-        model = ProgramCourse
-        fields = ["program", "semester_number", "course"]
-        widgets = {
-            "program": forms.Select(attrs={"class": "form-select"}),
-            "semester_number": forms.NumberInput(attrs={"class": "form-control"}),
-            "course": forms.Select(attrs={"class": "form-select"}),
-        }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        # ProgramCourse is now GLOBAL (no department)
-        self.fields["program"].queryset = Program.objects.all().order_by("name")
 
 
 class ProgramOfferingForm(forms.ModelForm):
@@ -148,8 +132,6 @@ class ResultBatchForm(forms.ModelForm):
             "session",
             "semester_number",
             "exam_type",
-            "notification_no",
-            "notification_date",
             "is_locked",
         ]
         widgets = {
@@ -158,8 +140,6 @@ class ResultBatchForm(forms.ModelForm):
             "session": forms.Select(attrs={"class": "form-select"}),
             "semester_number": forms.NumberInput(attrs={"class": "form-control"}),
             "exam_type": forms.Select(attrs={"class": "form-select"}),
-            "notification_no": forms.TextInput(attrs={"class": "form-control"}),
-            "notification_date": forms.DateInput(attrs={"class": "form-control", "type": "date"}),
             "is_locked": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 

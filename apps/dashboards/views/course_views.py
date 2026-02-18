@@ -1,5 +1,6 @@
 from django.contrib import messages
 from django.db.models import Q
+from django.core.paginator import Paginator
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 
@@ -20,16 +21,26 @@ def course_list(request):
     """
     q = (request.GET.get("q") or "").strip()
 
-    courses = Course.objects.all()
+    qs = Course.objects.all()
     if q:
-        courses = courses.filter(Q(code__icontains=q) | Q(title__icontains=q))
+        qs = qs.filter(Q(code__icontains=q) | Q(title__icontains=q))
 
-    courses = courses.order_by("code")
+    qs = qs.order_by("code")
+
+    paginator = Paginator(qs, 10)
+    page_obj = paginator.get_page(request.GET.get("page") or 1)
+
+    params = request.GET.copy()
+    params.pop("page", None)
+    qs_params = params.urlencode()
+
     return render(
         request,
         "dashboards/courses/course_list.html",
         {
-            "courses": courses,
+            "courses": page_obj.object_list,
+            "page_obj": page_obj,
+            "qs_params": qs_params,
             "q": q,
         },
     )

@@ -4,6 +4,7 @@ from django.contrib import messages
 
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
+from django.core.paginator import Paginator
 
 from academics.models import Department
 from dashboards.decorators import group_required
@@ -36,11 +37,26 @@ def department_list(request):
     if q:
         qs = qs.filter(name__icontains=q)
 
-    departments = qs.order_by("name")
+    qs = qs.order_by("name")
+
+    paginator = Paginator(qs, 10)
+    page_obj = paginator.get_page(request.GET.get("page") or 1)
+
+    # Preserve query params (except page) when navigating pagination links
+    params = request.GET.copy()
+    params.pop("page", None)
+    qs_params = params.urlencode()
+
+    departments = page_obj.object_list
     return render(
         request,
         "dashboards/departments/list.html",
-        {"departments": departments, "q": q},
+        {
+            "departments": departments,
+            "page_obj": page_obj,
+            "qs_params": qs_params,
+            "q": q,
+        },
     )
 
 

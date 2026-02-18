@@ -5,6 +5,7 @@ from django.db import IntegrityError
 from dashboards.decorators import group_required
 from dashboards.forms import ResultBatchForm
 from results.models import ExamType, ResultBatch
+from results.models import SemesterResult, CourseResult, ResultNotification, ResultNotificationItem
 from academics.models import Department, Program, Session
 from results.services import recompute_batch
 
@@ -17,7 +18,11 @@ def batch_list(request):
     semester_no = (request.GET.get("semester") or "").strip()
     exam_type_id = (request.GET.get("exam_type") or "").strip()
 
-    base = ResultBatch.objects.select_related("department", "program", "session").all()
+    base = (
+        ResultBatch.objects.select_related("department", "program", "session")
+        .prefetch_related("notifications")
+        .all()
+    )
     batches = base.order_by("-created_at")
 
     if department_id:
@@ -172,6 +177,14 @@ def batch_delete(request, pk):
 def batch_detail(request, pk):
     batch = get_object_or_404(ResultBatch, pk=pk)
 
+    # Notification display should come from ResultNotification history.
+    # We show the latest notification if present; otherwise we fall back to legacy
+    # batch.notification_no/date (for old data).
+    latest_notification = batch.notifications.all().order_by("-created_at").first()
+    has_legacy_notification = bool(
+        (batch.notification_no or "").strip() or getattr(batch, "notification_date", None)
+    )
+
     # "Last semester" for Transcript availability is defined by Program.total_semesters.
     max_sem = int(getattr(batch.program, "total_semesters", 0) or 0)
 
@@ -182,9 +195,146 @@ def batch_detail(request, pk):
         "dashboards/result_batches/detail.html",
         {
             "batch": batch,
+            "latest_notification": latest_notification,
+            "has_legacy_notification": has_legacy_notification,
             "is_last_semester": is_last_semester,
             "max_sem": max_sem,
             "has_marks": has_marks,
+        },
+    )
+
+
+@group_required("System Admin")
+def batch_students_holds(request, pk):
+    """Manage per-student Result Hold (RL) statuses for a batch."""
+
+    batch = get_object_or_404(ResultBatch, pk=pk)
+
+    # Ensure SemesterResult rows exist for any enrollment that has marks in this batch.
+    enrollment_ids = list(
+        CourseResult.objects.filter(batch=batch)
+        .values_list("enrollment_id", flat=True)
+        .distinct()
+    )
+
+    for eid in enrollment_ids:
+        SemesterResult.objects.get_or_create(batch=batch, enrollment_id=eid)
+
+    qs = (
+        SemesterResult.objects.filter(batch=batch)
+        .select_related("enrollment", "enrollment__student")
+        .order_by("enrollment__roll_no")
+    )
+
+    if request.method == "POST":
+        updated = 0
+        for sr in qs:
+            status = (request.POST.get(f"hold_status_{sr.id}") or "").strip() or SemesterResult.HOLD_NONE
+            note = (request.POST.get(f"hold_note_{sr.id}") or "").strip()
+
+            # Clear metadata if moving to NONE
+            if status == SemesterResult.HOLD_NONE:
+                sr.hold_cleared_at = None
+                sr.hold_cleared_by = None
+            else:
+                # If previously held and now still held, keep cleared info empty.
+                sr.hold_cleared_at = None
+                sr.hold_cleared_by = None
+
+            if sr.hold_status != status or (sr.hold_note or "") != note:
+                sr.hold_status = status
+                sr.hold_note = note
+                sr.save(update_fields=["hold_status", "hold_note", "hold_cleared_at", "hold_cleared_by"])
+                updated += 1
+
+        messages.success(request, f"Saved holds for {updated} student(s).")
+        return redirect("admin_batch_students_holds", pk=batch.pk)
+
+    return render(
+        request,
+        "dashboards/result_batches/students_holds.html",
+        {
+            "batch": batch,
+            "rows": qs,
+            "hold_choices": SemesterResult.HOLD_CHOICES,
+        },
+    )
+
+
+@group_required("System Admin")
+def batch_notifications(request, pk):
+    """Create and list notifications for a batch (initial + clearance)."""
+
+    batch = get_object_or_404(ResultBatch, pk=pk)
+
+    # Ensure SemesterResult rows exist when marks exist.
+    enrollment_ids = list(
+        CourseResult.objects.filter(batch=batch)
+        .values_list("enrollment_id", flat=True)
+        .distinct()
+    )
+    for eid in enrollment_ids:
+        SemesterResult.objects.get_or_create(batch=batch, enrollment_id=eid)
+
+    notifications = ResultNotification.objects.filter(batch=batch).order_by("-created_at")
+    first_notification = notifications.order_by("created_at").first()
+
+    # Eligible for clearance: currently NONE, previously RL in any notification, and not yet notified as NONE.
+    eligible_clearance = SemesterResult.objects.filter(batch=batch, hold_status=SemesterResult.HOLD_NONE)
+    eligible_clearance = eligible_clearance.filter(notification_items__hold_status_snapshot__in=[SemesterResult.HOLD_DUES, SemesterResult.HOLD_DOCUMENTS]).exclude(
+        notification_items__hold_status_snapshot=SemesterResult.HOLD_NONE
+    ).distinct()
+
+    if request.method == "POST":
+        action = (request.POST.get("action") or "").strip()
+        notification_no = (request.POST.get("notification_no") or "").strip()
+        notification_date = request.POST.get("notification_date")
+
+        if not notification_no or not notification_date:
+            messages.error(request, "Notification number and date are required.")
+            return redirect("admin_batch_notifications", pk=batch.pk)
+
+        # Declaration date: fixed from first notification; otherwise equals current notification date.
+        declaration_date = first_notification.declaration_date if first_notification else notification_date
+
+        notif = ResultNotification.objects.create(
+            batch=batch,
+            notification_no=notification_no,
+            notification_date=notification_date,
+            declaration_date=declaration_date,
+        )
+
+        if action == "create_clearance":
+            srs = list(eligible_clearance)
+            if not srs:
+                notif.delete()
+                messages.error(request, "No cleared students found for a clearance notification.")
+                return redirect("admin_batch_notifications", pk=batch.pk)
+        else:
+            # Default: create full notification
+            srs = list(SemesterResult.objects.filter(batch=batch))
+
+        items = []
+        for sr in srs:
+            items.append(
+                ResultNotificationItem(
+                    notification=notif,
+                    semester_result=sr,
+                    hold_status_snapshot=sr.hold_status,
+                )
+            )
+        ResultNotificationItem.objects.bulk_create(items)
+
+        messages.success(request, f"Notification created: {notif.notification_no} ({len(items)} student(s)).")
+        return redirect("admin_batch_notifications", pk=batch.pk)
+
+    return render(
+        request,
+        "dashboards/result_batches/notifications.html",
+        {
+            "batch": batch,
+            "notifications": notifications,
+            "eligible_clearance_count": eligible_clearance.count(),
         },
     )
 

@@ -10,7 +10,6 @@ from academics.models import (
     CurriculumCourse,
     Course,
     Program,
-    ProgramCourse,
     Session,
 )
 from dashboards.decorators import group_required
@@ -160,7 +159,7 @@ def curriculum_copy_previous(request):
     Safety behavior:
     - If the target curriculum already has any courses, we do NOT overwrite.
     - Source is previous session's curriculum for the same program.
-    - If previous session has no curriculum courses, fallback to legacy ProgramCourse.
+    - Requires previous session's curriculum to exist.
     """
 
     if request.method != "POST":
@@ -211,27 +210,14 @@ def curriculum_copy_previous(request):
                     )
                 copied = len(src_rows)
 
-        # 2) Fallback: legacy global ProgramCourse
-        if copied == 0:
-            legacy_rows = list(
-                ProgramCourse.objects.filter(program=program)
-                .values("semester_number", "course_id")
-                .order_by("semester_number")
-            )
-            for row in legacy_rows:
-                CurriculumCourse.objects.get_or_create(
-                    curriculum=curriculum,
-                    semester_number=row["semester_number"],
-                    course_id=row["course_id"],
-                )
-            copied = len(legacy_rows)
+        # No other fallback is allowed in v4.
 
     if copied:
         messages.success(request, f"Copied {copied} course mappings into this session's curriculum.")
     else:
         messages.error(
             request,
-            "Nothing to copy. Create the previous session curriculum (or legacy ProgramCourse) first.",
+            "Nothing to copy. Create the previous session curriculum first.",
         )
 
     return redirect(f"{reverse('admin_curriculum_designer')}?program={program_id}&session={session_id}")

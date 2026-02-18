@@ -1,0 +1,59 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Students / Holds{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <div>
+      <h3 class="m-0">Students / Holds</h3>
+      <div class="text-muted">Batch: {{ batch }}</div>
+    </div>
+    <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm">Back to Batch</a>
+  </div>
+
+  {% if not rows %}
+    <div class="alert alert-warning">No student results found for this batch yet. Import / enter marks first.</div>
+  {% else %}
+    <form method="post">
+      {% csrf_token %}
+
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle">
+          <thead>
+            <tr>
+              <th style="width:100px;">Roll No</th>
+              <th style="width:140px;">Reg. No</th>
+              <th>Name</th>
+              <th>Father Name</th>
+              <th style="width:160px;">Hold</th>
+              <th style="width:260px;">Note (optional)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for sr in rows %}
+              <tr>
+                <td>{{ sr.enrollment.roll_no }}</td>
+                <td>{{ sr.enrollment.student.registration_no }}</td>
+                <td>{{ sr.enrollment.student.name }}</td>
+                <td>{{ sr.enrollment.student.father_name }}</td>
+                <td>
+                  <select name="hold_status_{{ sr.id }}" class="form-select form-select-sm">
+                    {% for val,label in hold_choices %}
+                      <option value="{{ val }}" {% if sr.hold_status == val %}selected{% endif %}>{{ label }}</option>
+                    {% endfor %}
+                  </select>
+                </td>
+                <td>
+                  <input type="text" name="hold_note_{{ sr.id }}" value="{{ sr.hold_note }}" class="form-control form-control-sm" placeholder="Reason / reference (optional)">
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-sm">Save Holds</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

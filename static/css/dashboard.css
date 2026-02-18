@@ -5,7 +5,22 @@
 
 /* ---------- Base page look (safe defaults) ---------- */
 body {
+  margin: 0;
+  padding: 0;
   background: #f6f7fb;
+}
+
+/* ---------- Sidebar shell (flush left, full height) ---------- */
+.sidebar {
+  height: 100vh;
+  background: #ffffff;
+  border-right: 1px solid #e5e7eb;
+}
+
+/* Keep sidebar visible while scrolling */
+.sidebar-inner {
+  position: sticky;
+  top: 0;
 }
 
 /* ---------- Sidebar: remove bullets + reset spacing ---------- */
@@ -23,16 +38,16 @@ body {
 /* Django admin-like full-width colored bar */
 .sidebar-section {
   display: block;
-  margin: 14px 0 8px;
-  padding: 8px 14px;
+  margin: 10px 6px 6px;
+  padding: 7px 12px;
 
   font-size: 12px;
   font-weight: 700;
   letter-spacing: 0.6px;
   text-transform: uppercase;
 
-  background: #dbeaf0;     /* heading background (admin-ish) */
-  color: #0f4c5c;          /* heading text (matches your topbar) */
+  background: #0f4c5c;     /* darker heading background */
+  color: #ffffff;          /* heading text */
 
   border-radius: 6px;
 }
@@ -46,7 +61,7 @@ body {
 .list-group-item {
   border: 0;
   border-radius: 6px;
-  padding: 8px 14px;
+  padding: 6px 12px; /* tighter row spacing */
 
   color: #111827;
   background: transparent;
@@ -73,3 +88,108 @@ body {
   margin: 10px 0;
   border-color: #e5e7eb;
 }
+
+/* =========================================================
+   Collapsible sidebar (System Admin)
+   Toggle adds .sidebar-collapsed on <body>
+   ========================================================= */
+
+body.sidebar-collapsed .sidebar-col {
+  display: none !important;
+}
+
+body.sidebar-collapsed .main-col {
+  flex: 0 0 100% !important;
+  max-width: 100% !important;
+}
+
+/* =========================================================
+   Sidebar accordion (section expand/collapse)
+   ========================================================= */
+
+.sidebar {
+  background: #f3f6f8;
+}
+
+.sidebar-title {
+  margin: 0;
+  padding: 12px 14px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  color: #5b6470;
+}
+
+.sidebar-nav {
+  padding: 0 10px 14px;
+}
+
+.sidebar-section-toggle {
+  width: 100%;
+  text-align: left;
+  border: 0;
+  outline: none;
+  cursor: pointer;
+
+  margin: 10px 0 6px;
+  padding: 9px 12px;
+
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.9px;
+  text-transform: uppercase;
+
+  color: #ffffff;
+  background: #083640;
+  border-radius: 6px;
+}
+
+.sidebar-section-toggle::after {
+  content: "▸";
+  float: right;
+  opacity: 0.9;
+  transform: rotate(0deg);
+  transition: transform 160ms ease;
+}
+
+.sidebar-section-toggle.is-open::after {
+  transform: rotate(90deg);
+}
+
+.sidebar-group {
+  display: none;
+  margin: 0 0 8px;
+  padding: 6px;
+  background: #ffffff;
+  border: 1px solid #e6eaee;
+  border-radius: 8px;
+}
+
+.sidebar-group.is-open {
+  display: block;
+}
+
+.sidebar-item {
+  display: block;
+  padding: 7px 10px;
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.2;
+  color: #1f2937;
+  text-decoration: none;
+  border-radius: 6px;
+}
+
+.sidebar-item:hover {
+  background: #f2f5f7;
+  color: #111827;
+}
+
+.sidebar-item.active,
+.sidebar-item.active:hover {
+  background: #0f4c5c;
+  color: #ffffff;
+  font-weight: 700;
+}
+

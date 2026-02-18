@@ -8,6 +8,12 @@ urlpatterns = [
         name="result_notification_pdf",
     ),
 
+    path(
+        "result-notification/by-id/<int:notification_id>/pdf/",
+        views.result_notification_by_id_pdf,
+        name="result_notification_by_id_pdf",
+    ),
+
     # DMCs (one per student per semester)
     path(
         "dmc/<int:batch_id>/pdf/",

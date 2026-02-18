@@ -1,0 +1,100 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Marks Entry{% endblock %}
+
+{% block extra_css %}
+<style>
+  .marks-table th { white-space: nowrap; }
+  .marks-table td { vertical-align: middle; }
+  .marks-table input { min-width: 90px; }
+  .sticky-actions {
+    position: sticky;
+    bottom: 0;
+    z-index: 10;
+    background: #f6f7fb;
+    padding: 10px 0;
+    border-top: 1px solid rgba(0,0,0,.08);
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+    <div>
+      <h3 class="mb-1">Marks Entry</h3>
+      <div class="text-muted">
+        {{ batch.department }} • {{ batch.program }} • {{ batch.session }} • Sem {{ batch.semester_number }} • {{ batch.exam_type.name }}
+      </div>
+      <div class="mt-1"><strong>Course:</strong> {{ course.code }} — {{ course.title }}</div>
+    </div>
+    <div class="d-flex gap-2">
+      <a href="{% url 'admin_batch_marks_select_course' batch.id %}" class="btn btn-outline-primary btn-sm">Change Course</a>
+      <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm">Back</a>
+    </div>
+  </div>
+
+  <form method="post">
+    {% csrf_token %}
+
+    <div class="card p-3">
+      <div class="d-flex flex-wrap justify-content-between align-items-center gap-2 mb-2">
+        <div class="text-muted">Enter marks. Total, % and grades are recomputed from these values.</div>
+        <div class="form-check">
+          <input class="form-check-input" type="checkbox" id="recompute" name="recompute" {% if recompute %}checked{% endif %}>
+          <label class="form-check-label" for="recompute">Recompute GPA/CGPA after save</label>
+        </div>
+      </div>
+
+      {{ formset.management_form }}
+
+      <div class="table-responsive">
+        <table class="table table-striped table-bordered marks-table align-middle">
+          <thead>
+            <tr>
+              <th style="min-width:90px;">Roll No</th>
+              <th style="min-width:150px;">Student</th>
+              <th style="min-width:150px;">Registration No</th>
+              <th>Sessional</th>
+              <th>Mid Term</th>
+              <th>Terminal</th>
+              <th>Max Marks</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for form in formset %}
+              <tr>
+                <td>{{ form.instance.enrollment.roll_no }}</td>
+                <td>{{ form.instance.enrollment.student.name }}</td>
+                <td>{{ form.instance.enrollment.student.registration_no }}</td>
+                <td>
+                  {{ form.sessional_marks }}
+                  {% for e in form.sessional_marks.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </td>
+                <td>
+                  {{ form.midterm_marks }}
+                  {% for e in form.midterm_marks.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </td>
+                <td>
+                  {{ form.terminal_marks }}
+                  {% for e in form.terminal_marks.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </td>
+                <td>
+                  {{ form.max_marks }}
+                  {% for e in form.max_marks.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
+                </td>
+              </tr>
+              {{ form.id }}
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <div class="sticky-actions">
+      <div class="d-flex justify-content-end gap-2">
+        <button type="submit" class="btn btn-primary">Save Marks</button>
+      </div>
+    </div>
+  </form>
+</div>
+{% endblock %}

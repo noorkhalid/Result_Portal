@@ -44,6 +44,82 @@ def find_grade(percentage: Decimal):
     )
 
 
+def find_grade_by_gpa(gpa: Decimal, *, prefer_a_plus_at_4: bool | None = None):
+    """Return (letter_grade, grade_point, remarks, is_fail) based on GPA/CGPA.
+
+    We intentionally reuse the existing GradeScale table (which is stored as
+    percentage ranges) by converting it into GPA bands using the *grade_point*
+    values that already exist in the table.
+
+    Logic:
+      - We pick one representative row for each distinct grade_point.
+      - We then create GPA cutoffs at midpoints between adjacent grade_points.
+      - The given GPA/CGPA is mapped into the nearest band.
+
+    This avoids any DB/schema change and keeps DMC/Transcript templates intact.
+    """
+    gpa = Decimal(str(gpa))
+
+    # Special rule:
+    # If GPA/CGPA is 4.00, we must choose between the two 4.0 entries
+    # (A vs A+) based on whether *all* relevant courses are A+.
+    # - prefer_a_plus_at_4=True  -> return A+ (Outstanding)
+    # - prefer_a_plus_at_4=False -> return A  (Excellent)
+    # - prefer_a_plus_at_4=None  -> fallback to band mapping below
+    if q2(gpa) == Decimal("4.00") and prefer_a_plus_at_4 is not None:
+        wanted = "A+" if prefer_a_plus_at_4 else "A"
+        row = (
+            GradeScale.objects.filter(grade_point=Decimal("4.00"), letter_grade=wanted)
+            .order_by("-min_percentage")
+            .first()
+        )
+        if row:
+            return (
+                row.letter_grade,
+                Decimal(str(row.grade_point)),
+                row.remarks,
+                bool(row.is_fail),
+            )
+
+    # Representative rows per grade_point (prefer higher percentage rows)
+    reps = {}
+    for row in GradeScale.objects.all().order_by("-grade_point", "-min_percentage"):
+        gp = Decimal(str(row.grade_point))
+        reps.setdefault(gp, row)
+
+    if not reps:
+        return ("N/A", Decimal("0.00"), "No grade scale", True)
+
+    gps = sorted(reps.keys(), reverse=True)
+
+    # Cutoffs: for gp[i], lower bound is midpoint(gp[i], gp[i+1])
+    # For the last (lowest) GP, accept anything below.
+    for i, gp in enumerate(gps):
+        if i < len(gps) - 1:
+            next_gp = gps[i + 1]
+            lower = (gp + next_gp) / Decimal("2")
+        else:
+            lower = Decimal("-1")
+
+        if gpa >= lower:
+            row = reps[gp]
+            return (
+                row.letter_grade,
+                Decimal(str(row.grade_point)),
+                row.remarks,
+                bool(row.is_fail),
+            )
+
+    # Should never happen, but keep it safe.
+    row = reps[gps[-1]]
+    return (
+        row.letter_grade,
+        Decimal(str(row.grade_point)),
+        row.remarks,
+        bool(row.is_fail),
+    )
+
+
 def recompute_batch(batch: ResultBatch):
     """
     1) Compute CourseResult: percentage + letter_grade + grade_point
@@ -109,41 +185,11 @@ def recompute_batch(batch: ResultBatch):
         if total_ch > 0:
             gpa = q2(total_points / total_ch)
 
-        # Semester % and grade/remarks from grading table
+        # Semester % is still stored for reporting, but grading/remarks are NOT derived
+        # from semester percentage anymore.
         sem_pct = calc_percentage(sem_obt, sem_max)
-        sem_letter, _, sem_remark, sem_is_fail = find_grade(sem_pct)
-
-        # If any subject failed, force overall semester as Fail
-        if fails:
-            sem_remark = "Fail"
-            sem_letter = "F"
 
         subj_reappear = ", ".join(fails)
-
-        sem_obj, _ = SemesterResult.objects.get_or_create(
-            batch=batch,
-            enrollment_id=enrollment_id,
-        )
-        sem_obj.total_obtained = q2(sem_obt)
-        sem_obj.total_max = q2(sem_max)
-        sem_obj.percentage = sem_pct
-
-        sem_obj.gpa = gpa
-        sem_obj.letter_grade = sem_letter
-        sem_obj.remarks = sem_remark
-        sem_obj.subjects_to_reappear = subj_reappear
-
-        sem_obj.save(
-            update_fields=[
-                "total_obtained",
-                "total_max",
-                "percentage",
-                "gpa",
-                "letter_grade",
-                "remarks",
-                "subjects_to_reappear",
-            ]
-        )
 
         # -----------------------------
         # 3) CGPA (across all semesters in same program+session)
@@ -166,5 +212,65 @@ def recompute_batch(batch: ResultBatch):
         if all_ch > 0:
             cgpa = q2(all_points / all_ch)
 
+        # -----------------------------
+        # 4) Semester letter grade + remarks
+        #    - Per-course: based on course percentage (already done above)
+        #    - Per-semester: based on GPA
+        #    - Final semester: based on CGPA
+        # -----------------------------
+        try:
+            total_semesters = int(getattr(getattr(batch, "curriculum", None), "total_semesters", 0) or 0)
+        except Exception:
+            total_semesters = 0
+
+        is_final_semester = bool(total_semesters) and int(batch.semester_number) == int(total_semesters)
+        basis_value = cgpa if is_final_semester else gpa
+
+        # Special rule for 4.00 GPA/CGPA:
+        # - If ALL relevant courses are A+ => semester grade is A+ (Outstanding)
+        # - If even one course is A or below => semester grade is A (Excellent)
+        prefer_a_plus_at_4 = None
+        if not fails and q2(basis_value) == Decimal("4.00"):
+            if is_final_semester:
+                # CGPA case: check ALL semesters' courses
+                prefer_a_plus_at_4 = not all_results.exclude(letter_grade="A+").exists()
+            else:
+                # GPA case: check THIS semester's courses
+                prefer_a_plus_at_4 = not qs.exclude(letter_grade="A+").exists()
+
+        sem_letter, _, sem_remark, _ = find_grade_by_gpa(
+            basis_value,
+            prefer_a_plus_at_4=prefer_a_plus_at_4,
+        )
+
+        # If any subject failed, force overall semester as Fail
+        if fails:
+            sem_remark = "Fail"
+            sem_letter = "F"
+
+        sem_obj, _ = SemesterResult.objects.get_or_create(
+            batch=batch,
+            enrollment_id=enrollment_id,
+        )
+
+        sem_obj.total_obtained = q2(sem_obt)
+        sem_obj.total_max = q2(sem_max)
+        sem_obj.percentage = sem_pct
+        sem_obj.gpa = gpa
         sem_obj.cgpa = cgpa
-        sem_obj.save(update_fields=["cgpa"])
+        sem_obj.letter_grade = sem_letter
+        sem_obj.remarks = sem_remark
+        sem_obj.subjects_to_reappear = subj_reappear
+
+        sem_obj.save(
+            update_fields=[
+                "total_obtained",
+                "total_max",
+                "percentage",
+                "gpa",
+                "cgpa",
+                "letter_grade",
+                "remarks",
+                "subjects_to_reappear",
+            ]
+        )

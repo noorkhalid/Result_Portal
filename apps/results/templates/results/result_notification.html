@@ -136,8 +136,8 @@
 
   <!-- Notification / Date line -->
   <div class="topline">
-    <div class="bold u">Notification No. {{ batch.notification_no|default:"________" }}</div>
-    <div class="bold u">Dated: {{ batch.notification_date|date:"d-m-Y"|default:"________" }}</div>
+    <div class="bold u">Notification No. {% if notification %}{{ notification.notification_no }}{% else %}{{ batch.notification_no|default:"________" }}{% endif %}</div>
+    <div class="bold u">Dated: {% if notification %}{{ notification.notification_date|date:"d-m-Y" }}{% else %}{{ batch.notification_date|date:"d-m-Y"|default:"________" }}{% endif %}</div>
   </div>
 
   <!-- Center institution block (Excel-like) -->
@@ -203,18 +203,26 @@
           <td class="leftcell">{{ r.enrollment.student.name }}</td>
           <td class="leftcell">{{ r.enrollment.student.father_name }}</td>
 
-          {% for col in columns %}
-            <td>
-              {% with row=grades_map|get_item:r.enrollment_id %}
-                {{ row|get_item:col.course_id }}
-              {% endwith %}
-            </td>
-          {% endfor %}
+          {% with hs=hold_map|get_item:r.enrollment_id %}
+            {% if hs and hs != "none" %}
+              <td colspan="{{ rl_colspan }}" class="bold">
+                {% if hs == "dues" %}RL Dues{% elif hs == "documents" %}RL Documents{% else %}RL{% endif %}
+              </td>
+            {% else %}
+              {% for col in columns %}
+                <td>
+                  {% with row=grades_map|get_item:r.enrollment_id %}
+                    {{ row|get_item:col.course_id }}
+                  {% endwith %}
+                </td>
+              {% endfor %}
 
-          <td>{{ r.gpa }}</td>
-          {% if show_cgpa %}
-            <td>{{ r.cgpa }}</td>
-          {% endif %}
+              <td>{{ r.gpa }}</td>
+              {% if show_cgpa %}
+                <td>{{ r.cgpa }}</td>
+              {% endif %}
+            {% endif %}
+          {% endwith %}
         </tr>
       {% endfor %}
     </tbody>

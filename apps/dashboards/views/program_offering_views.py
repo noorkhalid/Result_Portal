@@ -1,6 +1,7 @@
 from django.contrib import messages
 from django.db import IntegrityError
 from django.shortcuts import get_object_or_404, redirect, render
+from django.core.paginator import Paginator
 
 from academics.models import Department, Program, ProgramOffering
 from dashboards.decorators import group_required
@@ -9,11 +10,7 @@ from dashboards.forms import ProgramOfferingForm
 
 @group_required("System Admin")
 def program_offering_list(request):
-    qs = (
-        ProgramOffering.objects.select_related("department", "program")
-        .all()
-        .order_by("department__name", "program__name")
-    )
+    qs = ProgramOffering.objects.select_related("department", "program").all()
 
     department_id = (request.GET.get("department") or "").strip()
     program_id = (request.GET.get("program") or "").strip()
@@ -22,6 +19,15 @@ def program_offering_list(request):
         qs = qs.filter(department_id=department_id)
     if program_id:
         qs = qs.filter(program_id=program_id)
+
+    qs = qs.order_by("department__name", "program__name")
+
+    paginator = Paginator(qs, 10)
+    page_obj = paginator.get_page(request.GET.get("page") or 1)
+
+    params = request.GET.copy()
+    params.pop("page", None)
+    qs_params = params.urlencode()
 
     departments = Department.objects.all().order_by("name")
 
@@ -41,7 +47,9 @@ def program_offering_list(request):
         request,
         "dashboards/program_offerings/list.html",
         {
-            "items": qs,
+            "items": page_obj.object_list,
+            "page_obj": page_obj,
+            "qs_params": qs_params,
             "departments": departments,
             "programs": programs,
             "department_id": department_id,

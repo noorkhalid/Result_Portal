@@ -134,7 +134,7 @@ document.addEventListener("DOMContentLoaded", function () {
           <th>Session</th>
           <th>Semester</th>
           <th>Exam Type</th>
-          <th>Notification</th>
+          <th>Declared via</th>
           <th>Locked</th>
         </tr>
       </thead>
@@ -147,11 +147,15 @@ document.addEventListener("DOMContentLoaded", function () {
           <td>{{ b.semester_number }}</td>
           <td><span class="badge bg-dark">{{ b.exam_type.name }}</span></td>
           <td>
-            {% if b.notification_no %}
-              {{ b.notification_no }}{% if b.notification_date %}<div class="text-muted small">{{ b.notification_date }}</div>{% endif %}
-            {% else %}
-              <span class="text-muted">—</span>
-            {% endif %}
+            {% with n=b.notifications.all|first %}
+              {% if n %}
+                {{ n.notification_no }}<div class="text-muted small">{{ n.notification_date }}</div>
+              {% elif b.notification_no or b.notification_date %}
+                <span class="text-muted">Legacy:</span> {{ b.notification_no }}{% if b.notification_date %}<div class="text-muted small">{{ b.notification_date }}</div>{% endif %}
+              {% else %}
+                <span class="text-muted">—</span>
+              {% endif %}
+            {% endwith %}
           </td>
           <td>
             {% if b.is_locked %}<span class="badge bg-danger">Locked</span>{% else %}<span class="badge bg-success">Open</span>{% endif %}

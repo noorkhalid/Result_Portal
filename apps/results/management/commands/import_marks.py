@@ -173,9 +173,12 @@ class Command(BaseCommand):
                     ))
                     continue
 
-                key = (program.id, session.id, semester_number, exam_type.id)
+                # Batch uniqueness is per-department.
+                dept_id = enrollment.department_id
+                key = (dept_id, program.id, session.id, semester_number, exam_type.id)
                 if key not in batches:
                     batch, _ = ResultBatch.objects.get_or_create(
+                        department_id=dept_id,
                         program=program,
                         session=session,
                         semester_number=semester_number,
@@ -196,14 +199,26 @@ class Command(BaseCommand):
                         batch=batch,
                         enrollment=enrollment,
                         course=course,
+                        sessional_marks=s_marks,
+                        midterm_marks=m_marks,
+                        terminal_marks=t_marks,
                         marks_obtained=total_marks,
                         max_marks=float(max_marks),
                     )
                     created += 1
                 else:
+                    cr.sessional_marks = s_marks
+                    cr.midterm_marks = m_marks
+                    cr.terminal_marks = t_marks
                     cr.marks_obtained = total_marks
                     cr.max_marks = float(max_marks)
-                    cr.save(update_fields=["marks_obtained", "max_marks"])
+                    cr.save(update_fields=[
+                        "sessional_marks",
+                        "midterm_marks",
+                        "terminal_marks",
+                        "marks_obtained",
+                        "max_marks",
+                    ])
                     updated += 1
 
             except Exception as e:

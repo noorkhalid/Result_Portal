@@ -116,17 +116,12 @@ def result_checker_dashboard(request):
 
 @group_required("System Admin")
 def system_admin_dashboard(request):
-    """System Admin dashboard: replacement for Django Admin home."""
-    totals = {
-        "programs": Program.objects.count(),
-        "courses": Course.objects.count(),
-        "sessions": Session.objects.count(),
-        "students": Student.objects.count(),
-        "enrollments": Enrollment.objects.count(),
-        "batches": ResultBatch.objects.count(),
-        "course_results": CourseResult.objects.count(),
-    }
-    return render(request, "dashboards/system_admin.html", {"totals": totals})
+    """System Admin landing.
+
+    The old "System Admin Dashboard" page (cards/stats) has been removed.
+    Keep this URL as a stable entry point and redirect to the first working page.
+    """
+    return redirect("admin_program_list")
 
 
 # ======================================================
@@ -195,9 +190,10 @@ def data_entry_import_marks(request):
         sem_i = col("semester")
         code_i = col("course_code", "code")
         title_i = col("course_title", "title")
-        ses_i = col("sessional_marks")
-        mid_i = col("midterm_marks")
-        ter_i = col("terminal_marks")
+        # Accept common template header variants (older templates used different names)
+        ses_i = col("sessional_marks", "sessional", "sessiononal", "sessional_")
+        mid_i = col("midterm_marks", "midterm", "midterm_")
+        ter_i = col("terminal_marks", "terminal", "terminal_")
         max_i = col("maxmarks")
         exam_i = col("examtype")
 
@@ -265,11 +261,14 @@ def data_entry_import_marks(request):
                     defaults={"name": examtype_code.replace("_", " ").replace("-", " ").title()},
                 )
 
-                key = (program.id, session.id, semester_number, exam_type.id)
+                # Batch uniqueness is per-department.
+                dept_id = enrollment.department_id
+                key = (dept_id, program.id, session.id, semester_number, exam_type.id)
                 batch = touched_batches.get(key)
 
                 if not batch:
                     batch, _ = ResultBatch.objects.get_or_create(
+                        department_id=dept_id,
                         program=program,
                         session=session,
                         semester_number=semester_number,
@@ -287,20 +286,36 @@ def data_entry_import_marks(request):
                     + _to_float_or_zero(terminal)
                 )
 
+                ses_val = _to_float_or_zero(row[ses_i] if ses_i is not None else None)
+                mid_val = _to_float_or_zero(row[mid_i] if mid_i is not None else None)
+                ter_val = _to_float_or_zero(terminal)
+
                 cr, created_flag = CourseResult.objects.get_or_create(
                     batch=batch,
                     enrollment=enrollment,
                     course=course,
                     defaults={
+                        "sessional_marks": ses_val,
+                        "midterm_marks": mid_val,
+                        "terminal_marks": ter_val,
                         "marks_obtained": total,
                         "max_marks": float(max_marks),
                     },
                 )
 
                 if not created_flag:
+                    cr.sessional_marks = ses_val
+                    cr.midterm_marks = mid_val
+                    cr.terminal_marks = ter_val
                     cr.marks_obtained = total
                     cr.max_marks = float(max_marks)
-                    cr.save(update_fields=["marks_obtained", "max_marks"])
+                    cr.save(update_fields=[
+                        "sessional_marks",
+                        "midterm_marks",
+                        "terminal_marks",
+                        "marks_obtained",
+                        "max_marks",
+                    ])
                     updated += 1
                 else:
                     created += 1

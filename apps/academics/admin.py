@@ -5,7 +5,6 @@ from .models import (
     Program,
     Session,
     Course,
-    ProgramCourse,
     ProgramOffering,
 )
 
@@ -44,8 +43,4 @@ class CourseAdmin(admin.ModelAdmin):
     ordering = ("code",)
 
 
-@admin.register(ProgramCourse)
-class ProgramCourseAdmin(admin.ModelAdmin):
-    list_display = ("program", "semester_number", "course")
-    list_filter = ("program", "semester_number")
-    search_fields = ("program__name", "course__title", "course__code")
+

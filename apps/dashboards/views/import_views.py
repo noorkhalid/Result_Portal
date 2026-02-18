@@ -11,7 +11,7 @@ from django.db import transaction
 from django.http import HttpResponse
 from django.shortcuts import redirect, render
 
-from academics.models import Course, Program, Session, Department, ProgramCourse
+from academics.models import Course, Program, Session, Department
 from students.models import Student, Enrollment
 from dashboards.decorators import group_required
 
@@ -95,23 +95,6 @@ def template_enrollments(request):
     resp["Content-Disposition"] = 'attachment; filename="enrollments_template.xlsx"'
     wb.save(resp)
     return resp
-
-
-@group_required("System Admin")
-def template_program_courses(request):
-    wb = openpyxl.Workbook()
-    ws = wb.active
-    ws.title = "ProgramCourses"
-    ws.append(["program", "semester_number", "course_code"])
-    ws.append(["BS Computer Science", 1, "CS101"])
-
-    resp = HttpResponse(
-        content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-    )
-    resp["Content-Disposition"] = 'attachment; filename="program_courses_template.xlsx"'
-    wb.save(resp)
-    return resp
-
 
 
 # ======================================================
@@ -465,133 +448,4 @@ def import_enrollments(request):
     return redirect("admin_enrollment_list")
 
 
-# ======================================================
-# IMPORT PROGRAM COURSES (MAPPING)
-# ======================================================
 
-@group_required("System Admin")
-@transaction.atomic
-def import_program_courses(request):
-    """
-    Import ProgramCourse mappings from Excel (.xlsx).
-
-    Columns required:
-    - program: Program name (must exist)
-    - semester_number: integer
-    - course_code: existing Course.code
-
-    All-or-nothing: if ANY row has an error, NOTHING is imported.
-    """
-    if request.method != "POST":
-        return render(request, "dashboards/imports/program_courses_import.html")
-
-    xlsx = request.FILES.get("file")
-    if not xlsx:
-        messages.error(request, "Please choose an Excel (.xlsx) file.")
-        return redirect("admin_import_program_courses")
-
-    if not xlsx.name.lower().endswith(".xlsx"):
-        messages.error(request, "Only .xlsx files are supported.")
-        return redirect("admin_import_program_courses")
-
-    imports_dir = os.path.join(settings.MEDIA_ROOT, "imports")
-    os.makedirs(imports_dir, exist_ok=True)
-    fs = FileSystemStorage(location=imports_dir)
-    ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-    filename = fs.save(f"program_courses_{ts}_{xlsx.name}", xlsx)
-    file_path = fs.path(filename)
-
-    required_cols = {"program", "semester_number", "course_code"}
-
-    try:
-        wb = openpyxl.load_workbook(file_path)
-        ws = wb.active
-        rows = list(ws.iter_rows(values_only=True))
-
-        if not rows or not rows[0]:
-            messages.error(request, "Excel file is empty.")
-            return redirect("admin_import_program_courses")
-
-        header = [str(c).strip().lower() if c is not None else "" for c in rows[0]]
-        missing = required_cols - set(header)
-        if missing:
-            messages.error(request, f"Missing required columns: {', '.join(sorted(missing))}.")
-            return redirect("admin_import_program_courses")
-
-        idx = {name: header.index(name) for name in required_cols}
-
-        cleaned = []
-        validation_errors = []
-
-        for i, row in enumerate(rows[1:], start=2):
-            if row is None or all(v is None or str(v).strip() == "" for v in row):
-                continue
-
-            program_name = str(row[idx["program"]] or "").strip()
-            sem_raw = row[idx["semester_number"]]
-            course_code = str(row[idx["course_code"]] or "").strip()
-
-            if not program_name:
-                validation_errors.append(f"Row {i}: program is required.")
-                continue
-            if sem_raw is None or str(sem_raw).strip() == "":
-                validation_errors.append(f"Row {i}: semester_number is required.")
-                continue
-            if not course_code:
-                validation_errors.append(f"Row {i}: course_code is required.")
-                continue
-
-            program = Program.objects.filter(name__iexact=program_name).first()
-            if not program:
-                program = Program.objects.filter(name__icontains=program_name).first()
-            if not program:
-                validation_errors.append(f"Row {i}: program not found ('{program_name}').")
-                continue
-
-            try:
-                semester_number = int(sem_raw)
-            except Exception:
-                validation_errors.append(f"Row {i}: invalid semester_number '{sem_raw}'.")
-                continue
-
-            course = Course.objects.filter(code__iexact=course_code).first()
-            if not course:
-                validation_errors.append(f"Row {i}: course not found by code ('{course_code}').")
-                continue
-
-            cleaned.append((program, semester_number, course))
-
-        if validation_errors:
-            messages.error(
-                request,
-                "Import failed. Fix these errors and try again:\n" + "\n".join(validation_errors[:50]),
-            )
-            return redirect("admin_import_program_courses")
-
-        created = 0
-        updated = 0
-
-        with transaction.atomic():
-            for program, semester_number, course in cleaned:
-                obj = ProgramCourse.objects.filter(
-                    program=program, semester_number=semester_number, course=course
-                ).first()
-                if obj:
-                    updated += 1
-                else:
-                    ProgramCourse.objects.create(
-                        program=program,
-                        semester_number=semester_number,
-                        course=course,
-                    )
-                    created += 1
-
-        messages.success(
-            request,
-            f"Program Courses imported successfully: {created} created, {updated} updated.",
-        )
-        return redirect("admin_program_course_list")
-
-    except Exception as e:
-        messages.error(request, f"Failed to import program courses: {e}")
-        return redirect("admin_import_program_courses")
