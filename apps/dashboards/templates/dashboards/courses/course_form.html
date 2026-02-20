@@ -23,10 +23,32 @@
       {{ form.credit_hours|add_class:"form-control" }}
     </div>
 
+    <div class="mb-3">
+      <label class="form-label">Max Marks (auto)</label>
+      {{ form.max_marks_preview|add_class:"form-control" }}
+      <div class="form-text">Calculated automatically as credit hours × 10.</div>
+    </div>
+
     <div class="d-flex gap-2">
       <button type="submit" class="btn btn-primary">Save</button>
       <a href="{% url 'admin_course_list' %}" class="btn btn-secondary">Cancel</a>
     </div>
   </form>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  (function(){
+    const ch = document.getElementById('id_credit_hours');
+    const mm = document.getElementById('id_max_marks_preview');
+    if (!ch || !mm) return;
+    function update(){
+      const v = parseFloat(ch.value);
+      mm.value = (isFinite(v) ? Math.round(v * 20) : 0);
+    }
+    ch.addEventListener('input', update);
+    update();
+  })();
+</script>
 {% endblock %}

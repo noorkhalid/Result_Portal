@@ -63,6 +63,9 @@ def batch_marks_entry(request, pk: int, course_id: int):
     )
     course = course_row.course
 
+    # Max marks are the same for all students in the same course (derived from credit hours)
+    course_max_marks = Decimal(str(getattr(course, "max_marks", 0) or 0))
+
     # Ensure CourseResult rows exist for all enrollments in this batch scope.
     enrollments = (
         Enrollment.objects.filter(
@@ -90,7 +93,7 @@ def batch_marks_entry(request, pk: int, course_id: int):
                 midterm_marks=Decimal("0"),
                 terminal_marks=Decimal("0"),
                 marks_obtained=Decimal("0"),
-                max_marks=Decimal("100"),
+                max_marks=course_max_marks,
             )
 
     qs = (
@@ -124,8 +127,9 @@ def batch_marks_entry(request, pk: int, course_id: int):
                 cr.terminal_marks = Decimal("0")
             changed = True
 
-        if cr.max_marks is None:
-            cr.max_marks = Decimal("100")
+        # Always keep max marks aligned with the course rule.
+        if cr.max_marks is None or cr.max_marks != course_max_marks:
+            cr.max_marks = course_max_marks
             changed = True
 
         if changed:
@@ -133,7 +137,7 @@ def batch_marks_entry(request, pk: int, course_id: int):
 
     class CRFormMeta:
         model = CourseResult
-        fields = ["sessional_marks", "midterm_marks", "terminal_marks", "max_marks"]
+        fields = ["sessional_marks", "midterm_marks", "terminal_marks"]
 
     CRFormSet = modelformset_factory(
         CourseResult,
@@ -173,6 +177,7 @@ def batch_marks_entry(request, pk: int, course_id: int):
         {
             "batch": batch,
             "course": course,
+            "course_max_marks": course_max_marks,
             "formset": formset,
             "recompute": recompute,
         },

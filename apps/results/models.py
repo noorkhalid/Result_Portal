@@ -199,6 +199,14 @@ class CourseResult(models.Model):
                 )
 
     def save(self, *args, **kwargs):
+        # Keep max marks aligned with the course rule (credit_hours × 10).
+        try:
+            course_max = getattr(self.course, "max_marks", None)
+            if course_max is not None:
+                self.max_marks = course_max
+        except Exception:
+            pass
+
         # Enforce constraints at model-level (prevents future import bugs)
         # If any component marks are present, derive total.
         if (

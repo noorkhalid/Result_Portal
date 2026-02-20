@@ -45,6 +45,7 @@ def curriculum_designer(request):
     selected_session = None
     curriculum = None
     semesters: dict[int, list[CurriculumCourse]] = {}
+    available_courses: dict[int, list[Course]] = {}
 
     if program_id and session_id:
         selected_program = get_object_or_404(Program, pk=program_id)
@@ -71,6 +72,11 @@ def curriculum_designer(request):
         for sem in range(1, total + 1):
             semesters[sem] = grouped.get(sem, [])
 
+        # Courses available per semester (hide already-added courses from the dropdown)
+        for sem in range(1, total + 1):
+            existing_ids = [cc.course_id for cc in semesters.get(sem, [])]
+            available_courses[sem] = list(courses.exclude(id__in=existing_ids))
+
     prev_session = None
     if selected_program and selected_session:
         prev_session = _previous_session_for(selected_program, selected_session)
@@ -88,6 +94,7 @@ def curriculum_designer(request):
             "selected_session": selected_session,
             "curriculum": curriculum,
             "semesters": semesters,
+            "available_courses": available_courses,
             "prev_session": prev_session,
         },
     )
@@ -101,9 +108,15 @@ def curriculum_course_add(request):
 
     curriculum_id = (request.POST.get("curriculum") or "").strip()
     semester_number = (request.POST.get("semester_number") or "").strip()
-    course_id = (request.POST.get("course") or "").strip()
+    # Multi-select support: can submit multiple course IDs.
+    course_ids = request.POST.getlist("course_ids")
+    if not course_ids:
+        # Backward compatible (older template)
+        one = (request.POST.get("course") or "").strip()
+        if one:
+            course_ids = [one]
 
-    if not (curriculum_id and semester_number and course_id):
+    if not (curriculum_id and semester_number and course_ids):
         messages.error(request, "Missing curriculum, semester, or course.")
         return redirect("admin_curriculum_designer")
 
@@ -124,12 +137,20 @@ def curriculum_course_add(request):
             f"{reverse('admin_curriculum_designer')}?program={curriculum.program_id}&session={curriculum.session_id}"
         )
 
-    CurriculumCourse.objects.get_or_create(
-        curriculum=curriculum,
-        semester_number=sem_int,
-        course_id=course_id,
-    )
-    messages.success(request, "Course added.")
+    added = 0
+    for cid in course_ids:
+        obj, created = CurriculumCourse.objects.get_or_create(
+            curriculum=curriculum,
+            semester_number=sem_int,
+            course_id=cid,
+        )
+        if created:
+            added += 1
+
+    if added:
+        messages.success(request, f"Added {added} course(s).")
+    else:
+        messages.info(request, "No new courses were added (already present).")
 
     return redirect(
         f"{reverse('admin_curriculum_designer')}?program={curriculum.program_id}&session={curriculum.session_id}"

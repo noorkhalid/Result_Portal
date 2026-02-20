@@ -26,6 +26,9 @@
         {{ batch.department }} • {{ batch.program }} • {{ batch.session }} • Sem {{ batch.semester_number }} • {{ batch.exam_type.name }}
       </div>
       <div class="mt-1"><strong>Course:</strong> {{ course.code }} — {{ course.title }}</div>
+      <div class="mt-1 small text-muted">
+        <strong>Credit Hours:</strong> {{ course.credit_hours }} • <strong>Max Marks (auto):</strong> {{ course_max_marks }}
+      </div>
     </div>
     <div class="d-flex gap-2">
       <a href="{% url 'admin_batch_marks_select_course' batch.id %}" class="btn btn-outline-primary btn-sm">Change Course</a>
@@ -57,7 +60,6 @@
               <th>Sessional</th>
               <th>Mid Term</th>
               <th>Terminal</th>
-              <th>Max Marks</th>
             </tr>
           </thead>
           <tbody>
@@ -77,10 +79,6 @@
                 <td>
                   {{ form.terminal_marks }}
                   {% for e in form.terminal_marks.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
-                </td>
-                <td>
-                  {{ form.max_marks }}
-                  {% for e in form.max_marks.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
                 </td>
               </tr>
               {{ form.id }}

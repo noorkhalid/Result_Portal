@@ -112,8 +112,24 @@ class Course(models.Model):
     title = models.CharField(max_length=255)
     credit_hours = models.DecimalField(max_digits=4, decimal_places=1)
 
+    # University rule: max marks are derived from credit hours (20 marks per 1 CH)
+    # Stored for convenient reporting, but always kept in sync automatically.
+    max_marks = models.PositiveSmallIntegerField(default=0, editable=False)
+
+    def compute_max_marks(self) -> int:
+        """20 marks per 1 credit hour (e.g., 3.0 -> 60)."""
+        try:
+            return int(round(float(self.credit_hours) * 20))
+        except Exception:
+            return 0
+
+    def save(self, *args, **kwargs):
+        # Keep max_marks consistent with credit_hours.
+        self.max_marks = self.compute_max_marks()
+        return super().save(*args, **kwargs)
+
     def __str__(self):
-        return f"{self.code or 'NO-CODE'} - {self.title} ({self.credit_hours} CH)"
+        return f"{self.code or 'NO-CODE'} - {self.title} ({self.credit_hours} CH, {self.max_marks} marks)"
 
 
 # -----------------------------
