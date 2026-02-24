@@ -340,6 +340,29 @@ def batch_notifications(request, pk):
 
 
 @group_required("System Admin")
+def batch_notification_delete(request, pk, notification_id):
+    """Delete a single result notification belonging to a batch (POST-only)."""
+
+    batch = get_object_or_404(ResultBatch, pk=pk)
+
+    if request.method != "POST":
+        messages.error(request, "Invalid request method.")
+        return redirect("admin_batch_notifications", pk=batch.pk)
+
+    notif = get_object_or_404(ResultNotification, pk=notification_id, batch=batch)
+
+    # Safety: if you ever want to block deletion of declared notifications, uncomment:
+    # if notif.declaration_date:
+    #     messages.error(request, "Declared notifications cannot be deleted.")
+    #     return redirect("admin_batch_notifications", pk=batch.pk)
+
+    notif_no = notif.notification_no
+    notif.delete()
+    messages.success(request, f"Notification deleted: {notif_no}.")
+    return redirect("admin_batch_notifications", pk=batch.pk)
+
+
+@group_required("System Admin")
 def batch_recompute(request, pk):
     """Recompute GPA/CGPA for a result batch.
 

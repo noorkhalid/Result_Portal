@@ -5,7 +5,15 @@
 <head>
   <meta charset="utf-8">
   <style>
-    @page { size: A4 landscape; margin: 18mm 12mm; }
+    /* Page size + tight margins (WeasyPrint) */
+    @page {
+      size: A4 landscape;
+      margin: 10mm 12mm 14mm 12mm; /* top right bottom left */
+      @bottom-right {
+        content: "Page " counter(page) " of " counter(pages);
+        font-size: 10px;
+      }
+    }
 
     body{
       font-family: "Times New Roman", serif;
@@ -52,20 +60,20 @@
       font-size: 13px;
       display:flex;
       justify-content:space-between;
-      margin-top:10px;
+      margin-top:6px; /* tighter */
     }
 
     .boxline{
       text-align:center;
       font-size: 13px;
-      margin-top:10px;
+      margin-top:8px; /* tighter */
       line-height: 1.35;
     }
 
     .meta{
       width:100%;
       border-collapse:collapse;
-      margin-top:10px;
+      margin-top:8px; /* tighter */
       font-size: 12px;
     }
     .meta td{
@@ -77,7 +85,7 @@
     table.main{
       width:100%;
       border-collapse:collapse;
-      margin-top:10px;
+      margin-top:8px; /* tighter */
       table-layout: fixed;
       font-size: 12px;
     }
@@ -91,6 +99,20 @@
 
     table.main thead th{
       font-weight:700;
+    }
+
+    /* Avoid splitting any row across pages */
+    table.main tr,
+    table.main td,
+    table.main th{
+      break-inside: avoid;
+      page-break-inside: avoid;
+    }
+
+    /* Keep the last 6 rows + signature together */
+    tbody.tail{
+      break-inside: avoid;
+      page-break-inside: avoid;
     }
 
     .subj-title{
@@ -109,16 +131,32 @@
       padding-left:6px !important;
     }
 
+    /* Signature block (inside final table row) */
     .foot{
-      margin-top:34px; /* space for signatures/stamps */
+      margin-top:0;
       display:flex;
       justify-content:space-between;
+      width:100%;
       font-size: 12px;
       gap:24px;
     }
     .foot .sig{
       width:45%;
       text-align:center; /* stamp/signature text centered in each side */
+    }
+
+    .nowrap{ white-space: nowrap; }
+
+    /* Extra signing space (equivalent to ~2 rows) */
+    tr.sig-spacer td{
+      border:none !important;
+      padding:0 !important;
+      height: 28px;
+    }
+    tr.signature-row td{
+      border:none !important;
+      padding-top:0 !important;
+      padding-bottom:0 !important;
     }
   </style>
 </head>
@@ -195,49 +233,142 @@
       </tr>
     </thead>
 
-    <tbody>
-      {% for r in results %}
-        <tr>
-          <td>{{ r.enrollment.roll_no }}</td>
-          <td class="leftcell">{{ r.enrollment.student.registration_no }}</td>
-          <td class="leftcell">{{ r.enrollment.student.name }}</td>
-          <td class="leftcell">{{ r.enrollment.student.father_name }}</td>
+    {% if results|length > 3 %}
+      <tbody>
+        {% for r in main_rows %}
+          <tr>
+            <td>{{ r.enrollment.roll_no }}</td>
+            <td class="leftcell">{{ r.enrollment.student.registration_no }}</td>
+            <td class="leftcell">{{ r.enrollment.student.name }}</td>
+            <td class="leftcell">{{ r.enrollment.student.father_name }}</td>
 
-          {% with hs=hold_map|get_item:r.enrollment_id %}
-            {% if hs and hs != "none" %}
-              <td colspan="{{ rl_colspan }}" class="bold">
-                {% if hs == "dues" %}RL Dues{% elif hs == "documents" %}RL Documents{% else %}RL{% endif %}
-              </td>
-            {% else %}
-              {% for col in columns %}
-                <td>
-                  {% with row=grades_map|get_item:r.enrollment_id %}
-                    {{ row|get_item:col.course_id }}
-                  {% endwith %}
+            {% with hs=hold_map|get_item:r.enrollment_id %}
+              {% if hs and hs != "none" %}
+                <td colspan="{{ rl_colspan }}" class="bold">
+                  {% if hs == "dues" %}RL Dues{% elif hs == "documents" %}RL Documents{% else %}RL{% endif %}
                 </td>
-              {% endfor %}
+              {% else %}
+                {% for col in columns %}
+                  <td>
+                    {% with row=grades_map|get_item:r.enrollment_id %}
+                      {{ row|get_item:col.course_id }}
+                    {% endwith %}
+                  </td>
+                {% endfor %}
 
-              <td>{{ r.gpa }}</td>
-              {% if show_cgpa %}
-                <td>{{ r.cgpa }}</td>
+                <td>{{ r.gpa }}</td>
+                {% if show_cgpa %}
+                  <td>{{ r.cgpa }}</td>
+                {% endif %}
               {% endif %}
-            {% endif %}
-          {% endwith %}
-        </tr>
-      {% endfor %}
-    </tbody>
-  </table>
+            {% endwith %}
+          </tr>
+        {% endfor %}
+      </tbody>
 
-  <div class="foot">
-    <div class="sig">
-      <div class="bold">Assistant Controller of Examinations (Secrecy)</div>
-      <div class="bold">Gomal University, Dera Ismail Khan</div>
-    </div>
-    <div class="sig">
-      <div class="bold">Controller of Examinations</div>
-      <div class="bold">Gomal University, Dera Ismail Khan</div>
-    </div>
-  </div>
+      <tbody class="tail">
+        {% for r in tail_rows %}
+          <tr>
+            <td>{{ r.enrollment.roll_no }}</td>
+            <td class="leftcell">{{ r.enrollment.student.registration_no }}</td>
+            <td class="leftcell">{{ r.enrollment.student.name }}</td>
+            <td class="leftcell">{{ r.enrollment.student.father_name }}</td>
+
+            {% with hs=hold_map|get_item:r.enrollment_id %}
+              {% if hs and hs != "none" %}
+                <td colspan="{{ rl_colspan }}" class="bold">
+                  {% if hs == "dues" %}RL Dues{% elif hs == "documents" %}RL Documents{% else %}RL{% endif %}
+                </td>
+              {% else %}
+                {% for col in columns %}
+                  <td>
+                    {% with row=grades_map|get_item:r.enrollment_id %}
+                      {{ row|get_item:col.course_id }}
+                    {% endwith %}
+                  </td>
+                {% endfor %}
+
+                <td>{{ r.gpa }}</td>
+                {% if show_cgpa %}
+                  <td>{{ r.cgpa }}</td>
+                {% endif %}
+              {% endif %}
+            {% endwith %}
+          </tr>
+        {% endfor %}
+
+        <!-- Extra signing space (approx. two rows) -->
+        <tr class="sig-spacer"><td colspan="{{ total_colspan }}">&nbsp;</td></tr>
+        <tr class="sig-spacer"><td colspan="{{ total_colspan }}">&nbsp;</td></tr>
+
+        <tr class="signature-row">
+          <td colspan="{{ total_colspan }}">
+            <div class="foot">
+              <div class="sig">
+                <div class="bold nowrap">Assistant Controller of Examinations (Secrecy)</div>
+                <div class="bold nowrap">Gomal University, Dera Ismail Khan</div>
+              </div>
+              <div class="sig">
+                <div class="bold nowrap">Controller of Examinations</div>
+                <div class="bold nowrap">Gomal University, Dera Ismail Khan</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    {% else %}
+      <tbody class="tail">
+        {% for r in results %}
+          <tr>
+            <td>{{ r.enrollment.roll_no }}</td>
+            <td class="leftcell">{{ r.enrollment.student.registration_no }}</td>
+            <td class="leftcell">{{ r.enrollment.student.name }}</td>
+            <td class="leftcell">{{ r.enrollment.student.father_name }}</td>
+
+            {% with hs=hold_map|get_item:r.enrollment_id %}
+              {% if hs and hs != "none" %}
+                <td colspan="{{ rl_colspan }}" class="bold">
+                  {% if hs == "dues" %}RL Dues{% elif hs == "documents" %}RL Documents{% else %}RL{% endif %}
+                </td>
+              {% else %}
+                {% for col in columns %}
+                  <td>
+                    {% with row=grades_map|get_item:r.enrollment_id %}
+                      {{ row|get_item:col.course_id }}
+                    {% endwith %}
+                  </td>
+                {% endfor %}
+
+                <td>{{ r.gpa }}</td>
+                {% if show_cgpa %}
+                  <td>{{ r.cgpa }}</td>
+                {% endif %}
+              {% endif %}
+            {% endwith %}
+          </tr>
+        {% endfor %}
+
+        <!-- Extra signing space (approx. two rows) -->
+        <tr class="sig-spacer"><td colspan="{{ total_colspan }}">&nbsp;</td></tr>
+        <tr class="sig-spacer"><td colspan="{{ total_colspan }}">&nbsp;</td></tr>
+
+        <tr class="signature-row">
+          <td colspan="{{ total_colspan }}">
+            <div class="foot">
+              <div class="sig">
+                <div class="bold nowrap">Assistant Controller of Examinations (Secrecy)</div>
+                <div class="bold nowrap">Gomal University, Dera Ismail Khan</div>
+              </div>
+              <div class="sig">
+                <div class="bold nowrap">Controller of Examinations</div>
+                <div class="bold nowrap">Gomal University, Dera Ismail Khan</div>
+              </div>
+            </div>
+          </td>
+        </tr>
+      </tbody>
+    {% endif %}
+  </table>
 
 </body>
 </html>

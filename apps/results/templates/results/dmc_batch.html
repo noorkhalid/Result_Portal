@@ -164,7 +164,7 @@
     }
     table.summary td.value{
       width:45%;
-      text-align:left; /* keep value close to label */
+      text-align:center; /* center value in footer */
       font-weight:700;
       padding-left:8px;
     }
@@ -273,7 +273,7 @@
           </tr>
           <tr>
             <td>Date of Result</td>
-            <td class="value">{{ batch.notification_date|date:"d/m/Y" }}</td>
+            <td class="value">{{ result_date|date:"d/m/Y" }}</td>
           </tr>
         </table>
 

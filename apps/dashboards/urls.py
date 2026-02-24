@@ -78,6 +78,7 @@ from dashboards.views.result_batch_views import (
     batch_detail,
     batch_students_holds,
     batch_notifications,
+    batch_notification_delete,
     batch_recompute,
 )
 
@@ -229,6 +230,12 @@ urlpatterns = [
         "admin-dashboard/result-batches/<int:pk>/notifications/",
         batch_notifications,
         name="admin_batch_notifications",
+    ),
+
+    path(
+        "admin-dashboard/result-batches/<int:pk>/notifications/<int:notification_id>/delete/",
+        batch_notification_delete,
+        name="admin_batch_notification_delete",
     ),
 
     path(

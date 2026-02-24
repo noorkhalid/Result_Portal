@@ -247,17 +247,28 @@ def result_notification_pdf(request, batch_id):
     # 3) Student rows (one per enrollment)
     #    FIXED: works for BD1524-10 and 25-01
     # -------------------------------------------------
-    results = (
+    results_qs = (
         SemesterResult.objects.filter(batch=batch)
         .select_related("enrollment", "enrollment__student")
         .annotate(roll_suffix=_roll_suffix_annotation())
         .order_by("roll_suffix", "enrollment__roll_no")
     )
 
+    # Convert to list for stable splitting/iteration in the PDF template.
+    results_list = list(results_qs)
+
+    TAIL_ROWS = 3
+    if len(results_list) > TAIL_ROWS:
+        main_rows = results_list[:-TAIL_ROWS]
+        tail_rows = results_list[-TAIL_ROWS:]
+    else:
+        main_rows = []
+        tail_rows = results_list
+
     # -------------------------------------------------
     # 3.1) Hold map for RL masking (per student)
     # -------------------------------------------------
-    hold_map = {sr.enrollment_id: (sr.hold_status or SemesterResult.HOLD_NONE) for sr in results}
+    hold_map = {sr.enrollment_id: (sr.hold_status or SemesterResult.HOLD_NONE) for sr in results_list}
 
     # -------------------------------------------------
     # 4) grades_map[enrollment_id][course_id] = letter_grade
@@ -284,6 +295,7 @@ def result_notification_pdf(request, batch_id):
 
     # When RL is used, merge marks area + GPA/CGPA into one cell
     rl_colspan = len(columns) + 1 + (1 if show_cgpa else 0)
+    total_colspan = 4 + len(columns) + 1 + (1 if show_cgpa else 0)
 
     # -------------------------------------------------
     # 6) Result type label for header
@@ -295,11 +307,14 @@ def result_notification_pdf(request, batch_id):
         {
             "batch": batch,
             "notification": None,
-            "results": results,
+            "results": results_list,
+            "main_rows": main_rows,
+            "tail_rows": tail_rows,
             "columns": columns,
             "grades_map": grades_map,
             "hold_map": hold_map,
             "rl_colspan": rl_colspan,
+            "total_colspan": total_colspan,
             "session_display": session_display,
             "show_cgpa": show_cgpa,
             "result_type_label": result_type_label,
@@ -383,16 +398,32 @@ def result_notification_by_id_pdf(request, notification_id):
 
     # Student rows limited to this notification
     sr_ids = list(notification.items.values_list("semester_result_id", flat=True))
-    results = (
+    # IMPORTANT: The PDF template needs reliable slicing of the last N rows.
+    # Django QuerySets do not support negative slicing (e.g. qs[:-6]) reliably,
+    # so we convert the queryset to a list here.
+    results_qs = (
         SemesterResult.objects.filter(id__in=sr_ids)
         .select_related("enrollment", "enrollment__student")
         .annotate(roll_suffix=_roll_suffix_annotation())
         .order_by("roll_suffix", "enrollment__roll_no")
     )
+    results_list = list(results_qs)
+
+    # Split rows so the last N rows can be grouped with the signature block.
+    # NOTE: This grouping only affects pagination when there isn't enough space;
+    # otherwise the tail stays on the same page.
+    TAIL_ROWS = 3
+    if len(results_list) > TAIL_ROWS:
+        main_rows = results_list[:-TAIL_ROWS]
+        tail_rows = results_list[-TAIL_ROWS:]
+    else:
+        main_rows = []
+        tail_rows = results_list
 
     # grades_map
     grades_map = defaultdict(dict)
-    cr_qs = CourseResult.objects.filter(batch=batch, enrollment_id__in=results.values_list("enrollment_id", flat=True)).select_related("enrollment", "course")
+    enrollment_ids = [r.enrollment_id for r in results_list]
+    cr_qs = CourseResult.objects.filter(batch=batch, enrollment_id__in=enrollment_ids).select_related("enrollment", "course")
     for cr in cr_qs:
         grades_map[cr.enrollment_id][cr.course_id] = (cr.letter_grade or "")
 
@@ -408,6 +439,7 @@ def result_notification_by_id_pdf(request, notification_id):
         sem_no = 0
     show_cgpa = sem_no != 1
     rl_colspan = len(columns) + 1 + (1 if show_cgpa else 0)
+    total_colspan = 4 + len(columns) + 1 + (1 if show_cgpa else 0)
     result_type_label = getattr(batch.exam_type, "name", "") or ""
 
     html = render_to_string(
@@ -415,11 +447,14 @@ def result_notification_by_id_pdf(request, notification_id):
         {
             "batch": batch,
             "notification": notification,
-            "results": results,
+            "results": results_list,
+            "main_rows": main_rows,
+            "tail_rows": tail_rows,
             "columns": columns,
             "grades_map": grades_map,
             "hold_map": hold_map,
             "rl_colspan": rl_colspan,
+            "total_colspan": total_colspan,
             "session_display": session_display,
             "show_cgpa": show_cgpa,
             "result_type_label": result_type_label,
@@ -472,11 +507,17 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
 
     course_rows = course_rows[:10]
 
+    # Date of Result on DMC should show the FIRST date the result was notified.
+    # If the result is later re-notified, that date may be for declaration purposes only.
+    first_notification = batch.notifications.order_by("notification_date", "id").first()
+    result_date = first_notification.notification_date if first_notification else getattr(batch, "notification_date", None)
+
     html = render_to_string(
         "results/dmc_batch.html",
         {
             "batch": batch,
             "session_display": batch.session.display_for_program(batch.program),
+            "result_date": result_date,
             "dmcs": [
                 {
                     "enrollment": sem_res.enrollment,
@@ -553,11 +594,16 @@ def dmc_batch_pdf(request, batch_id):
             }
         )
 
+    # Date of Result on DMC should show the FIRST date the result was notified.
+    first_notification = batch.notifications.order_by("notification_date", "id").first()
+    result_date = first_notification.notification_date if first_notification else getattr(batch, "notification_date", None)
+
     html = render_to_string(
         "results/dmc_batch.html",
         {
             "batch": batch,
             "session_display": batch.session.display_for_program(batch.program),
+            "result_date": result_date,
             "dmcs": dmcs,
         },
         request=request,
@@ -741,7 +787,12 @@ def transcript_pdf(request, enrollment_id: int):
             final_cgpa,
             prefer_a_plus_at_4=prefer_a_plus_at_4,
         )
-    declaration_date = semesters[-1]["batch"].notification_date if semesters else None
+    # Transcript should show the FIRST date the final result was notified (not a later re-notification).
+    declaration_date = None
+    if semesters:
+        final_batch = semesters[-1]["batch"]
+        first_notification = final_batch.notifications.order_by("notification_date", "id").first()
+        declaration_date = first_notification.notification_date if first_notification else getattr(final_batch, "notification_date", None)
 
     layout_mode = "single" if max_sem <= 3 else "double"
     semester_pairs = []
@@ -802,6 +853,8 @@ def transcript_batch_pdf(request, batch_id: int):
 
     items = []
     layout_mode = "single" if max_sem <= 3 else "double"
+    # Needed for PDF letter grade display (e.g., show 'F' instead of fail letters like 'D')
+    fail_letters = _fail_letter_set()
 
     for sr in results:
         enrollment = sr.enrollment
@@ -917,7 +970,12 @@ def transcript_batch_pdf(request, batch_id: int):
                 final_cgpa,
                 prefer_a_plus_at_4=prefer_a_plus_at_4,
             )
-        declaration_date = semesters[-1]["batch"].notification_date if semesters else None
+        # Transcript should show the FIRST date the final result was notified.
+        declaration_date = None
+        if semesters:
+            final_batch = semesters[-1]["batch"]
+            first_notification = final_batch.notifications.order_by("notification_date", "id").first()
+            declaration_date = first_notification.notification_date if first_notification else getattr(final_batch, "notification_date", None)
 
         semester_pairs = []
         if layout_mode == "double":
