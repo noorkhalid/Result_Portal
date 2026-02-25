@@ -94,11 +94,14 @@
       padding:6px 5px;
       text-align:center;
       vertical-align:middle;
-      word-wrap: break-word;
+      /* Never let header/body text visually spill into adjacent cells */
+      overflow: hidden;
     }
 
     table.main thead th{
       font-weight:700;
+      /* Slightly tighter header spacing to fit long titles cleanly */
+      padding:4px 3px;
     }
 
     /* Avoid splitting any row across pages */
@@ -116,9 +119,17 @@
     }
 
     .subj-title{
-      font-size: 11px;
+      font-size: 10px;
       line-height: 1.15;
       font-weight:700;
+      display:block;
+      width:100%;
+      /* Keep words intact (no mid-word breaks in course titles) */
+      word-break: keep-all;
+      overflow-wrap: normal;
+      word-wrap: normal;
+      hyphens: none;
+      white-space: normal;
     }
     .subj-ch{
       font-size: 10px;

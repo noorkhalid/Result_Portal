@@ -157,16 +157,19 @@
 {% if is_system_admin %}
 <script>
   (function () {
-    const KEY = "rp_sidebar_open_section";
     const toggles = document.querySelectorAll(".sidebar-section-toggle[data-target]");
     const groups = document.querySelectorAll(".sidebar-group[data-group]");
 
-    function closeAll() {
-      toggles.forEach(t => { t.classList.remove("is-open"); t.setAttribute("aria-expanded", "false"); });
-      groups.forEach(g => g.classList.remove("is-open"));
+    function setClosed(name) {
+      const t = document.querySelector(`.sidebar-section-toggle[data-target='${name}']`);
+      const g = document.querySelector(`.sidebar-group[data-group='${name}']`);
+      if (!t || !g) return;
+      t.classList.remove("is-open");
+      t.setAttribute("aria-expanded", "false");
+      g.classList.remove("is-open");
     }
 
-    function openSection(name) {
+    function setOpen(name) {
       const t = document.querySelector(`.sidebar-section-toggle[data-target='${name}']`);
       const g = document.querySelector(`.sidebar-group[data-group='${name}']`);
       if (!t || !g) return;
@@ -175,36 +178,29 @@
       g.classList.add("is-open");
     }
 
-    // Decide initial open section: active link -> stored -> first
-    let initial = null;
+    function closeAll() {
+      toggles.forEach(btn => setClosed(btn.getAttribute("data-target")));
+    }
+
+    // Collapsed by default.
+    // Auto-expand the group that contains the active page link (if any).
     const activeLink = document.querySelector(".sidebar-item.active");
+    closeAll();
     if (activeLink) {
       const group = activeLink.closest(".sidebar-group");
-      initial = group ? group.getAttribute("data-group") : null;
+      const name = group ? group.getAttribute("data-group") : null;
+      if (name) setOpen(name);
     }
-
-    if (!initial) {
-      try { initial = localStorage.getItem(KEY); } catch (e) {}
-    }
-
-    if (!initial && toggles.length) {
-      initial = toggles[0].getAttribute("data-target");
-    }
-
-    closeAll();
-    if (initial) openSection(initial);
 
     toggles.forEach(btn => {
       btn.addEventListener("click", function () {
         const name = btn.getAttribute("data-target");
         const isOpen = btn.classList.contains("is-open");
-        closeAll();
-        if (!isOpen) {
-          openSection(name);
-          try { localStorage.setItem(KEY, name); } catch (e) {}
-        } else {
-          try { localStorage.removeItem(KEY); } catch (e) {}
-        }
+        // Multi-expand behavior:
+        // - does NOT collapse other open groups
+        // - toggles only the clicked group
+        if (isOpen) setClosed(name);
+        else setOpen(name);
       });
     });
   })();
