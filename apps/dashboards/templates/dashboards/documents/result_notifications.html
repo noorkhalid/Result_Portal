@@ -9,100 +9,77 @@
   </div>
 </div>
 
-<div class="card">
-  <div class="filter-card-header d-flex align-items-center justify-content-between">
-    <div class="filter-card-title">Filters</div>
-    <a href="." class="btn btn-sm btn-outline-secondary">Reset</a>
-  </div>
-
-  <div class="card-body">
-    <div class="filter-inner mx-auto">
-      <form method="get">
-
-        <div class="filter-row row align-items-center">
-          <label class="col-12 col-md-3 col-form-label filter-label">Department</label>
-          <div class="col-12 col-md-9">
-            <select name="department" class="form-select" onchange="clearAndSubmit(this.form, ['program','session','semester','batch']);">
-              <option value="">Select Department</option>
-              {% for d in departments %}
-                <option value="{{ d.id }}" {% if d.id|stringformat:"s" == dept_id %}selected{% endif %}>{{ d.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </div>
-
-        <div class="filter-row row align-items-center">
-          <label class="col-12 col-md-3 col-form-label filter-label">Program</label>
-          <div class="col-12 col-md-9">
-            <select name="program" class="form-select" onchange="clearAndSubmit(this.form, ['session','semester','batch']);">
-              <option value="">Select Program</option>
-              {% for p in programs %}
-                <option value="{{ p.id }}" {% if p.id|stringformat:"s" == program_id %}selected{% endif %}>{{ p.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </div>
-
-        <div class="filter-row row align-items-center">
-          <label class="col-12 col-md-3 col-form-label filter-label">Session</label>
-          <div class="col-12 col-md-9">
-            <select name="session" class="form-select" onchange="clearAndSubmit(this.form, ['semester','batch']);">
-              <option value="">Select Session</option>
-              {% for s in sessions %}
-                <option value="{{ s.id }}" {% if s.id|stringformat:"s" == session_id %}selected{% endif %}>{{ s.start_year }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </div>
-
-        <div class="filter-row row align-items-center">
-          <label class="col-12 col-md-3 col-form-label filter-label">Semester</label>
-          <div class="col-12 col-md-9">
-            <select name="semester" class="form-select" onchange="clearAndSubmit(this.form, ['batch']);">
-              <option value="">Select Semester</option>
-              {% for num in semesters %}
-                <option value="{{ num }}" {% if num|stringformat:"s" == semester_no %}selected{% endif %}>{{ num }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </div>
-
-        <div class="filter-row row align-items-center">
-          <label class="col-12 col-md-3 col-form-label filter-label">Exam Type</label>
-          <div class="col-12 col-md-9">
-            <select name="exam_type" class="form-select" onchange="clearAndSubmit(this.form, ['batch']);">
-              <option value="">Select Type</option>
-              {% for t in exam_types %}
-                <option value="{{ t.id }}" {% if exam_type_id and t.id|stringformat:"s" == exam_type_id %}selected{% endif %}>{{ t.name }}</option>
-              {% endfor %}
-            </select>
-          </div>
-        </div>
-
-        <div class="filter-row row align-items-center">
-          <label class="col-12 col-md-3 col-form-label filter-label">Result Batch</label>
-          <div class="col-12 col-md-9">
-            <select name="batch" class="form-select">
-              <option value="">Select Batch</option>
-              {% for b in batches %}
-                <option value="{{ b.id }}" {% if b.id|stringformat:"s" == batch_id %}selected{% endif %}>
-                  {{ b.program.name }} | {{ b.session.start_year }} | Sem {{ b.semester_number }} | {{ b.exam_type.name }}
-                </option>
-              {% endfor %}
-            </select>
-            {% if program_id and session_id and semester_no and not batches %}
-              <div class="text-muted small mt-1">No result batches found for selected filters.</div>
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="filter-actions d-flex justify-content-end">
-          <button name="action" value="print" class="btn btn-primary px-4">Generate PDF</button>
-        </div>
-
-      </form>
+<div class="card p-3">
+  <form method="get" class="row g-2">
+    <div class="col-md-4">
+      <label class="form-label small text-muted mb-1">Department</label>
+      <select name="department" class="form-select" onchange="clearAndSubmit(this.form, ['program','session','semester','batch']);">
+        <option value="">Select Department</option>
+        {% for d in departments %}
+          <option value="{{ d.id }}" {% if d.id|stringformat:"s" == dept_id %}selected{% endif %}>{{ d.name }}</option>
+        {% endfor %}
+      </select>
     </div>
-  </div>
+
+    <div class="col-md-4">
+      <label class="form-label small text-muted mb-1">Program</label>
+      <select name="program" class="form-select" onchange="clearAndSubmit(this.form, ['session','semester','batch']);">
+        <option value="">Select Program</option>
+        {% for p in programs %}
+          <option value="{{ p.id }}" {% if p.id|stringformat:"s" == program_id %}selected{% endif %}>{{ p.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label small text-muted mb-1">Session</label>
+      <select name="session" class="form-select" onchange="clearAndSubmit(this.form, ['semester','batch']);">
+        <option value="">Select Session</option>
+        {% for s in sessions %}
+          <option value="{{ s.id }}" {% if s.id|stringformat:"s" == session_id %}selected{% endif %}>{{ s.start_year }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-2">
+      <label class="form-label small text-muted mb-1">Semester</label>
+      <select name="semester" class="form-select" onchange="clearAndSubmit(this.form, ['batch']);">
+        <option value="">Select Semester</option>
+        {% for num in semesters %}
+          <option value="{{ num }}" {% if num|stringformat:"s" == semester_no %}selected{% endif %}>{{ num }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-3">
+      <label class="form-label small text-muted mb-1">Exam Type</label>
+      <select name="exam_type" class="form-select" onchange="clearAndSubmit(this.form, ['batch']);">
+        <option value="">Select Type</option>
+        {% for t in exam_types %}
+          <option value="{{ t.id }}" {% if exam_type_id and t.id|stringformat:"s" == exam_type_id %}selected{% endif %}>{{ t.name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="col-md-6">
+      <label class="form-label small text-muted mb-1">Result Batch</label>
+      <select name="batch" class="form-select">
+        <option value="">Select Batch</option>
+        {% for b in batches %}
+          <option value="{{ b.id }}" {% if b.id|stringformat:"s" == batch_id %}selected{% endif %}>
+            {{ b.program.name }} | {{ b.session.start_year }} | Sem {{ b.semester_number }} | {{ b.exam_type.name }}
+          </option>
+        {% endfor %}
+      </select>
+      {% if program_id and session_id and semester_no and not batches %}
+        <div class="text-muted small mt-1">No result batches found for selected filters.</div>
+      {% endif %}
+    </div>
+
+    <div class="col-md-3 align-self-end">
+      <button name="action" value="print" class="btn btn-primary w-100">Generate PDF</button>
+    </div>
+  </form>
 </div>
 
 <script>

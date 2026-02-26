@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 from datetime import datetime
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
 
 import openpyxl
 from django.conf import settings
@@ -139,6 +140,41 @@ def _to_float_or_zero(v):
     return float(v)
 
 
+def _to_int_or_none(v):
+    """Safe int parsing for Excel cells."""
+    if v is None:
+        return None
+    if isinstance(v, str):
+        v = v.strip()
+        if v == "":
+            return None
+    try:
+        # Excel sometimes provides numeric strings or floats.
+        return int(float(v))
+    except Exception:
+        return None
+
+
+def _to_decimal_2_or_none(v):
+    """Parse to Decimal with exactly 2 decimal places, or None if blank/invalid."""
+    if v is None:
+        return None
+    if isinstance(v, str):
+        v = v.strip()
+        if v == "":
+            return None
+    try:
+        d = Decimal(str(v))
+    except (InvalidOperation, ValueError, TypeError):
+        return None
+    return d.quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
+
+
+def _to_decimal_2_or_zero(v):
+    d = _to_decimal_2_or_none(v)
+    return d if d is not None else Decimal("0.00")
+
+
 @group_required("Data Entry")
 @transaction.atomic
 def data_entry_import_marks(request):
@@ -215,11 +251,15 @@ def data_entry_import_marks(request):
             try:
                 registration_no = str(row[reg_i]).strip()
                 program_name = str(row[prog_i]).strip()
-                session_year = int(row[sess_i])
-                semester_number = int(row[sem_i])
+                session_year = _to_int_or_none(row[sess_i])
+                semester_number = _to_int_or_none(row[sem_i])
 
-                terminal = row[ter_i]
-                max_marks = row[max_i]
+                terminal = _to_decimal_2_or_none(row[ter_i])
+                max_marks = _to_decimal_2_or_none(row[max_i])
+
+                if session_year is None or semester_number is None:
+                    errors.append(f"Row {row_num}: invalid session/semester")
+                    continue
 
                 if terminal is None or max_marks is None:
                     errors.append(f"Row {row_num}: missing marks")
@@ -280,15 +320,15 @@ def data_entry_import_marks(request):
                     errors.append(f"Row {row_num}: batch locked")
                     continue
 
-                total = (
-                    _to_float_or_zero(row[ses_i] if ses_i is not None else 0)
-                    + _to_float_or_zero(row[mid_i] if mid_i is not None else 0)
-                    + _to_float_or_zero(terminal)
-                )
+                ses_val = _to_decimal_2_or_none(row[ses_i] if ses_i is not None else None)
+                mid_val = _to_decimal_2_or_none(row[mid_i] if mid_i is not None else None)
+                ter_val = terminal
 
-                ses_val = _to_float_or_zero(row[ses_i] if ses_i is not None else None)
-                mid_val = _to_float_or_zero(row[mid_i] if mid_i is not None else None)
-                ter_val = _to_float_or_zero(terminal)
+                total = (
+                    (ses_val or Decimal("0.00"))
+                    + (mid_val or Decimal("0.00"))
+                    + (ter_val or Decimal("0.00"))
+                ).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
                 cr, created_flag = CourseResult.objects.get_or_create(
                     batch=batch,
@@ -299,7 +339,7 @@ def data_entry_import_marks(request):
                         "midterm_marks": mid_val,
                         "terminal_marks": ter_val,
                         "marks_obtained": total,
-                        "max_marks": float(max_marks),
+                        "max_marks": max_marks,
                     },
                 )
 
@@ -308,7 +348,7 @@ def data_entry_import_marks(request):
                     cr.midterm_marks = mid_val
                     cr.terminal_marks = ter_val
                     cr.marks_obtained = total
-                    cr.max_marks = float(max_marks)
+                    cr.max_marks = max_marks
                     cr.save(update_fields=[
                         "sessional_marks",
                         "midterm_marks",
