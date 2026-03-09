@@ -615,24 +615,54 @@ def dmc_batch_pdf(request, batch_id):
     return response
 
 
-def _program_max_semester(program_id: int) -> int:
-    """Authoritative max semester for a program (Program.total_semesters)."""
+def _program_total_semesters(program_id: int) -> int:
+    """Authoritative total semesters for a program (Program.total_semesters)."""
     program = Program.objects.filter(id=program_id).only("total_semesters").first()
     return int(program.total_semesters) if program else 0
 
 
-def _max_semester_for_program_session(program_id: int, session_id: int) -> int:
-    """Prefer Curriculum.total_semesters for a Program+Session; fallback to Program.total_semesters."""
-    cur = Curriculum.objects.filter(program_id=program_id, session_id=session_id).only("total_semesters").first()
+def _program_semester_start(program_id: int) -> int:
+    """Semester numbering start for a program (Program.semester_start)."""
+    program = Program.objects.filter(id=program_id).only("semester_start").first()
+    try:
+        return int(getattr(program, "semester_start", 1) or 1)
+    except Exception:
+        return 1
+
+
+def _semester_span_for_program_session(program_id: int, session_id: int) -> tuple[int, int, int]:
+    """Return (semester_start, semester_end, total_semesters) for Program+Session.
+
+    Prefers Curriculum values (session-specific), otherwise falls back to Program.
+    Supports programs where semester numbering doesn't start at 1 (e.g. BS 2 Years: 5..8).
+    """
+    cur = (
+        Curriculum.objects.filter(program_id=program_id, session_id=session_id)
+        .only("total_semesters", "semester_start")
+        .first()
+    )
+
     if cur:
-        return int(cur.total_semesters)
-    return _program_max_semester(program_id)
+        total = int(cur.total_semesters or 0)
+        start = int(getattr(cur, "semester_start", 1) or 1)
+    else:
+        total = _program_total_semesters(program_id)
+        start = _program_semester_start(program_id)
+
+    if total <= 0:
+        return (start or 1, 0, 0)
+
+    start = start or 1
+    end = start + total - 1
+    return (start, end, total)
 
 
 
-def _enrollment_is_completed(enrollment: Enrollment, max_sem: int) -> bool:
-    """Completed means: at least one SemesterResult exists for every semester 1..max_sem."""
-    if max_sem <= 0:
+def _enrollment_is_completed(
+    enrollment: Enrollment, sem_start: int, sem_end: int, total_semesters: int
+) -> bool:
+    """Completed means: at least one SemesterResult exists for every semester in sem_start..sem_end."""
+    if total_semesters <= 0 or sem_end <= 0:
         return False
 
     done = (
@@ -640,12 +670,13 @@ def _enrollment_is_completed(enrollment: Enrollment, max_sem: int) -> bool:
             enrollment=enrollment,
             batch__program_id=enrollment.program_id,
             batch__session_id=enrollment.session_id,
-            batch__semester_number__lte=max_sem,
+            batch__semester_number__gte=sem_start,
+            batch__semester_number__lte=sem_end,
         )
         .values_list("batch__semester_number", flat=True)
         .distinct()
     )
-    return len(list(done)) >= max_sem
+    return len(list(done)) >= int(total_semesters)
 
 
 @login_required
@@ -657,18 +688,21 @@ def transcript_pdf(request, enrollment_id: int):
         id=enrollment_id,
     )
 
-    # Phase 2.1: Prefer Curriculum.total_semesters (session-specific)
+    # Use semester span (supports programs where semester numbering doesn't start at 1)
     if getattr(enrollment, "curriculum_id", None) and getattr(enrollment, "curriculum", None):
-        max_sem = int(enrollment.curriculum.total_semesters)
+        total = int(enrollment.curriculum.total_semesters or 0)
+        sem_start = int(getattr(enrollment.curriculum, "semester_start", 1) or 1)
+        sem_end = (sem_start + total - 1) if total > 0 else 0
     else:
-        max_sem = _max_semester_for_program_session(enrollment.program_id, enrollment.session_id)
-    if max_sem <= 0:
+        sem_start, sem_end, total = _semester_span_for_program_session(enrollment.program_id, enrollment.session_id)
+
+    if total <= 0 or sem_end <= 0:
         return HttpResponse(
             "Transcript is not available because the program duration (total semesters) is not configured.",
             status=400,
         )
 
-    if not _enrollment_is_completed(enrollment, max_sem):
+    if not _enrollment_is_completed(enrollment, sem_start, sem_end, total):
         return HttpResponse(
             "Transcript is not available because all semester results are not completed yet.",
             status=403,
@@ -679,7 +713,8 @@ def transcript_pdf(request, enrollment_id: int):
             enrollment=enrollment,
             batch__program_id=enrollment.program_id,
             batch__session_id=enrollment.session_id,
-            batch__semester_number__lte=max_sem,
+            batch__semester_number__gte=sem_start,
+            batch__semester_number__lte=sem_end,
         )
         .select_related("batch")
         .order_by("batch__semester_number", "-batch__created_at")
@@ -794,12 +829,13 @@ def transcript_pdf(request, enrollment_id: int):
         first_notification = final_batch.notifications.order_by("notification_date", "id").first()
         declaration_date = first_notification.notification_date if first_notification else getattr(final_batch, "notification_date", None)
 
-    layout_mode = "single" if max_sem <= 3 else "double"
+    # Layout depends on number of semesters in the program (not the absolute semester number)
+    layout_mode = "single" if total <= 3 else "double"
     semester_pairs = []
     if layout_mode == "double":
         sem_map = {s["semester_no"]: s for s in semesters}
-        i = 1
-        while i <= max_sem:
+        i = sem_start
+        while i <= sem_end:
             semester_pairs.append({"left": sem_map.get(i), "right": sem_map.get(i + 1)})
             i += 2
 
@@ -811,7 +847,9 @@ def transcript_pdf(request, enrollment_id: int):
             "program": enrollment.program,
             "session": enrollment.session,
             "session_display": enrollment.session.display_for_program(enrollment.program),
-            "max_sem": max_sem,
+            "max_sem": sem_end,
+            "sem_start": sem_start,
+            "total_semesters": total,
             "semesters": semesters,
             "layout_mode": layout_mode,
             "semester_pairs": semester_pairs,
@@ -836,12 +874,15 @@ def transcript_pdf(request, enrollment_id: int):
 def transcript_batch_pdf(request, batch_id: int):
     batch = get_object_or_404(ResultBatch.objects.select_related("curriculum"), id=batch_id)
 
-    # Phase 2.1: Prefer Curriculum.total_semesters (session-specific)
+    # Use semester span (supports programs where semester numbering doesn't start at 1)
     if getattr(batch, "curriculum_id", None) and getattr(batch, "curriculum", None):
-        max_sem = int(batch.curriculum.total_semesters)
+        total = int(batch.curriculum.total_semesters or 0)
+        sem_start = int(getattr(batch.curriculum, "semester_start", 1) or 1)
+        sem_end = (sem_start + total - 1) if total > 0 else 0
     else:
-        max_sem = _max_semester_for_program_session(batch.program_id, batch.session_id)
-    if not max_sem or int(batch.semester_number) != int(max_sem):
+        sem_start, sem_end, total = _semester_span_for_program_session(batch.program_id, batch.session_id)
+
+    if not total or int(batch.semester_number) != int(sem_end):
         return HttpResponse("Transcripts are available only for the final semester batch.", status=403)
 
     results = (
@@ -852,13 +893,14 @@ def transcript_batch_pdf(request, batch_id: int):
     )
 
     items = []
-    layout_mode = "single" if max_sem <= 3 else "double"
+    # Layout depends on number of semesters in the program (not the absolute semester number)
+    layout_mode = "single" if total <= 3 else "double"
     # Needed for PDF letter grade display (e.g., show 'F' instead of fail letters like 'D')
     fail_letters = _fail_letter_set()
 
     for sr in results:
         enrollment = sr.enrollment
-        if not _enrollment_is_completed(enrollment, max_sem):
+        if not _enrollment_is_completed(enrollment, sem_start, sem_end, total):
             continue
 
         qs = (
@@ -866,7 +908,8 @@ def transcript_batch_pdf(request, batch_id: int):
                 enrollment=enrollment,
                 batch__program_id=enrollment.program_id,
                 batch__session_id=enrollment.session_id,
-                batch__semester_number__lte=max_sem,
+                batch__semester_number__gte=sem_start,
+                batch__semester_number__lte=sem_end,
             )
             .select_related("batch")
             .order_by("batch__semester_number", "-batch__created_at")
@@ -980,8 +1023,8 @@ def transcript_batch_pdf(request, batch_id: int):
         semester_pairs = []
         if layout_mode == "double":
             sem_map = {s["semester_no"]: s for s in semesters}
-            i = 1
-            while i <= max_sem:
+            i = sem_start
+            while i <= sem_end:
                 semester_pairs.append({"left": sem_map.get(i), "right": sem_map.get(i + 1)})
                 i += 2
 
@@ -992,7 +1035,9 @@ def transcript_batch_pdf(request, batch_id: int):
                 "program": enrollment.program,
                 "session": enrollment.session,
                 "session_display": enrollment.session.display_for_program(enrollment.program),
-                "max_sem": max_sem,
+                "max_sem": sem_end,
+                "sem_start": sem_start,
+                "total_semesters": total,
                 "semesters": semesters,
                 "layout_mode": layout_mode,
                 "semester_pairs": semester_pairs,

@@ -82,7 +82,7 @@ def find_grade_by_gpa(gpa: Decimal, *, prefer_a_plus_at_4: bool | None = None):
             )
 
     # Representative rows per grade_point (prefer higher percentage rows)
-    reps = {}
+    reps: dict[Decimal, GradeScale] = {}
     for row in GradeScale.objects.all().order_by("-grade_point", "-min_percentage"):
         gp = Decimal(str(row.grade_point))
         reps.setdefault(gp, row)
@@ -126,8 +126,8 @@ def recompute_batch(batch: ResultBatch):
     2) Compute SemesterResult:
         - semester_total_obtained, semester_total_max
         - semester_percentage
-        - semester letter_grade + remarks (from GradeScale using semester_percentage)
-        - GPA (weighted by credit hours)
+        - semester GPA (weighted by credit hours)
+        - semester letter_grade + remarks (from GPA ALWAYS)
         - subjects_to_reappear (if any course has grade_point == 0 OR scale is_fail)
         - CGPA (weighted across all semesters in same program+session)
     """
@@ -166,7 +166,7 @@ def recompute_batch(batch: ResultBatch):
         sem_obt = Decimal("0.00")
         sem_max = Decimal("0.00")
 
-        fails = []
+        fails: list[str] = []
 
         for cr in qs:
             ch = Decimal(str(cr.course.credit_hours))
@@ -185,8 +185,7 @@ def recompute_batch(batch: ResultBatch):
         if total_ch > 0:
             gpa = q2(total_points / total_ch)
 
-        # Semester % is still stored for reporting, but grading/remarks are NOT derived
-        # from semester percentage anymore.
+        # Semester % is still stored for reporting
         sem_pct = calc_percentage(sem_obt, sem_max)
 
         subj_reappear = ", ".join(fails)
@@ -214,29 +213,16 @@ def recompute_batch(batch: ResultBatch):
 
         # -----------------------------
         # 4) Semester letter grade + remarks
-        #    - Per-course: based on course percentage (already done above)
-        #    - Per-semester: based on GPA
-        #    - Final semester: based on CGPA
+        #    ALWAYS based on THIS semester GPA (Transcript semester footer)
         # -----------------------------
-        try:
-            total_semesters = int(getattr(getattr(batch, "curriculum", None), "total_semesters", 0) or 0)
-        except Exception:
-            total_semesters = 0
+        basis_value = gpa
 
-        is_final_semester = bool(total_semesters) and int(batch.semester_number) == int(total_semesters)
-        basis_value = cgpa if is_final_semester else gpa
-
-        # Special rule for 4.00 GPA/CGPA:
-        # - If ALL relevant courses are A+ => semester grade is A+ (Outstanding)
+        # Special rule for 4.00 GPA:
+        # - If ALL courses in THIS semester are A+ => semester grade is A+ (Outstanding)
         # - If even one course is A or below => semester grade is A (Excellent)
         prefer_a_plus_at_4 = None
         if not fails and q2(basis_value) == Decimal("4.00"):
-            if is_final_semester:
-                # CGPA case: check ALL semesters' courses
-                prefer_a_plus_at_4 = not all_results.exclude(letter_grade="A+").exists()
-            else:
-                # GPA case: check THIS semester's courses
-                prefer_a_plus_at_4 = not qs.exclude(letter_grade="A+").exists()
+            prefer_a_plus_at_4 = not qs.exclude(letter_grade="A+").exists()
 
         sem_letter, _, sem_remark, _ = find_grade_by_gpa(
             basis_value,

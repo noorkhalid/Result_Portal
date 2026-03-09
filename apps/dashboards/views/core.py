@@ -225,6 +225,7 @@ def data_entry_import_marks(request):
         sess_i = col("session")
         sem_i = col("semester")
         code_i = col("course_code", "code")
+        # course_title may exist in older templates; we intentionally ignore it for matching
         title_i = col("course_title", "title")
         # Accept common template header variants (older templates used different names)
         ses_i = col("sessional_marks", "sessional", "sessiononal", "sessional_")
@@ -238,6 +239,7 @@ def data_entry_import_marks(request):
             "program": prog_i,
             "session": sess_i,
             "semester": sem_i,
+            "course_code": code_i,
             "terminal_marks": ter_i,
             "maxmarks": max_i,
         }
@@ -282,13 +284,18 @@ def data_entry_import_marks(request):
                     continue
 
                 course = None
+                course_code = None
                 if code_i is not None and row[code_i]:
-                    course = Course.objects.filter(code=str(row[code_i]).strip()).first()
-                if not course and title_i is not None and row[title_i]:
-                    course = Course.objects.filter(title=str(row[title_i]).strip()).first()
+                    course_code = str(row[code_i]).strip()
+                    course = Course.objects.filter(code=course_code).first()
+
+                if not course_code:
+                    errors.append(f"Row {row_num}: missing course_code")
+                    continue
 
                 if not course:
-                    errors.append(f"Row {row_num}: course not found")
+                    # If an older template includes course_title, ignore it (course_code is the only key)
+                    errors.append(f"Row {row_num}: course not found for code '{course_code}'")
                     continue
 
                 examtype_code = str(row[exam_i]).strip().lower() if exam_i is not None and row[exam_i] else "regular"
@@ -397,14 +404,13 @@ def data_entry_marks_template(request):
         "session",
         "semester",
         "course_code",
-        "course_title",
         "sessional_marks",
         "midterm_marks",
         "terminal_marks",
         "maxmarks",
         "examtype",
     ])
-    ws.append(["2021-ABC-001", "BS Computer Science", 2021, 1, "CS101", "Introduction to Computing", 10, 20, 50, 100, "Regular"])
+    ws.append(["2021-ABC-001", "BS Computer Science", 2021, 1, "CS101", 10, 20, 50, 100, "Regular"])
 
     resp = HttpResponse(content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     resp["Content-Disposition"] = 'attachment; filename="marks_template.xlsx"'

@@ -188,8 +188,75 @@ body.sidebar-collapsed .main-col {
 
 .sidebar-item.active,
 .sidebar-item.active:hover {
-  background: #0f4c5c;
-  color: #ffffff;
+  background: transparent;
+  color: #0f4c5c;
   font-weight: 700;
+}
+
+/* Active item indicator (left bar) */
+.sidebar-item.active {
+  position: relative;
+  padding-left: 14px;
+}
+
+.sidebar-item.active::before {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  border-radius: 2px;
+  background: #0f4c5c;
+}
+
+
+
+
+/* =========================================================
+   Filter panels (Documents: Result Notifications / DMC / Transcript)
+   ========================================================= */
+
+.filter-card-header {
+  background: #ffffff;
+  border-bottom: 1px solid #eef1f4;
+  border-top-left-radius: 14px;
+  border-top-right-radius: 14px;
+  padding: 14px 16px;
+}
+
+.filter-card-title {
+  font-weight: 800;
+  letter-spacing: .2px;
+  margin: 0;
+}
+
+.filter-inner {
+  max-width: 860px;
+}
+
+.filter-row {
+  padding: 8px 0;
+}
+
+.filter-row + .filter-row {
+  border-top: 1px dashed #eef1f4;
+}
+
+.filter-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: #4b5563;
+}
+
+.filter-actions {
+  padding-top: 14px;
+}
+
+/* Make the primary action full-width on small screens only */
+@media (max-width: 767.98px) {
+  .filter-actions .btn {
+    width: 100%;
+  }
 }
 

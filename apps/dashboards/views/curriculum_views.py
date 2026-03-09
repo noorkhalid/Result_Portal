@@ -54,10 +54,15 @@ def curriculum_designer(request):
         curriculum, _ = Curriculum.objects.get_or_create(
             program=selected_program,
             session=selected_session,
-            defaults={"total_semesters": selected_program.total_semesters},
+            defaults={
+                "total_semesters": selected_program.total_semesters,
+                "semester_start": getattr(selected_program, "semester_start", 1) or 1,
+            },
         )
 
         total = int(curriculum.total_semesters or 0)
+        sem_start = int(getattr(curriculum, "semester_start", 1) or 1)
+        sem_end = int(getattr(curriculum, "semester_end", 0) or 0)
 
         qs = (
             CurriculumCourse.objects.filter(curriculum=curriculum)
@@ -69,11 +74,11 @@ def curriculum_designer(request):
         for cc in qs:
             grouped[int(cc.semester_number)].append(cc)
 
-        for sem in range(1, total + 1):
+        for sem in range(sem_start, (sem_end or sem_start - 1) + 1):
             semesters[sem] = grouped.get(sem, [])
 
         # Courses available per semester (hide already-added courses from the dropdown)
-        for sem in range(1, total + 1):
+        for sem in range(sem_start, (sem_end or sem_start - 1) + 1):
             existing_ids = [cc.course_id for cc in semesters.get(sem, [])]
             available_courses[sem] = list(courses.exclude(id__in=existing_ids))
 
@@ -131,7 +136,9 @@ def curriculum_course_add(request):
         )
 
     total = int(curriculum.total_semesters or 0)
-    if sem_int < 1 or sem_int > total:
+    sem_start = int(getattr(curriculum, "semester_start", 1) or 1)
+    sem_end = int(getattr(curriculum, "semester_end", 0) or 0)
+    if sem_int < sem_start or sem_int > sem_end:
         messages.error(request, "Semester number is out of range for this curriculum.")
         return redirect(
             f"{reverse('admin_curriculum_designer')}?program={curriculum.program_id}&session={curriculum.session_id}"
@@ -200,7 +207,10 @@ def curriculum_copy_previous(request):
     curriculum, _ = Curriculum.objects.get_or_create(
         program=program,
         session=session,
-        defaults={"total_semesters": program.total_semesters},
+        defaults={
+            "total_semesters": program.total_semesters,
+            "semester_start": getattr(program, "semester_start", 1) or 1,
+        },
     )
 
     if CurriculumCourse.objects.filter(curriculum=curriculum).exists():

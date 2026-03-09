@@ -157,13 +157,22 @@
 {% if is_system_admin %}
 <script>
   (function () {
-    const KEY = "rp_sidebar_open_section";
+    const KEY = "rp_sidebar_open_sections";
     const toggles = document.querySelectorAll(".sidebar-section-toggle[data-target]");
     const groups = document.querySelectorAll(".sidebar-group[data-group]");
 
     function closeAll() {
       toggles.forEach(t => { t.classList.remove("is-open"); t.setAttribute("aria-expanded", "false"); });
       groups.forEach(g => g.classList.remove("is-open"));
+    }
+
+    function closeSection(name) {
+      const t = document.querySelector(`.sidebar-section-toggle[data-target='${name}']`);
+      const g = document.querySelector(`.sidebar-group[data-group='${name}']`);
+      if (!t || !g) return;
+      t.classList.remove("is-open");
+      t.setAttribute("aria-expanded", "false");
+      g.classList.remove("is-open");
     }
 
     function openSection(name) {
@@ -175,36 +184,42 @@
       g.classList.add("is-open");
     }
 
-    // Decide initial open section: active link -> stored -> first
-    let initial = null;
+    // Default: all collapsed. Auto-open the group of the current page.
+    const openSet = new Set();
+
+    // Restore open sections (optional)
+    try {
+      const raw = localStorage.getItem(KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) parsed.forEach(x => x && openSet.add(String(x)));
+      }
+    } catch (e) {}
+
+    // Ensure active page group is open
     const activeLink = document.querySelector(".sidebar-item.active");
     if (activeLink) {
       const group = activeLink.closest(".sidebar-group");
-      initial = group ? group.getAttribute("data-group") : null;
-    }
-
-    if (!initial) {
-      try { initial = localStorage.getItem(KEY); } catch (e) {}
-    }
-
-    if (!initial && toggles.length) {
-      initial = toggles[0].getAttribute("data-target");
+      const name = group ? group.getAttribute("data-group") : null;
+      if (name) openSet.add(name);
     }
 
     closeAll();
-    if (initial) openSection(initial);
+    openSet.forEach(name => openSection(name));
 
     toggles.forEach(btn => {
       btn.addEventListener("click", function () {
         const name = btn.getAttribute("data-target");
         const isOpen = btn.classList.contains("is-open");
-        closeAll();
-        if (!isOpen) {
-          openSection(name);
-          try { localStorage.setItem(KEY, name); } catch (e) {}
+        if (isOpen) {
+          closeSection(name);
+          openSet.delete(name);
         } else {
-          try { localStorage.removeItem(KEY); } catch (e) {}
+          openSection(name);
+          openSet.add(name);
         }
+
+        try { localStorage.setItem(KEY, JSON.stringify(Array.from(openSet))); } catch (e) {}
       });
     });
   })();

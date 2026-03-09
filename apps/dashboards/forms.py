@@ -174,10 +174,27 @@ class ResultBatchForm(forms.ModelForm):
         cleaned = super().clean()
         dept = cleaned.get("department")
         program = cleaned.get("program")
+        semester_number = cleaned.get("semester_number")
         if dept and program:
             ok = ProgramOffering.objects.filter(
                 department_id=dept.id, program_id=program.id, is_active=True
             ).exists()
             if not ok:
                 self.add_error("program", "Selected program is not offered in selected department.")
+
+        # Semester number validation: respect program semester span (e.g., BS 2 Years starts at semester 5).
+        if program and semester_number is not None:
+            try:
+                sem_int = int(semester_number)
+            except Exception:
+                sem_int = None
+
+            if sem_int is not None:
+                sem_start = int(getattr(program, "semester_start", 1) or 1)
+                sem_end = int(getattr(program, "semester_end", 0) or 0)
+                if sem_end and (sem_int < sem_start or sem_int > sem_end):
+                    self.add_error(
+                        "semester_number",
+                        f"Semester must be between {sem_start} and {sem_end} for the selected program.",
+                    )
         return cleaned

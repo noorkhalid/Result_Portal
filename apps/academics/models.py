@@ -43,6 +43,9 @@ class Program(models.Model):
 
     name = models.CharField(max_length=200)
     total_semesters = models.PositiveSmallIntegerField(choices=DURATION_CHOICES)
+    # Some programs (e.g., BS 2 Years top-up) start from semester 5 and run to 8.
+    # Default is 1 for normal programs.
+    semester_start = models.PositiveSmallIntegerField(default=1)
     is_active = models.BooleanField(default=True)
 
     class Meta:
@@ -51,6 +54,22 @@ class Program(models.Model):
 
     def __str__(self):
         return f"{self.name} ({self.total_semesters} semesters)"
+
+    @property
+    def semester_end(self) -> int:
+        """Inclusive end semester number."""
+        try:
+            total = int(self.total_semesters or 0)
+            start = int(self.semester_start or 1)
+        except Exception:
+            return 0
+        if total <= 0:
+            return 0
+        return start + total - 1
+
+    def semester_span(self) -> tuple[int, int]:
+        """Return (start, end) inclusive."""
+        return (int(self.semester_start or 1), int(self.semester_end or 0))
 
 
 class ProgramOffering(models.Model):
@@ -149,6 +168,10 @@ class Curriculum(models.Model):
     # Snapshot of total semesters for this curriculum version
     total_semesters = models.PositiveSmallIntegerField()
 
+    # Snapshot of semester start for this curriculum version.
+    # This makes historical transcripts stable even if the Program is edited later.
+    semester_start = models.PositiveSmallIntegerField(default=1)
+
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -158,6 +181,20 @@ class Curriculum(models.Model):
 
     def __str__(self):
         return f"{self.program.name} | {self.session.start_year} | Curriculum"
+
+    @property
+    def semester_end(self) -> int:
+        try:
+            total = int(self.total_semesters or 0)
+            start = int(self.semester_start or 1)
+        except Exception:
+            return 0
+        if total <= 0:
+            return 0
+        return start + total - 1
+
+    def semester_span(self) -> tuple[int, int]:
+        return (int(self.semester_start or 1), int(self.semester_end or 0))
 
 
 class CurriculumCourse(models.Model):

@@ -42,6 +42,22 @@
       >
     </div>
 
+    <!-- Semester Start -->
+    <div class="mb-3">
+      <label class="form-label">Semester Start</label>
+      <input
+        type="number"
+        name="semester_start"
+        class="form-control"
+        placeholder="Usually 1 (use 5 for BS 2 Years)"
+        value="{% if program %}{{ program.semester_start }}{% else %}1{% endif %}"
+        required
+      >
+      <div class="form-text">
+        Example: BS (4 Years) = start 1. BS (2 Years top-up) = start 5 (so semesters become 5–8).
+      </div>
+    </div>
+
     <!-- Active -->
     <div class="form-check mb-4">
       <input

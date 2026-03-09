@@ -177,9 +177,17 @@ def enrollment_detail(request, pk):
         ).get(pk=pk)
     )
 
+    # Semester span comes from curriculum snapshot first (stable), then program.
     total_semesters = int(getattr(enrollment.curriculum, "total_semesters", 0) or 0)
+    sem_start = int(getattr(enrollment.curriculum, "semester_start", 0) or 0)
+    sem_end = int(getattr(enrollment.curriculum, "semester_end", 0) or 0)
+
     if total_semesters <= 0:
         total_semesters = int(getattr(enrollment.program, "total_semesters", 0) or 0)
+    if sem_start <= 0:
+        sem_start = int(getattr(enrollment.program, "semester_start", 1) or 1)
+    if sem_end <= 0:
+        sem_end = int(getattr(enrollment.program, "semester_end", 0) or 0)
 
     batches = (
         ResultBatch.objects.filter(
@@ -217,8 +225,8 @@ def enrollment_detail(request, pk):
 
     # Group by semester_number for UI
     semesters = []
-    if total_semesters:
-        sem_numbers = list(range(1, total_semesters + 1))
+    if total_semesters and sem_end:
+        sem_numbers = list(range(sem_start, sem_end + 1))
     else:
         sem_numbers = sorted(set(batches.values_list("semester_number", flat=True)))
 
@@ -245,6 +253,8 @@ def enrollment_detail(request, pk):
         {
             "enrollment": enrollment,
             "total_semesters": total_semesters,
+            "semester_start": sem_start,
+            "semester_end": sem_end,
             "semesters": semesters,
         },
     )

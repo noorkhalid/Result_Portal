@@ -56,12 +56,12 @@
     <table class="table table-striped align-middle mb-0">
       <thead>
         <tr>
+          <th>Registration No</th>
+          <th>Roll No</th>
           <th>Student</th>
           <th>Department</th>
-          <th>Reg No</th>
           <th>Program</th>
           <th>Session</th>
-          <th>Roll No</th>
           <th>Status</th>
           <th style="width: 90px;">Actions</th>
         </tr>
@@ -69,12 +69,12 @@
       <tbody>
         {% for e in enrollments %}
         <tr class="js-row-link" data-href="{% url 'admin_enrollment_detail' e.id %}" style="cursor:pointer;">
+          <td>{{ e.student.registration_no }}</td>
+          <td>{{ e.roll_no }}</td>
           <td>{{ e.student.name }}</td>
           <td>{{ e.department.name }}</td>
-          <td>{{ e.student.registration_no }}</td>
           <td>{{ e.program.name }}</td>
           <td>{{ e.session.start_year }}</td>
-          <td>{{ e.roll_no }}</td>
           <td>{% if e.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
           <td>
             <a href="{% url 'admin_enrollment_delete' e.id %}" class="btn btn-sm btn-danger">Delete</a>

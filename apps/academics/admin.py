@@ -17,7 +17,7 @@ class DepartmentAdmin(admin.ModelAdmin):
 
 @admin.register(Program)
 class ProgramAdmin(admin.ModelAdmin):
-    list_display = ("name", "total_semesters", "is_active")
+    list_display = ("name", "total_semesters", "semester_start", "is_active")
     list_filter = ("is_active",)
     search_fields = ("name",)
 

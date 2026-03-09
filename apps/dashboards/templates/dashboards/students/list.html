@@ -57,10 +57,10 @@
     <table class="table table-striped align-middle mb-0">
       <thead>
         <tr>
-          <th>Name</th>
-          <th>Department</th>
-          <th>Father Name</th>
           <th>Registration No</th>
+          <th>Name</th>
+          <th>Father Name</th>
+          <th>Department</th>
           <th>Status</th>
           <th style="width: 160px;">Actions</th>
         </tr>
@@ -68,10 +68,10 @@
       <tbody>
         {% for s in students %}
         <tr>
-          <td>{{ s.name }}</td>
-          <td>{{ s.department.name }}</td>
-          <td>{{ s.father_name }}</td>
           <td>{{ s.registration_no }}</td>
+          <td>{{ s.name }}</td>
+          <td>{{ s.father_name }}</td>
+          <td>{{ s.department.name }}</td>
           <td>{% if s.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
           <td>
             <a href="{% url 'admin_student_edit' s.id %}" class="btn btn-sm btn-warning">Edit</a>

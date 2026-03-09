@@ -94,7 +94,12 @@
       padding:6px 5px;
       text-align:center;
       vertical-align:middle;
-      word-wrap: break-word;
+      /* Keep content constrained to its own cell */
+      overflow: hidden;
+      /* Wrap only at spaces; never break inside a word */
+      overflow-wrap: normal;
+      word-break: keep-all;
+      hyphens: none;
     }
 
     table.main thead th{
@@ -116,9 +121,16 @@
     }
 
     .subj-title{
-      font-size: 11px;
+      /* Subject titles: allow multi-line wrap, but never spill into next cell */
+      display:block;
+      width:100%;
+      font-size: 10px;
       line-height: 1.15;
       font-weight:700;
+      overflow: hidden;
+      overflow-wrap: normal;
+      word-break: keep-all;
+      hyphens: none;
     }
     .subj-ch{
       font-size: 10px;

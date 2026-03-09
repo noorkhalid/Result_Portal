@@ -70,8 +70,9 @@ def template_students(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Students"
-    ws.append(["department", "registration_no", "name", "father_name", "is_active"])
-    ws.append(["Falcon Educational Complex, Tank", "2021-ABC-001", "Ali Khan", "Ahmed Khan", True])
+    # Preferred column order for data entry (import matches by header name, so order is flexible).
+    ws.append(["registration_no", "name", "father_name", "department", "is_active"])
+    ws.append(["2021-ABC-001", "Ali Khan", "Ahmed Khan", "Falcon Educational Complex, Tank", True])
 
     resp = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -86,8 +87,9 @@ def template_enrollments(request):
     wb = openpyxl.Workbook()
     ws = wb.active
     ws.title = "Enrollments"
-    ws.append(["department", "registration_no", "program", "session", "roll_no", "is_active"])
-    ws.append(["Falcon Educational Complex, Tank", "2021-ABC-001", "BS Computer Science", 2021, "BSCS-001", True])
+    # Preferred column order for data entry (import matches by header name, so order is flexible).
+    ws.append(["registration_no", "roll_no", "department", "program", "session", "is_active"])
+    ws.append(["2021-ABC-001", "BSCS-001", "Falcon Educational Complex, Tank", "BS Computer Science", 2021, True])
 
     resp = HttpResponse(
         content_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"

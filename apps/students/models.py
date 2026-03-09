@@ -75,7 +75,10 @@ class Enrollment(models.Model):
             curriculum, _ = Curriculum.objects.get_or_create(
                 program_id=self.program_id,
                 session_id=self.session_id,
-                defaults={"total_semesters": self.program.total_semesters},
+                defaults={
+                    "total_semesters": self.program.total_semesters,
+                    "semester_start": getattr(self.program, "semester_start", 1) or 1,
+                },
             )
             self.curriculum = curriculum
 

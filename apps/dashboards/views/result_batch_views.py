@@ -185,8 +185,11 @@ def batch_detail(request, pk):
         (batch.notification_no or "").strip() or getattr(batch, "notification_date", None)
     )
 
-    # "Last semester" for Transcript availability is defined by Program.total_semesters.
-    max_sem = int(getattr(batch.program, "total_semesters", 0) or 0)
+    # "Last semester" for Transcript availability is defined by the semester span.
+    # Prefer the curriculum snapshot if present.
+    max_sem = int(getattr(batch.curriculum, "semester_end", 0) or 0)
+    if not max_sem:
+        max_sem = int(getattr(batch.program, "semester_end", 0) or 0)
 
     is_last_semester = bool(max_sem and int(batch.semester_number) == int(max_sem))
     has_marks = batch.course_results.exists()

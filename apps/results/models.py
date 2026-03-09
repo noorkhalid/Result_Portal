@@ -110,7 +110,10 @@ class ResultBatch(models.Model):
             curriculum, _ = Curriculum.objects.get_or_create(
                 program_id=self.program_id,
                 session_id=self.session_id,
-                defaults={"total_semesters": self.program.total_semesters},
+                defaults={
+                    "total_semesters": self.program.total_semesters,
+                    "semester_start": getattr(self.program, "semester_start", 1) or 1,
+                },
             )
             self.curriculum = curriculum
 
@@ -121,6 +124,14 @@ class ResultBatch(models.Model):
         ):
             raise ValueError(
                 "ResultBatch curriculum must match program and session"
+            )
+
+        # Semester number must fall within the curriculum's semester span.
+        sem_start = int(getattr(self.curriculum, "semester_start", 1) or 1)
+        sem_end = int(getattr(self.curriculum, "semester_end", 0) or 0)
+        if sem_end and (int(self.semester_number) < sem_start or int(self.semester_number) > sem_end):
+            raise ValueError(
+                f"Semester number {self.semester_number} is out of range ({sem_start}-{sem_end}) for this curriculum"
             )
 
         super().save(*args, **kwargs)

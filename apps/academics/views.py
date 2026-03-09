@@ -57,6 +57,7 @@ def admin_program_create(request):
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
         total_semesters = request.POST.get("total_semesters")
+        semester_start = request.POST.get("semester_start")
         is_active = True if request.POST.get("is_active") else False
 
         # Friendly validation before hitting DB
@@ -73,6 +74,7 @@ def admin_program_create(request):
                 Program.objects.create(
                     name=name,
                     total_semesters=total_semesters,
+                    semester_start=int(semester_start) if str(semester_start or "").strip() else 1,
                     is_active=is_active,
                 )
             messages.success(request, "Program created successfully.")
@@ -100,6 +102,11 @@ def admin_program_update(request, pk):
     if request.method == "POST":
         program.name = request.POST.get("name")
         program.total_semesters = request.POST.get("total_semesters")
+        semester_start = request.POST.get("semester_start")
+        try:
+            program.semester_start = int(semester_start) if str(semester_start or "").strip() else 1
+        except Exception:
+            program.semester_start = 1
         program.is_active = True if request.POST.get("is_active") else False
         program.save()
 

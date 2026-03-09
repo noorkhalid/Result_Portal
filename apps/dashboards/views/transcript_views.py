@@ -9,26 +9,27 @@ from academics.models import Department, Program, Session, Curriculum
 from results.models import ResultBatch, SemesterResult
 
 
-def _max_semester_for(program_id: str | int, session_id: str | int) -> int:
-    """Return the authoritative max semester for a program+session.
+def _semester_span_for(program_id: str | int, session_id: str | int) -> tuple[int, int, int]:
+    """Return (semester_start, semester_end, total_semesters) for program+session."""
 
-    IMPORTANT:
-    We no longer rely on the Semester table for max-semester logic because it
-    duplicates Program.total_semesters and can go out-of-sync. Session is kept
-    in the signature for backward-compatibility with the UI flow.
-    """
-    cur = Curriculum.objects.filter(program_id=program_id, session_id=session_id).only("total_semesters").first()
-    if cur:
-        return int(cur.total_semesters)
     cur = (
         Curriculum.objects.filter(program_id=program_id, session_id=session_id)
-        .only("total_semesters")
+        .only("total_semesters", "semester_start")
         .first()
     )
     if cur:
-        return int(cur.total_semesters)
-    program = Program.objects.filter(id=program_id).only("total_semesters").first()
-    return int(program.total_semesters) if program else 0
+        total = int(cur.total_semesters or 0)
+        start = int(getattr(cur, "semester_start", 1) or 1)
+        end = start + total - 1 if total > 0 else 0
+        return (start, end, total)
+
+    program = Program.objects.filter(id=program_id).only("total_semesters", "semester_start").first()
+    if not program:
+        return (1, 0, 0)
+    total = int(program.total_semesters or 0)
+    start = int(getattr(program, "semester_start", 1) or 1)
+    end = start + total - 1 if total > 0 else 0
+    return (start, end, total)
 
 
 @group_required("System Admin", "Document Generator", "Controller")
@@ -90,19 +91,23 @@ def transcript_single(request):
         .order_by("-start_year")
     )
 
-    max_sem = 0
+    sem_start = 0
+    sem_end = 0
+    total_semesters = 0
     last_sem_batches = ResultBatch.objects.none()
     if program_id and session_id:
-        max_sem = _max_semester_for(program_id, session_id)
-        if max_sem:
-            last_sem_batches = batches_qs.filter(semester_number=max_sem)
+        sem_start, sem_end, total_semesters = _semester_span_for(program_id, session_id)
+        if sem_end:
+            last_sem_batches = batches_qs.filter(semester_number=sem_end)
 
     # If stale session selection, reset
     if session_id and not sessions.filter(id=session_id).exists():
         session_id = ""
         batch_id = ""
         enrollment_id = ""
-        max_sem = 0
+        sem_start = 0
+        sem_end = 0
+        total_semesters = 0
         last_sem_batches = ResultBatch.objects.none()
 
     # Ensure batch_id is within last semester batches
@@ -138,19 +143,23 @@ def transcript_single(request):
         # Completion check in bulk (count distinct semester numbers for each enrollment)
         b = ResultBatch.objects.select_related("program", "session").filter(id=batch_id).first()
         if b:
-            max_sem = _max_semester_for(b.program_id, b.session_id)
+            sem_start, sem_end, total_semesters = _semester_span_for(b.program_id, b.session_id)
             enrollment_ids = [r.enrollment_id for r in students]
             counts = (
                 SemesterResult.objects.filter(
                     enrollment_id__in=enrollment_ids,
                     batch__program_id=b.program_id,
                     batch__session_id=b.session_id,
-                    batch__semester_number__lte=max_sem,
+                    batch__semester_number__gte=sem_start,
+                    batch__semester_number__lte=sem_end,
                 )
                 .values("enrollment_id")
                 .annotate(sem_count=Count("batch__semester_number", distinct=True))
             )
-            completed_map = {row["enrollment_id"]: (row["sem_count"] >= max_sem and max_sem > 0) for row in counts}
+            completed_map = {
+                row["enrollment_id"]: (row["sem_count"] >= total_semesters and total_semesters > 0)
+                for row in counts
+            }
 
         # If only one student, auto-select
         if not enrollment_id and request.GET.get("action") != "print":
@@ -186,7 +195,10 @@ def transcript_single(request):
             "program_id": str(program_id) if program_id else "",
             "sessions": sessions,
             "session_id": str(session_id) if session_id else "",
-            "max_sem": max_sem,
+            "max_sem": sem_end,
+            "semester_start": sem_start,
+            "semester_end": sem_end,
+            "total_semesters": total_semesters,
             "batches": last_sem_batches,
             "batch_id": str(batch_id) if batch_id else "",
             "students": students,
