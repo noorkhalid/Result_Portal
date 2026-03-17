@@ -69,7 +69,7 @@
   </div>
 </form>
 
-{% if selected_program and selected_session %}
+{% if selected_program and selected_session and is_system_admin %}
   <div class="d-flex justify-content-end mb-3">
     <form method="post" action="{% url 'admin_curriculum_copy_previous' %}" class="d-inline">
       {% csrf_token %}
@@ -99,7 +99,7 @@
 
   <div class="row g-3">
     {% for sem, items in semesters.items %}
-    <div class="col-lg-6">
+    <div class="col-lg-6" id="semester-{{ sem }}">
       <div class="card">
         <div class="card-header d-flex justify-content-between align-items-center">
           <strong>Semester {{ sem }}</strong>
@@ -122,11 +122,11 @@
                       {{ cc.course.code }} {{ cc.course.title }}
                       (Cr.H {{ cc.course.credit_hours|floatformat:0 }})
                     </td>
-                    <td>
+                    <td>{% if is_system_admin %}
                       <form method="post" action="{% url 'admin_curriculum_course_delete' cc.id %}" class="d-inline">
                         {% csrf_token %}
                         <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
-                      </form>
+                      </form>{% else %}<span class="text-muted small">View only</span>{% endif %}
                     </td>
                   </tr>
                   {% endfor %}
@@ -137,10 +137,12 @@
             <div class="text-muted mb-2">No courses added yet.</div>
           {% endif %}
 
-          <form method="post" action="{% url 'admin_curriculum_course_add' %}" class="d-flex gap-2 curriculum-add-form">
+          {% if is_system_admin %}<form method="post" action="{% url 'admin_curriculum_course_add' %}" class="d-flex gap-2 curriculum-add-form">
             {% csrf_token %}
             <input type="hidden" name="curriculum" value="{{ curriculum.id }}">
             <input type="hidden" name="semester_number" value="{{ sem }}">
+            <input type="hidden" name="page_scroll" class="js-page-scroll">
+            <input type="hidden" name="dropdown_scroll" class="js-dropdown-scroll">
 
             <select name="course_ids" class="form-select js-course-multi" multiple required>
               {# Show only courses not already added in THIS semester (same program+session) #}
@@ -153,6 +155,7 @@
 
             <button type="submit" class="btn btn-primary">Add</button>
           </form>
+          {% else %}<div class="small text-muted mt-2">View only for dealing assistants.</div>{% endif %}
 
           <div class="small text-muted mt-2">
             Tip: You can select multiple courses (Ctrl/Shift or click tags) and then press Add once.
@@ -172,13 +175,105 @@
 <script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
+    const STORAGE_KEY = "curriculumDesignerUIState";
+    const choicesMap = new Map();
+
     document.querySelectorAll(".js-course-multi").forEach(function (el) {
-      new Choices(el, {
+      const choice = new Choices(el, {
         removeItemButton: true,
         searchEnabled: true,
         placeholder: true,
         placeholderValue: "Add course(s)…",
         shouldSort: false
+      });
+
+      const form = el.closest("form");
+      if (form) {
+        choicesMap.set(form, choice);
+      }
+    });
+
+    document.querySelectorAll(".curriculum-add-form").forEach(function (form) {
+      form.addEventListener("submit", function () {
+        const semesterInput = form.querySelector('input[name="semester_number"]');
+        const pageScrollInput = form.querySelector('.js-page-scroll');
+        const dropdownScrollInput = form.querySelector('.js-dropdown-scroll');
+        const semester = semesterInput ? semesterInput.value : "";
+        const choice = choicesMap.get(form);
+        const dropdown = choice && choice.dropdown ? choice.dropdown.element : null;
+        const list = dropdown ? dropdown.querySelector('.choices__list--dropdown, .choices__list[role="listbox"]') : null;
+        const dropdownScroll = list ? list.scrollTop : 0;
+        const pageScroll = window.scrollY || window.pageYOffset || 0;
+
+        if (pageScrollInput) {
+          pageScrollInput.value = String(pageScroll);
+        }
+        if (dropdownScrollInput) {
+          dropdownScrollInput.value = String(dropdownScroll);
+        }
+
+        sessionStorage.setItem(STORAGE_KEY, JSON.stringify({
+          semester: semester,
+          pageScroll: pageScroll,
+          dropdownScroll: dropdownScroll,
+          reopenDropdown: true
+        }));
+      });
+    });
+
+    const savedStateRaw = sessionStorage.getItem(STORAGE_KEY);
+    if (!savedStateRaw) {
+      return;
+    }
+
+    let savedState = null;
+    try {
+      savedState = JSON.parse(savedStateRaw);
+    } catch (error) {
+      sessionStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+
+    if (!savedState || !savedState.semester) {
+      sessionStorage.removeItem(STORAGE_KEY);
+      return;
+    }
+
+    const semesterCard = document.getElementById('semester-' + savedState.semester);
+    if (semesterCard) {
+      semesterCard.scrollIntoView({ block: 'start' });
+    }
+
+    window.requestAnimationFrame(function () {
+      window.scrollTo(0, Number(savedState.pageScroll || 0));
+
+      const targetForm = document.querySelector(
+        '.curriculum-add-form input[name="semester_number"][value="' + savedState.semester + '"]'
+      );
+
+      if (!targetForm) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+
+      const form = targetForm.closest('form');
+      const choice = form ? choicesMap.get(form) : null;
+      if (!choice) {
+        sessionStorage.removeItem(STORAGE_KEY);
+        return;
+      }
+
+      if (savedState.reopenDropdown) {
+        choice.showDropdown();
+      }
+
+      window.requestAnimationFrame(function () {
+        const dropdown = choice.dropdown ? choice.dropdown.element : null;
+        const list = dropdown ? dropdown.querySelector('.choices__list--dropdown, .choices__list[role="listbox"]') : null;
+        if (list) {
+          list.scrollTop = Number(savedState.dropdownScroll || 0);
+        }
+        sessionStorage.removeItem(STORAGE_KEY);
       });
     });
   });

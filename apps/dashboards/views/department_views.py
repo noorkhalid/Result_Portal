@@ -5,8 +5,11 @@ from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.core.paginator import Paginator
+from django.db.models import Q
+from django.contrib.auth.models import User
 
 from academics.models import Department
+from dashboards.access import dealing_assistant_users_qs
 from dashboards.decorators import group_required
 from dashboards.context_processors import get_active_department
 
@@ -35,7 +38,7 @@ def department_list(request):
     q = (request.GET.get("q") or "").strip()
 
     if q:
-        qs = qs.filter(name__icontains=q)
+        qs = qs.filter(Q(name__icontains=q) | Q(type__icontains=q) | Q(assigned_assistant__username__icontains=q) | Q(assigned_assistant__first_name__icontains=q) | Q(assigned_assistant__last_name__icontains=q))
 
     qs = qs.order_by("name")
 
@@ -62,28 +65,58 @@ def department_list(request):
 
 @group_required("System Admin")
 def department_create(request):
+    type_choices = Department.DepartmentType.choices
+    assistant_choices = dealing_assistant_users_qs()
+    assistant_choices = dealing_assistant_users_qs()
+
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
+        department_type = (request.POST.get("type") or "").strip()
+        assistant_id = (request.POST.get("assigned_assistant") or "").strip()
+        valid_types = {choice[0] for choice in Department.DepartmentType.choices}
+        assigned_assistant = assistant_choices.filter(pk=assistant_id).first() if assistant_id else None
+
         if not name:
             messages.error(request, "Department name is required.")
+        elif department_type not in valid_types:
+            messages.error(request, "Please select a valid department type.")
+        elif Department.objects.filter(name__iexact=name).exists():
+            messages.error(request, "A department with this name already exists.")
         else:
-            Department.objects.get_or_create(name=name)
+            Department.objects.create(name=name, type=department_type, assigned_assistant=assigned_assistant)
             messages.success(request, "Department created successfully.")
             return redirect("admin_department_list")
 
-    return render(request, "dashboards/departments/form.html", {"title": "Add Department"})
+    return render(
+        request,
+        "dashboards/departments/form.html",
+        {"title": "Add Department", "type_choices": type_choices, "assistant_choices": assistant_choices},
+    )
 
 
 @group_required("System Admin")
 def department_update(request, pk):
     dept = get_object_or_404(Department, pk=pk)
+    type_choices = Department.DepartmentType.choices
+    assistant_choices = dealing_assistant_users_qs()
 
     if request.method == "POST":
         name = (request.POST.get("name") or "").strip()
+        department_type = (request.POST.get("type") or "").strip()
+        assistant_id = (request.POST.get("assigned_assistant") or "").strip()
+        valid_types = {choice[0] for choice in Department.DepartmentType.choices}
+        assigned_assistant = assistant_choices.filter(pk=assistant_id).first() if assistant_id else None
+
         if not name:
             messages.error(request, "Department name is required.")
+        elif department_type not in valid_types:
+            messages.error(request, "Please select a valid department type.")
+        elif Department.objects.exclude(pk=dept.pk).filter(name__iexact=name).exists():
+            messages.error(request, "A department with this name already exists.")
         else:
             dept.name = name
+            dept.type = department_type
+            dept.assigned_assistant = assigned_assistant
             dept.save()
             messages.success(request, "Department updated successfully.")
             return redirect("admin_department_list")
@@ -91,7 +124,7 @@ def department_update(request, pk):
     return render(
         request,
         "dashboards/departments/form.html",
-        {"title": "Edit Department", "dept": dept},
+        {"title": "Edit Department", "dept": dept, "type_choices": type_choices, "assistant_choices": assistant_choices},
     )
 
 
@@ -101,7 +134,10 @@ def department_delete(request, pk):
 
     # Prevent deleting a department if it has attached data
     delete_blocked = (
-        dept.programs.exists() or dept.program_courses.exists() or dept.students.exists() or dept.enrollments.exists()
+        dept.program_offerings.exists()
+        or dept.students.exists()
+        or dept.enrollments.exists()
+        or dept.result_batches.exists()
     )
 
     if request.method == "POST":

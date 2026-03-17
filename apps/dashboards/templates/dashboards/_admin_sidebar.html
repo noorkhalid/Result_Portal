@@ -1,37 +1,34 @@
 <aside class="sidebar">
   <div class="sidebar-inner">
-    <h6 class="sidebar-title">System Admin</h6>
-    <nav class="sidebar-nav" aria-label="System admin navigation">
-      <button type="button" class="sidebar-section-toggle" data-target="academics" aria-expanded="false">
-        ACADEMICS
-      </button>
+    <h6 class="sidebar-title">{% if is_dealing_assistant and not is_system_admin %}Dealing Assistant{% else %}System Admin{% endif %}</h6>
+    <nav class="sidebar-nav" aria-label="Portal navigation">
+      <button type="button" class="sidebar-section-toggle" data-target="academics" aria-expanded="false">ACADEMICS</button>
       <div class="sidebar-group" data-group="academics">
-        <a href="{% url 'admin_department_list' %}" class="sidebar-item {% if '/admin-dashboard/departments/' in request.path %}active{% endif %}">Departments</a>
-        <a href="{% url 'admin_program_list' %}" class="sidebar-item {% if '/admin-dashboard/programs/' in request.path %}active{% endif %}">Programs</a>
+        {% if is_system_admin %}<a href="{% url 'admin_department_list' %}" class="sidebar-item {% if '/admin-dashboard/departments/' in request.path %}active{% endif %}">Departments</a>{% endif %}
+        {% if is_system_admin %}<a href="{% url 'admin_program_list' %}" class="sidebar-item {% if '/admin-dashboard/programs/' in request.path %}active{% endif %}">Programs</a>{% endif %}
         <a href="{% url 'admin_program_offering_list' %}" class="sidebar-item {% if '/admin-dashboard/program-offerings/' in request.path %}active{% endif %}">Program Offerings</a>
         <a href="{% url 'admin_course_list' %}" class="sidebar-item {% if '/admin-dashboard/courses/' in request.path %}active{% endif %}">Courses</a>
         <a href="{% url 'admin_curriculum_designer' %}" class="sidebar-item {% if '/admin-dashboard/curricula/' in request.path %}active{% endif %}">Curriculum</a>
-        <a href="{% url 'admin_session_list' %}" class="sidebar-item {% if '/admin-dashboard/sessions/' in request.path %}active{% endif %}">Sessions</a>
+        {% if is_system_admin %}<a href="{% url 'admin_session_list' %}" class="sidebar-item {% if '/admin-dashboard/sessions/' in request.path %}active{% endif %}">Sessions</a>{% endif %}
       </div>
-      <button type="button" class="sidebar-section-toggle" data-target="students" aria-expanded="false">
-        STUDENTS
-      </button>
+
+      <button type="button" class="sidebar-section-toggle" data-target="students" aria-expanded="false">STUDENTS</button>
       <div class="sidebar-group" data-group="students">
         <a href="{% url 'admin_student_list' %}" class="sidebar-item {% if '/admin-dashboard/students/' in request.path %}active{% endif %}">Students</a>
         <a href="{% url 'admin_enrollment_list' %}" class="sidebar-item {% if '/admin-dashboard/enrollments/' in request.path %}active{% endif %}">Enrollments</a>
       </div>
-      <button type="button" class="sidebar-section-toggle" data-target="results" aria-expanded="false">
-        RESULTS
-      </button>
+
+      <button type="button" class="sidebar-section-toggle" data-target="results" aria-expanded="false">RESULTS</button>
       <div class="sidebar-group" data-group="results">
         <a href="{% url 'admin_batch_list' %}" class="sidebar-item {% if '/admin-dashboard/result-batches/' in request.path %}active{% endif %}">Result Batches</a>
+        <a href="{% url 'data_entry_import_marks' %}" class="sidebar-item {% if '/data-entry/import/' in request.path %}active{% endif %}">Import Marks (Excel)</a>
+        {% if is_system_admin %}
         <a href="{% url 'admin_grade_scale_list' %}" class="sidebar-item {% if '/admin-dashboard/grade-scales/' in request.path %}active{% endif %}">Grade Scales</a>
         <a href="{% url 'admin_exam_type_list' %}" class="sidebar-item {% if '/admin-dashboard/exam-types/' in request.path %}active{% endif %}">Exam Types</a>
-        <a href="{% url 'data_entry_import_marks' %}" class="sidebar-item {% if '/data-entry/import/' in request.path %}active{% endif %}">Import Marks (Excel)</a>
+        {% endif %}
       </div>
-      <button type="button" class="sidebar-section-toggle" data-target="documents" aria-expanded="false">
-        DOCUMENTS
-      </button>
+
+      <button type="button" class="sidebar-section-toggle" data-target="documents" aria-expanded="false">DOCUMENTS</button>
       <div class="sidebar-group" data-group="documents">
         <a href="{% url 'admin_result_notifications' %}" class="sidebar-item {% if '/admin-dashboard/documents/result-notifications/' in request.path %}active{% endif %}">Result Notifications</a>
         <a href="{% url 'admin_dmc_single' %}" class="sidebar-item {% if '/admin-dashboard/documents/dmc-single/' in request.path %}active{% endif %}">DMC (Single Student)</a>

@@ -11,7 +11,28 @@
     <div class="mb-3">
       <label class="form-label">Department Name</label>
       <input type="text" name="name" class="form-control" required
-             value="{% if dept %}{{ dept.name }}{% endif %}">
+             value="{% if request.POST.name %}{{ request.POST.name }}{% elif dept %}{{ dept.name }}{% endif %}">
+    </div>
+
+    <div class="mb-3">
+      <label class="form-label">Department Type</label>
+      <select name="type" class="form-select" required>
+        <option value="">Select department type</option>
+        {% for value, label in type_choices %}
+        <option value="{{ value }}" {% if request.POST.type == value or dept and dept.type == value and not request.POST.type %}selected{% endif %}>{{ label }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+
+    <div class="mb-3">
+      <label class="form-label">Assigned Dealing Assistant</label>
+      <select name="assigned_assistant" class="form-select">
+        <option value="">Not assigned</option>
+        {% for assistant in assistant_choices %}
+        <option value="{{ assistant.id }}" {% if request.POST.assigned_assistant == assistant.id|stringformat:"s" or dept and dept.assigned_assistant_id == assistant.id and not request.POST.assigned_assistant %}selected{% endif %}>{{ assistant.get_full_name|default:assistant.username }}{% if assistant.get_full_name %} ({{ assistant.username }}){% endif %}</option>
+        {% endfor %}
+      </select>
     </div>
 
     <div class="d-flex gap-2">

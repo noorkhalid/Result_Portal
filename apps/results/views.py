@@ -3,6 +3,8 @@ from decimal import Decimal
 from io import BytesIO
 
 from django.contrib.auth.decorators import login_required
+from django.contrib import messages
+from django.shortcuts import redirect
 from django.db.models import IntegerField
 from django.db.models.functions import Cast, Substr, Reverse, StrIndex, Length
 from django.http import HttpResponse
@@ -19,6 +21,7 @@ from academics.models import Program, Curriculum, CurriculumCourse
 from students.models import Enrollment
 from .models import ResultBatch, SemesterResult, CourseResult, GradeScale, ResultNotification, ResultNotificationItem
 from .services import find_grade_by_gpa, q2
+from dashboards.access import get_accessible_batch_or_none, get_accessible_notification_or_none, get_accessible_enrollment_or_none, is_system_admin, is_dealing_assistant
 
 def _fail_letter_set():
     """Return configured failing letter grades (e.g., {'F'})."""
@@ -156,7 +159,10 @@ def _roll_suffix_annotation():
 
 @login_required
 def result_notification_pdf(request, batch_id):
-    batch = get_object_or_404(ResultBatch, id=batch_id)
+    batch = get_accessible_batch_or_none(request.user, batch_id)
+    if not batch:
+        messages.error(request, "You do not have permission to access that result batch.")
+        return redirect("dashboard")
 
 
     fail_letters = _fail_letter_set()
@@ -333,7 +339,10 @@ def result_notification_pdf(request, batch_id):
 def result_notification_by_id_pdf(request, notification_id):
     """Print a specific notification (supports initial + clearance notifications)."""
 
-    notification = get_object_or_404(ResultNotification, id=notification_id)
+    notification = get_accessible_notification_or_none(request.user, notification_id)
+    if not notification:
+        messages.error(request, "You do not have permission to access that result notification.")
+        return redirect("dashboard")
     batch = notification.batch
 
     fail_letters = _fail_letter_set()
@@ -471,7 +480,11 @@ def result_notification_by_id_pdf(request, notification_id):
 @login_required
 def dmc_single_pdf(request, batch_id, enrollment_id):
     """Generate a single-student DMC (one DMC per student per semester/batch)."""
-    batch = get_object_or_404(ResultBatch, id=batch_id)
+    batch = get_accessible_batch_or_none(request.user, batch_id)
+    enrollment = get_accessible_enrollment_or_none(request.user, enrollment_id)
+    if not batch or not enrollment:
+        messages.error(request, "You do not have permission to access that DMC.")
+        return redirect("dashboard")
     sem_res = get_object_or_404(
         SemesterResult.objects.select_related("enrollment", "enrollment__student"),
         batch=batch,
@@ -539,7 +552,10 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
 @login_required
 def dmc_batch_pdf(request, batch_id):
     """Generate a multi-page PDF (one page per student) for a batch."""
-    batch = get_object_or_404(ResultBatch, id=batch_id)
+    batch = get_accessible_batch_or_none(request.user, batch_id)
+    if not batch:
+        messages.error(request, "You do not have permission to access that batch.")
+        return redirect("dashboard")
 
     columns = list(_course_columns_for_batch(batch))
     ordered_course_ids = [pc.course_id for pc in columns]
@@ -681,6 +697,10 @@ def _enrollment_is_completed(
 
 @login_required
 def transcript_pdf(request, enrollment_id: int):
+    enrollment = get_accessible_enrollment_or_none(request.user, enrollment_id)
+    if not enrollment:
+        messages.error(request, "You do not have permission to access that transcript.")
+        return redirect("dashboard")
     enrollment = get_object_or_404(
         Enrollment.objects.select_related(
             "student", "program", "session", "department", "curriculum"
@@ -829,15 +849,14 @@ def transcript_pdf(request, enrollment_id: int):
         first_notification = final_batch.notifications.order_by("notification_date", "id").first()
         declaration_date = first_notification.notification_date if first_notification else getattr(final_batch, "notification_date", None)
 
-    # Layout depends on number of semesters in the program (not the absolute semester number)
-    layout_mode = "single" if total <= 3 else "double"
+    # Always use the uniform two-column transcript layout.
+    layout_mode = "double"
     semester_pairs = []
-    if layout_mode == "double":
-        sem_map = {s["semester_no"]: s for s in semesters}
-        i = sem_start
-        while i <= sem_end:
-            semester_pairs.append({"left": sem_map.get(i), "right": sem_map.get(i + 1)})
-            i += 2
+    sem_map = {s["semester_no"]: s for s in semesters}
+    i = sem_start
+    while i <= sem_end:
+        semester_pairs.append({"left": sem_map.get(i), "right": sem_map.get(i + 1)})
+        i += 2
 
     html = render_to_string(
         "results/transcript.html",
@@ -872,6 +891,10 @@ def transcript_pdf(request, enrollment_id: int):
 
 @login_required
 def transcript_batch_pdf(request, batch_id: int):
+    batch = get_accessible_batch_or_none(request.user, batch_id)
+    if not batch:
+        messages.error(request, "You do not have permission to access that transcript batch.")
+        return redirect("dashboard")
     batch = get_object_or_404(ResultBatch.objects.select_related("curriculum"), id=batch_id)
 
     # Use semester span (supports programs where semester numbering doesn't start at 1)
@@ -893,8 +916,8 @@ def transcript_batch_pdf(request, batch_id: int):
     )
 
     items = []
-    # Layout depends on number of semesters in the program (not the absolute semester number)
-    layout_mode = "single" if total <= 3 else "double"
+    # Always use the uniform two-column transcript layout.
+    layout_mode = "double"
     # Needed for PDF letter grade display (e.g., show 'F' instead of fail letters like 'D')
     fail_letters = _fail_letter_set()
 
@@ -1021,12 +1044,11 @@ def transcript_batch_pdf(request, batch_id: int):
             declaration_date = first_notification.notification_date if first_notification else getattr(final_batch, "notification_date", None)
 
         semester_pairs = []
-        if layout_mode == "double":
-            sem_map = {s["semester_no"]: s for s in semesters}
-            i = sem_start
-            while i <= sem_end:
-                semester_pairs.append({"left": sem_map.get(i), "right": sem_map.get(i + 1)})
-                i += 2
+        sem_map = {s["semester_no"]: s for s in semesters}
+        i = sem_start
+        while i <= sem_end:
+            semester_pairs.append({"left": sem_map.get(i), "right": sem_map.get(i + 1)})
+            i += 2
 
         items.append(
             {

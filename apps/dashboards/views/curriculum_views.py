@@ -24,7 +24,7 @@ def _previous_session_for(program: Program, session: Session) -> Session | None:
     )
 
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def curriculum_designer(request):
     """Curriculum Designer (by Program + Session).
 

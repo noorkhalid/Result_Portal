@@ -14,7 +14,7 @@ from dashboards.decorators import group_required
 # SYSTEM ADMIN — COURSES CRUD
 # ======================================================
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def course_list(request):
     """
     List all courses.

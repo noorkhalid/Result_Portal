@@ -3,14 +3,12 @@
 
 <div class="page">
   <div class="hdr">
-    <div class="cell logo">
-      <img src="{% static 'img/university_logo.png' %}" alt="Logo">
-    </div>
+    <div class="cell logo"><img src="{% static 'img/university_logo.png' %}" alt="Logo"></div>
     <div class="cell title">
       <div class="u-name">GOMAL UNIVERSITY, DERA ISMAIL KHAN</div>
       <div class="u-doc">ACADEMIC TRANSCRIPT</div>
     </div>
-    <div class="cell" style="width:22mm;"></div>
+    <div class="cell" style="width:18mm;"></div>
   </div>
 
   <div class="info">
@@ -34,251 +32,133 @@
     </div>
     <div class="row">
       <div class="cell lbl">College:</div>
-      <div class="cell val" colspan="3">{{ enrollment.department.name }}</div>
+      <div class="cell val">{{ enrollment.department.name }}</div>
+      <div class="cell lbl-r"></div>
+      <div class="cell val-r"></div>
     </div>
   </div>
 
-  {% if layout_mode == 'single' %}
-    {# Sample-style single layout (<= 3 semesters) #}
-    {% for sem in semesters %}
-      <div class="avoid-break">
-        <div class="sem-title">{{ sem.semester_no|ordinal }} Semester</div>
-
-        <table class="marks">
-          <thead>
-            <tr>
-              <th style="width:11%">Code</th>
-              <th>Subject</th>
-              <th style="width:7%">CH</th>
-              <th style="width:10%">Marks %</th>
-              <th style="width:9%">L_Grade</th>
-              <th style="width:8%">NG</th>
-              <th style="width:10%">CH*GP</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for r in sem.course_rows %}
+  {% for pair in semester_pairs %}
+    {% if pair.left and pair.right %}
+      <table class="pair-table">
+        <colgroup>
+          <col style="width:25%"><col style="width:7%"><col style="width:8%"><col style="width:5%"><col style="width:5%">
+          <col style="width:25%"><col style="width:7%"><col style="width:8%"><col style="width:5%"><col style="width:5%">
+        </colgroup>
+        <thead>
+          {% if forloop.first %}
+          <tr class="col-head">
+            <th>Title</th>
+            <th>CH</th>
+            <th>Marks %</th>
+            <th>Grade</th>
+            <th>GP</th>
+            <th class="mid">Title</th>
+            <th>CH</th>
+            <th>Marks %</th>
+            <th>Grade</th>
+            <th>GP</th>
+          </tr>
+          {% endif %}
+          <tr class="semhead-row">
+            <th colspan="5">{{ pair.left.semester_no|ordinal }} Semester</th>
+            <th class="mid" colspan="5">{{ pair.right.semester_no|ordinal }} Semester</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% with lrows=pair.left.course_rows rrows=pair.right.course_rows %}
+            {% for i in lrows|pair_max_range:rrows %}
+              {% with lr=lrows|idx:i rr=rrows|idx:i %}
               <tr>
-                <td>{{ r.code }}</td>
-                <td class="subj">{{ r.title }}</td>
+                <td class="title">{% if lr %}{{ lr.title }}{% endif %}</td>
+                <td>{% if lr %}{{ lr.credit_hours }}{% endif %}</td>
+                <td>{% if lr %}{{ lr.marks_pct }}{% endif %}</td>
+                <td>{% if lr %}{{ lr.grade }}{% endif %}</td>
+                <td>{% if lr %}{{ lr.ng }}{% endif %}</td>
+
+                <td class="title mid">{% if rr %}{{ rr.title }}{% endif %}</td>
+                <td>{% if rr %}{{ rr.credit_hours }}{% endif %}</td>
+                <td>{% if rr %}{{ rr.marks_pct }}{% endif %}</td>
+                <td>{% if rr %}{{ rr.grade }}{% endif %}</td>
+                <td>{% if rr %}{{ rr.ng }}{% endif %}</td>
+              </tr>
+              {% endwith %}
+            {% endfor %}
+          {% endwith %}
+          <tr class="summary-top">
+            <td colspan="5"><b>SCH:</b> {{ pair.left.sch }} &nbsp;&nbsp; <b>CCH:</b> {{ pair.left.cch }} &nbsp;&nbsp; <b>GPA:</b> {{ pair.left.semester_result.gpa }}</td>
+            <td class="mid" colspan="5"><b>SCH:</b> {{ pair.right.sch }} &nbsp;&nbsp; <b>CCH:</b> {{ pair.right.cch }} &nbsp;&nbsp; <b>GPA:</b> {{ pair.right.semester_result.gpa }}</td>
+          </tr>
+          <tr class="pair-bottom">
+            <td colspan="5"><b>Grade:</b> {{ pair.left.semester_result.letter_grade }} &nbsp;&nbsp; <b>Remarks:</b> {{ pair.left.semester_result.remarks }}</td>
+            <td class="mid" colspan="5"><b>Grade:</b> {{ pair.right.semester_result.letter_grade }} &nbsp;&nbsp; <b>Remarks:</b> {{ pair.right.semester_result.remarks }}</td>
+          </tr>
+        </tbody>
+      </table>
+    {% elif pair.left %}
+      <div class="double-bottom-row">
+        <div class="cell left">
+          <table class="single-sem">
+            <colgroup>
+              <col style="width:50%"><col style="width:14%"><col style="width:16%"><col style="width:10%"><col style="width:10%">
+            </colgroup>
+            <thead>
+              <tr class="semhead-row">
+                <th colspan="5">{{ pair.left.semester_no|ordinal }} Semester</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for r in pair.left.course_rows %}
+              <tr>
+                <td class="title">{{ r.title }}</td>
                 <td>{{ r.credit_hours }}</td>
                 <td>{{ r.marks_pct }}</td>
                 <td>{{ r.grade }}</td>
                 <td>{{ r.ng }}</td>
-                <td>{{ r.gp_total }}</td>
               </tr>
-            {% endfor %}
-          </tbody>
-        </table>
-
-        <div class="sem-foot">
-          <div class="cell left">
-            <b>SCH</b>&nbsp;&nbsp;{{ sem.sch }}<br>
-            <b>CCH</b>&nbsp;&nbsp;{{ sem.cch }}
-          </div>
-          <div class="cell right">
-            <span><b>GPA:</b> {{ sem.semester_result.gpa }}</span>
-            <span><b>Grade:</b> {{ sem.semester_result.letter_grade }}</span>
-            <span><b>Remarks:</b> {{ sem.semester_result.remarks }}</span>
-          </div>
-        </div>
-      </div>
-    {% endfor %}
-
-    <div class="bottom">
-      <div class="cell left">
-        <table class="footer-box">
-          <tr><td>CGPA:</td><td>{{ final_cgpa }}</td></tr>
-          <tr><td>GRADE:</td><td>{{ footer_letter_grade }}</td></tr>
-          <tr><td>REMARKS:</td><td>{{ footer_remarks }}</td></tr>
-          <tr><td>Total Marks</td><td>{{ overall_max }}</td></tr>
-          <tr><td>Obtained Marks:</td><td>{{ overall_obtained }}</td></tr>
-          <tr><td>Obtained Marks %:</td><td>{% if overall_percentage is not None %}{{ overall_percentage }}{% endif %}</td></tr>
-          <tr><td>Result Declaration Date:</td><td>{% if declaration_date %}{{ declaration_date|date:"d-m-Y" }}{% endif %}</td></tr>
-        </table>
-        <div class="errors">Errors and Omissions are Accepted</div>
-      </div>
-      <div class="cell right">
-        Controller of Examinations<br>
-        Gomal University D.I.Khan
-      </div>
-    </div>
-
-	  {% else %}
-	    {% for pair in semester_pairs %}
-      {% if not forloop.last or pair.right %}
-        <table class="pair-table{% if not forloop.first %} pair-top{% endif %}">
-          <colgroup>
-            <col style="width:28%">
-            <col style="width:5%">
-            <col style="width:7%">
-            <col style="width:5%">
-            <col style="width:5%">
-            <col style="width:28%">
-            <col style="width:5%">
-            <col style="width:7%">
-            <col style="width:5%">
-            <col style="width:5%">
-          </colgroup>
-          <thead>
-            {% if forloop.first %}
-	            <tr class="col-head">
-              <th style="width:28%">Title</th>
-              <th style="width:5%">CH</th>
-              <th style="width:7%">Marks %</th>
-              <th style="width:5%">Grade</th>
-              <th style="width:5%">GP</th>
-              <th class="mid" style="width:28%">Title</th>
-              <th style="width:5%">CH</th>
-              <th style="width:7%">Marks %</th>
-              <th style="width:5%">Grade</th>
-              <th style="width:5%">GP</th>
-            </tr>
-            {% endif %}
-            <tr class="semhead-row">
-              <th class="semhead" colspan="5">{{ pair.left.semester_no|ordinal }} Semester</th>
-              <th class="semhead mid" colspan="5">{{ pair.right.semester_no|ordinal }} Semester</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% with lrows=pair.left.course_rows rrows=pair.right.course_rows %}
-              {% for i in lrows|pair_max_range:rrows %}
-                <tr>
-                  {% with lr=lrows|idx:i rr=rrows|idx:i %}
-                    <td class="title">{% if lr %}{{ lr.title }}{% endif %}</td>
-                    <td>{% if lr %}{{ lr.credit_hours }}{% endif %}</td>
-                    <td>{% if lr %}{{ lr.marks_pct }}{% endif %}</td>
-                    <td>{% if lr %}{{ lr.grade }}{% endif %}</td>
-                    <td>{% if lr %}{{ lr.ng }}{% endif %}</td>
-
-                    <td class="title mid">{% if rr %}{{ rr.title }}{% endif %}</td>
-                    <td>{% if rr %}{{ rr.credit_hours }}{% endif %}</td>
-                    <td>{% if rr %}{{ rr.marks_pct }}{% endif %}</td>
-                    <td>{% if rr %}{{ rr.grade }}{% endif %}</td>
-                    <td>{% if rr %}{{ rr.ng }}{% endif %}</td>
-                  {% endwith %}
-                </tr>
               {% endfor %}
-            {% endwith %}
-
-	            <tr class="summary-top">
-	              <td colspan="5" style="text-align:center;">
-	                <b>SCH:</b> {{ pair.left.sch }}
-	                &nbsp;&nbsp;&nbsp;
-	                <b>CCH:</b> {{ pair.left.cch }}
-	                &nbsp;&nbsp;&nbsp;
-	                <b>GPA:</b> {{ pair.left.semester_result.gpa }}
-	              </td>
-	              <td class="mid" colspan="5" style="text-align:center;">
-	                <b>SCH:</b> {{ pair.right.sch }}
-	                &nbsp;&nbsp;&nbsp;
-	                <b>CCH:</b> {{ pair.right.cch }}
-	                &nbsp;&nbsp;&nbsp;
-	                <b>GPA:</b> {{ pair.right.semester_result.gpa }}
-	              </td>
-	            </tr>
-	            <tr class="pair-bottom">
-	              <td colspan="5" style="text-align:center;">
-	                <b>Grade:</b> {{ pair.left.semester_result.letter_grade }}
-	                &nbsp;&nbsp;&nbsp;
-	                <b>Remarks:</b> {{ pair.left.semester_result.remarks }}
-	              </td>
-	              <td class="mid" colspan="5" style="text-align:center;">
-	                <b>Grade:</b> {{ pair.right.semester_result.letter_grade }}
-	                &nbsp;&nbsp;&nbsp;
-	                <b>Remarks:</b> {{ pair.right.semester_result.remarks }}
-	              </td>
-	            </tr>
-          </tbody>
-        </table>
-      {% endif %}
-    {% endfor %}
-
-	
-    {% with lastpair=semester_pairs|last %}
-      {% if lastpair.left and not lastpair.right %}
-        <div class="double-bottom-row">
-          <div class="cell left">
-            <table class="single-sem">
-              <colgroup>
-                <col style="width:28%">
-                <col style="width:5%">
-                <col style="width:7%">
-                <col style="width:5%">
-                <col style="width:5%">
-              </colgroup>
-              <thead>
-                <tr class="semhead-row">
-                  <th class="semhead" colspan="5">{{ lastpair.left.semester_no|ordinal }} Semester</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for r in lastpair.left.course_rows %}
-                  <tr>
-                    <td class="title">{{ r.title }}</td>
-                    <td>{{ r.credit_hours }}</td>
-                    <td>{{ r.marks_pct }}</td>
-                    <td>{{ r.grade }}</td>
-                    <td>{{ r.ng }}</td>
-                  </tr>
-                {% endfor %}
-	                <tr class="summary-top">
-	                  <td colspan="5" style="text-align:center;">
-	                    <b>SCH:</b> {{ lastpair.left.sch }}
-	                    &nbsp;&nbsp;&nbsp;
-	                    <b>CCH:</b> {{ lastpair.left.cch }}
-	                    &nbsp;&nbsp;&nbsp;
-	                    <b>GPA:</b> {{ lastpair.left.semester_result.gpa }}
-	                  </td>
-	                </tr>
-	                <tr class="pair-bottom">
-	                  <td colspan="5" style="text-align:center;">
-	                    <b>Grade:</b> {{ lastpair.left.semester_result.letter_grade }}
-	                    &nbsp;&nbsp;&nbsp;
-	                    <b>Remarks:</b> {{ lastpair.left.semester_result.remarks }}
-	                  </td>
-	                </tr>
-              </tbody>
-            </table>
-          </div>
-
-          <div class="cell right">
-            <table class="footer-box" style="width:100%;">
-              <tr><td>CGPA:</td><td>{{ final_cgpa }}</td></tr>
-              <tr><td>Letter Grade:</td><td>{{ footer_letter_grade }}</td></tr>
-              <tr><td>Remarks:</td><td>{{ footer_remarks }}</td></tr>
-              <tr><td>Total Marks:</td><td>{{ overall_max }}</td></tr>
-              <tr><td>Obtained Marks:</td><td>{{ overall_obtained }}</td></tr>
-              <tr><td>Obtained Marks %:</td><td>{% if overall_percentage is not None %}{{ overall_percentage }}{% endif %}</td></tr>
-              <tr><td>Result Declaration Date:</td><td>{% if declaration_date %}{{ declaration_date|date:"d-m-Y" }}{% endif %}</td></tr>
-            </table>
-            <div class="errors">Errors and Omissions are Accepted</div>
-          </div>
+              <tr class="summary-top">
+                <td colspan="5"><b>SCH:</b> {{ pair.left.sch }} &nbsp;&nbsp; <b>CCH:</b> {{ pair.left.cch }} &nbsp;&nbsp; <b>GPA:</b> {{ pair.left.semester_result.gpa }}</td>
+              </tr>
+              <tr class="pair-bottom">
+                <td colspan="5"><b>Grade:</b> {{ pair.left.semester_result.letter_grade }} &nbsp;&nbsp; <b>Remarks:</b> {{ pair.left.semester_result.remarks }}</td>
+              </tr>
+            </tbody>
+          </table>
         </div>
-	      {% else %}
-        <div class="double-bottom-row">
-          <div class="cell left"></div>
-          <div class="cell right">
-            <table class="footer-box" style="width:100%;">
-              <tr><td>CGPA:</td><td>{{ final_cgpa }}</td></tr>
-              <tr><td>Letter Grade:</td><td>{{ footer_letter_grade }}</td></tr>
-              <tr><td>Remarks:</td><td>{{ footer_remarks }}</td></tr>
-              <tr><td>Total Marks:</td><td>{{ overall_max }}</td></tr>
-              <tr><td>Obtained Marks:</td><td>{{ overall_obtained }}</td></tr>
-              <tr><td>Obtained Marks %:</td><td>{% if overall_percentage is not None %}{{ overall_percentage }}{% endif %}</td></tr>
-              <tr><td>Result Declaration Date:</td><td>{% if declaration_date %}{{ declaration_date|date:"d-m-Y" }}{% endif %}</td></tr>
-            </table>
-            <div class="errors">Errors and Omissions are Accepted</div>
-          </div>
-        </div>
-      {% endif %}
-    {% endwith %}
+        <div class="cell right"></div>
+      </div>
+    {% endif %}
+  {% endfor %}
 
-    <div class="controller">
-      Controller of Examinations<br>
-      Gomal University, D.I.Khan
+  <div class="footer-block">
+    <table class="footer-summary">
+      <thead>
+        <tr>
+          <th>CGPA</th>
+          <th>Letter Grade</th>
+          <th>Remarks</th>
+          <th>Total Marks</th>
+          <th>Obtained Marks</th>
+          <th>Obtained %</th>
+          <th>Result Date</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td>{{ final_cgpa }}</td>
+          <td>{{ footer_letter_grade }}</td>
+          <td>{{ footer_remarks }}</td>
+          <td>{{ overall_max }}</td>
+          <td>{{ overall_obtained }}</td>
+          <td>{% if overall_percentage is not None %}{{ overall_percentage }}{% endif %}</td>
+          <td>{% if declaration_date %}{{ declaration_date|date:"d-m-Y" }}{% endif %}</td>
+        </tr>
+      </tbody>
+    </table>
+    <div class="footer-note">
+      <div class="cell errors">Errors and Omissions are Accepted</div>
+      <div class="cell controller">Controller of Examinations<br>Gomal University, D.I.Khan</div>
     </div>
-
-  {% endif %}
+  </div>
 </div>
-

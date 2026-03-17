@@ -27,12 +27,12 @@
             {% endif %}
         </form>
 
-        <a href="{% url 'admin_import_courses' %}" class="btn btn-outline-secondary">
+{% if is_system_admin %}<a href="{% url 'admin_import_courses' %}" class="btn btn-outline-secondary">
             Import from Excel
         </a>
         <a href="{% url 'admin_course_add' %}" class="btn btn-primary">
             + Add Course
-        </a>
+        </a>{% endif %}
     </div>
 </div>
 
@@ -54,7 +54,7 @@
                 <td>{{ course.credit_hours }}</td>
                 <td>{{ course.max_marks }}</td>
                 <td>
-                    <a
+{% if is_system_admin %}<a
                         href="{% url 'admin_course_edit' course.id %}"
                         class="btn btn-sm btn-warning"
                     >
@@ -67,7 +67,7 @@
                  title="This will permanently delete the course"
 >
                          Delete
-                    </a>
+                    </a>{% else %}<span class="text-muted small">View only</span>{% endif %}
 
                 </td>
             </tr>

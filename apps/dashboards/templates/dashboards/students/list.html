@@ -75,7 +75,7 @@
           <td>{% if s.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
           <td>
             <a href="{% url 'admin_student_edit' s.id %}" class="btn btn-sm btn-warning">Edit</a>
-            <a href="{% url 'admin_student_delete' s.id %}" class="btn btn-sm btn-danger">Delete</a>
+            {% if is_system_admin %}<a href="{% url 'admin_student_delete' s.id %}" class="btn btn-sm btn-danger">Delete</a>{% endif %}
           </td>
         </tr>
         {% empty %}

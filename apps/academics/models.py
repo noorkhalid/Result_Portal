@@ -1,16 +1,67 @@
 from django.db import models
+from django.contrib.auth.models import User
 
 
 class Department(models.Model):
-    """A simple organizational unit (currently only one)."""
+    """An organizational unit used to separate data."""
+
+    class DepartmentType(models.TextChoices):
+        PRIVATE_AFFILIATED = "private_affiliated", "Private Affiliated College"
+        PUBLIC_AFFILIATED = "public_affiliated", "Public Affiliated College"
+        UNIVERSITY_MAIN = "university_main", "University Department, Main Campus"
+        UNIVERSITY_QUAID_E_AZAM = "university_quaid_e_azam", "University Department, Quid E Azam Campus"
+        UNIVERSITY_TANK = "university_tank", "University Department, Tank Campus"
 
     name = models.CharField(max_length=255, unique=True)
+    type = models.CharField(
+        max_length=40,
+        choices=DepartmentType.choices,
+        default=DepartmentType.PRIVATE_AFFILIATED,
+    )
+    assigned_assistant = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="assigned_departments",
+    )
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.name
+
+    @property
+    def is_affiliated_college(self) -> bool:
+        return self.type in {
+            self.DepartmentType.PRIVATE_AFFILIATED,
+            self.DepartmentType.PUBLIC_AFFILIATED,
+        }
+
+    @property
+    def campus_name(self) -> str:
+        campus_map = {
+            self.DepartmentType.UNIVERSITY_MAIN: "Main Campus",
+            self.DepartmentType.UNIVERSITY_QUAID_E_AZAM: "Quid E Azam Campus",
+            self.DepartmentType.UNIVERSITY_TANK: "Tank Campus",
+        }
+        return campus_map.get(self.type, "")
+
+    @property
+    def result_notification_subtitle(self) -> str:
+        if self.is_affiliated_college:
+            return "AFFILIATED WITH GOMAL UNIVERSITY, DERA ISMAIL KHAN"
+        if self.campus_name:
+            return f"{self.campus_name}, Gomal University, Dera Ismail Khan"
+        return "Gomal University, Dera Ismail Khan"
+
+    @property
+    def assigned_assistant_name(self) -> str:
+        if not self.assigned_assistant_id:
+            return ""
+        full_name = (self.assigned_assistant.get_full_name() or "").strip()
+        return full_name or self.assigned_assistant.username
 
 
 def get_default_department() -> "Department":

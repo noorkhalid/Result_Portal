@@ -14,6 +14,7 @@ from django.shortcuts import redirect, render
 from academics.models import Course, Program, Session, Department
 from students.models import Student, Enrollment
 from dashboards.decorators import group_required
+from dashboards.access import assigned_departments_qs, is_dealing_assistant
 
 
 def _norm(v):
@@ -65,7 +66,7 @@ def template_courses(request):
     return resp
 
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def template_students(request):
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -82,7 +83,7 @@ def template_students(request):
     return resp
 
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def template_enrollments(request):
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -229,7 +230,7 @@ def import_courses(request):
 # IMPORT STUDENTS
 # ======================================================
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 @transaction.atomic
 def import_students(request):
     if request.method != "POST":
@@ -254,6 +255,7 @@ def import_students(request):
     created = 0
     updated = 0
     errors: list[str] = []
+    assistant_departments = assigned_departments_qs(request.user) if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()) else Department.objects.all()
 
     try:
         wb = openpyxl.load_workbook(file_path)
@@ -287,7 +289,18 @@ def import_students(request):
 
             dept_obj = None
             if dept_name:
-                dept_obj, _ = Department.objects.get_or_create(name=dept_name)
+                dept_obj = Department.objects.filter(name__iexact=dept_name).first()
+                if dept_obj is None and not (is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists())):
+                    dept_obj, _ = Department.objects.get_or_create(name=dept_name)
+            elif assistant_departments.count() == 1:
+                dept_obj = assistant_departments.first()
+            if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+                if dept_obj is None:
+                    errors.append(f"Row {row_num}: department is required for dealing assistant imports")
+                    continue
+                if not assistant_departments.filter(id=dept_obj.id).exists():
+                    errors.append(f"Row {row_num}: department '{dept_obj.name}' is not assigned to you")
+                    continue
 
             obj = Student.objects.filter(registration_no__iexact=registration_no).first()
             if obj:
@@ -327,7 +340,7 @@ def import_students(request):
 # IMPORT ENROLLMENTS
 # ======================================================
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 @transaction.atomic
 def import_enrollments(request):
     if request.method != "POST":
@@ -352,6 +365,7 @@ def import_enrollments(request):
     created = 0
     updated = 0
     errors: list[str] = []
+    assistant_departments = assigned_departments_qs(request.user) if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()) else Department.objects.all()
 
     try:
         wb = openpyxl.load_workbook(file_path)
@@ -393,9 +407,23 @@ def import_enrollments(request):
 
             dept_obj = None
             if dept_name:
-                dept_obj, _ = Department.objects.get_or_create(name=dept_name)
+                dept_obj = Department.objects.filter(name__iexact=dept_name).first()
+                if dept_obj is None and not (is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists())):
+                    dept_obj, _ = Department.objects.get_or_create(name=dept_name)
+            elif assistant_departments.count() == 1:
+                dept_obj = assistant_departments.first()
+            if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+                if dept_obj is None:
+                    errors.append(f"Row {row_num}: department is required for dealing assistant imports")
+                    continue
+                if not assistant_departments.filter(id=dept_obj.id).exists():
+                    errors.append(f"Row {row_num}: department '{dept_obj.name}' is not assigned to you")
+                    continue
 
             student = Student.objects.filter(registration_no__iexact=registration_no).first()
+            if student and dept_obj and student.department_id != dept_obj.id:
+                errors.append(f"Row {row_num}: student department does not match selected department")
+                continue
             if not student:
                 errors.append(f"Row {row_num}: student not found ({registration_no})")
                 continue

@@ -37,6 +37,8 @@
       <thead>
         <tr>
           <th>Name</th>
+          <th>Type</th>
+          <th>Assigned Assistant</th>
           <th style="width: 160px;">Actions</th>
         </tr>
       </thead>
@@ -45,14 +47,16 @@
         <tr>
           <td>
             {{ d.name }}
-</td>
+          </td>
+          <td>{{ d.get_type_display }}</td>
+          <td>{% if d.assigned_assistant_name %}{{ d.assigned_assistant_name }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
           <td>
             <a href="{% url 'admin_department_edit' d.id %}" class="btn btn-sm btn-warning">Edit</a>
             <a href="{% url 'admin_department_delete' d.id %}" class="btn btn-sm btn-danger">Delete</a>
           </td>
         </tr>
         {% empty %}
-        <tr><td colspan="2" class="text-center text-muted py-4">No departments found</td></tr>
+        <tr><td colspan="4" class="text-center text-muted py-4">No departments found</td></tr>
         {% endfor %}
       </tbody>
     </table>

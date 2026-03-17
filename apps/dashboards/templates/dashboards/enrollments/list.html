@@ -77,7 +77,7 @@
           <td>{{ e.session.start_year }}</td>
           <td>{% if e.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td>
           <td>
-            <a href="{% url 'admin_enrollment_delete' e.id %}" class="btn btn-sm btn-danger">Delete</a>
+{% if is_system_admin %}<a href="{% url 'admin_enrollment_delete' e.id %}" class="btn btn-sm btn-danger">Delete</a>{% endif %}
           </td>
         </tr>
         {% empty %}

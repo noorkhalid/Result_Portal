@@ -7,12 +7,13 @@ from academics.models import Department, Program, Session
 from django.db.models import Q
 from dashboards.decorators import group_required
 from dashboards.forms import EnrollmentForm
+from dashboards.access import assigned_departments_qs, is_dealing_assistant
 
 from results.models import ResultBatch, SemesterResult, CourseResult
 
 
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def enrollment_list(request):
     q = (request.GET.get("q") or "").strip()
     department_id = (request.GET.get("department") or "").strip()
@@ -24,6 +25,7 @@ def enrollment_list(request):
         .all()
         .order_by("-session__start_year", "program__name", "roll_no")
     )
+    departments = assigned_departments_qs(request.user) if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()) else Department.objects.all().order_by("name")
 
     if program_id:
         enrollments = enrollments.filter(program_id=program_id)
@@ -31,6 +33,8 @@ def enrollment_list(request):
         enrollments = enrollments.filter(session_id=session_id)
     if department_id:
         enrollments = enrollments.filter(department_id=department_id)
+    elif is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+        enrollments = enrollments.filter(department__assigned_assistant=request.user)
 
     if q:
         enrollments = enrollments.filter(
@@ -39,10 +43,11 @@ def enrollment_list(request):
             | Q(student__name__icontains=q)
         )
 
-    departments = Department.objects.all().order_by("name")
     programs = Program.objects.all().order_by("name")
     if department_id:
         programs = programs.filter(offerings__department_id=department_id, offerings__is_active=True).distinct()
+    elif is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+        programs = programs.filter(offerings__department__assigned_assistant=request.user, offerings__is_active=True).distinct()
 
     # If selected program is not valid for this department, reset dependent filters
     invalid_program = False
@@ -58,6 +63,8 @@ def enrollment_list(request):
             .all()
             .order_by("-session__start_year", "program__name", "roll_no")
         )
+        if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+            enrollments = enrollments.filter(department__assigned_assistant=request.user)
         if department_id:
             enrollments = enrollments.filter(department_id=department_id)
         if q:
@@ -69,6 +76,8 @@ def enrollment_list(request):
 
     # Sessions depend on selected dept/program (via existing enrollments)
     base_for_sessions = Enrollment.objects.all()
+    if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+        base_for_sessions = base_for_sessions.filter(department__assigned_assistant=request.user)
     if department_id:
         base_for_sessions = base_for_sessions.filter(department_id=department_id)
     if program_id:
@@ -97,10 +106,10 @@ def enrollment_list(request):
     )
 
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def enrollment_create(request):
     if request.method == "POST":
-        form = EnrollmentForm(request.POST)
+        form = EnrollmentForm(request.POST, user=request.user)
         if form.is_valid():
             try:
                 form.save()
@@ -109,7 +118,7 @@ def enrollment_create(request):
             except IntegrityError:
                 messages.error(request, "Roll number must be unique per program+session.")
     else:
-        form = EnrollmentForm()
+        form = EnrollmentForm(user=request.user)
 
     return render(
         request,
@@ -118,12 +127,15 @@ def enrollment_create(request):
     )
 
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def enrollment_update(request, pk):
-    enrollment = get_object_or_404(Enrollment, pk=pk)
+    qs = Enrollment.objects.all()
+    if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+        qs = qs.filter(department__assigned_assistant=request.user)
+    enrollment = get_object_or_404(qs, pk=pk)
 
     if request.method == "POST":
-        form = EnrollmentForm(request.POST, instance=enrollment)
+        form = EnrollmentForm(request.POST, instance=enrollment, user=request.user)
         if form.is_valid():
             try:
                 form.save()
@@ -132,7 +144,7 @@ def enrollment_update(request, pk):
             except IntegrityError:
                 messages.error(request, "Roll number must be unique per program+session.")
     else:
-        form = EnrollmentForm(instance=enrollment)
+        form = EnrollmentForm(instance=enrollment, user=request.user)
 
     return render(
         request,
@@ -163,7 +175,7 @@ def enrollment_delete(request, pk):
     )
 
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def enrollment_detail(request, pk):
     """Single student's academic record (results across semesters).
 
@@ -171,11 +183,12 @@ def enrollment_detail(request, pk):
     not Student, because results are always tied to an enrollment.
     """
 
-    enrollment = (
-        Enrollment.objects.select_related(
+    enrollment_qs = Enrollment.objects.select_related(
             "student", "department", "program", "session", "curriculum"
-        ).get(pk=pk)
-    )
+        )
+    if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+        enrollment_qs = enrollment_qs.filter(department__assigned_assistant=request.user)
+    enrollment = get_object_or_404(enrollment_qs, pk=pk)
 
     # Semester span comes from curriculum snapshot first (stable), then program.
     total_semesters = int(getattr(enrollment.curriculum, "total_semesters", 0) or 0)

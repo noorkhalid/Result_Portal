@@ -21,7 +21,7 @@ sys.path.insert(0, str(BASE_DIR / "apps"))
 # ---------------------------------------------------------
 SECRET_KEY = "django-insecure-i!x^##3d!-vh9_cxybnq*yt_4@0(n)nk=y0_i93tt&#+#mx2@u"
 DEBUG = True
-ALLOWED_HOSTS: list[str] = []
+ALLOWED_HOSTS = ['*']
 
 # ---------------------------------------------------------
 # Application definition

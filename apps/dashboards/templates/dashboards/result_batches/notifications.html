@@ -86,10 +86,10 @@
                       <td class="notification-actions">
                         <a href="{% url 'result_notification_by_id_pdf' n.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print</a>
 
-                        <form method="post" action="{% url 'admin_batch_notification_delete' batch.id n.id %}" style="display:inline;" onsubmit="return confirm('Delete this notification? This cannot be undone.');">
+                        {% if can_delete_results %}<form method="post" action="{% url 'admin_batch_notification_delete' batch.id n.id %}" style="display:inline;" onsubmit="return confirm('Delete this notification? This cannot be undone.');">
                           {% csrf_token %}
                           <button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2">Delete</button>
-                        </form>
+                        </form>{% endif %}
                       </td>
                     </tr>
                   {% endfor %}

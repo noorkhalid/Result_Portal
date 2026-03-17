@@ -60,7 +60,7 @@
     </form>
 
     <a href="{% url 'admin_batch_edit' batch.id %}" class="btn btn-warning btn-sm py-1 px-2">Edit</a>
-    <a href="{% url 'admin_batch_delete' batch.id %}" class="btn btn-danger btn-sm py-1 px-2">Delete</a>
+    {% if can_delete_results %}<a href="{% url 'admin_batch_delete' batch.id %}" class="btn btn-danger btn-sm py-1 px-2">Delete</a>{% endif %}
     <a href="{% url 'admin_batch_list' %}" class="btn btn-outline-dark btn-sm py-1 px-2">Back</a>
   </div>
 </div>

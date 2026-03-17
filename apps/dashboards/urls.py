@@ -119,6 +119,7 @@ urlpatterns = [
     path("data-entry/import/template/", core.data_entry_marks_template, name="data_entry_marks_template"),
     path("documents/dashboard/", core.document_generator_dashboard, name="dash_document_generator"),
     path("results/dashboard/", core.result_checker_dashboard, name="dash_result_checker"),
+    path("dealing-assistant/dashboard/", core.dealing_assistant_dashboard, name="dash_dealing_assistant"),
 
     # System Admin dashboard
     path("admin-dashboard/", core.system_admin_dashboard, name="dash_system_admin"),

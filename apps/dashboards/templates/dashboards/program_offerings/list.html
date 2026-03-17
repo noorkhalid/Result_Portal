@@ -60,7 +60,7 @@
           </td>
           <td>
             <a href="{% url 'admin_program_offering_edit' it.id %}" class="btn btn-sm btn-warning">Edit</a>
-            <a href="{% url 'admin_program_offering_delete' it.id %}" class="btn btn-sm btn-danger">Delete</a>
+            {% if is_system_admin %}<a href="{% url 'admin_program_offering_delete' it.id %}" class="btn btn-sm btn-danger">Delete</a>{% endif %}
           </td>
         </tr>
         {% empty %}

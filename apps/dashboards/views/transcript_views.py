@@ -5,6 +5,7 @@ from django.db.models import Count, F
 from django.shortcuts import redirect, render
 
 from dashboards.decorators import group_required
+from dashboards.access import assigned_departments_qs, restrict_department_queryset
 from academics.models import Department, Program, Session, Curriculum
 from results.models import ResultBatch, SemesterResult
 
@@ -32,7 +33,7 @@ def _semester_span_for(program_id: str | int, session_id: str | int) -> tuple[in
     return (start, end, total)
 
 
-@group_required("System Admin", "Document Generator", "Controller")
+@group_required("System Admin", "Document Generator", "Controller", "Dealing Assistant")
 def transcript_single(request):
     """UI: pick Department → Program → Session → (auto last semester batch) → Student, then print Transcript.
 
@@ -63,7 +64,7 @@ def transcript_single(request):
             program_id = str(b.program_id)
             session_id = str(b.session_id)
 
-    departments = Department.objects.all().order_by("name")
+    departments = assigned_departments_qs(request.user) if request.user.groups.filter(name="Dealing Assistant").exists() and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()) else Department.objects.all().order_by("name")
 
     # Default department: active_department if not selected
     if not dept_id:
@@ -78,6 +79,7 @@ def transcript_single(request):
 
     # Base batches for dependent filters
     batches_qs = ResultBatch.objects.select_related("program", "session").order_by("-created_at")
+    batches_qs = restrict_department_queryset(batches_qs, request.user, "department")
     if dept_id:
         batches_qs = batches_qs.filter(department_id=dept_id)
     if program_id:

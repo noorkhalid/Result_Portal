@@ -9,23 +9,23 @@
     <div class="row g-3">
       <div class="col-md-4">
         <label class="form-label">Department</label>
-        {{ form.department }}
+        {{ form.department }}{% for e in form.department.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
       </div>
       <div class="col-md-4">
         <label class="form-label">Program</label>
-        {{ form.program }}
+        {{ form.program }}{% for e in form.program.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
       </div>
       <div class="col-md-3">
         <label class="form-label">Session</label>
-        {{ form.session }}
+        {{ form.session }}{% for e in form.session.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
       </div>
       <div class="col-md-2">
         <label class="form-label">Semester</label>
-        {{ form.semester_number }}
+        {{ form.semester_number }}{% for e in form.semester_number.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
       </div>
       <div class="col-md-3">
         <label class="form-label">Exam Type</label>
-        {{ form.exam_type }}
+        {{ form.exam_type }}{% for e in form.exam_type.errors %}<div class="text-danger small">{{ e }}</div>{% endfor %}
       </div>
       <div class="col-md-2 d-flex align-items-end">
         <div class="form-check">

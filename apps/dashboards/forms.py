@@ -1,6 +1,7 @@
 from django import forms
 
 from academics.models import Department, Program, ProgramOffering, Session
+from dashboards.access import assigned_departments_qs, is_dealing_assistant
 from results.models import ExamType, GradeScale, ResultBatch
 from students.models import Enrollment, Student
 
@@ -26,9 +27,12 @@ class ProgramOfferingForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-        self.fields["department"].queryset = Department.objects.all().order_by("name")
-        # Keep program list ordered, global for now.
+        if user is not None and is_dealing_assistant(user) and not user.is_superuser and not user.groups.filter(name="System Admin").exists():
+            self.fields["department"].queryset = assigned_departments_qs(user)
+        else:
+            self.fields["department"].queryset = Department.objects.all().order_by("name")
         self.fields["program"].queryset = Program.objects.all().order_by("name")
 
 
@@ -45,8 +49,12 @@ class StudentForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
-        self.fields["department"].queryset = Department.objects.all().order_by("name")
+        if user is not None and is_dealing_assistant(user) and not user.is_superuser and not user.groups.filter(name="System Admin").exists():
+            self.fields["department"].queryset = assigned_departments_qs(user)
+        else:
+            self.fields["department"].queryset = Department.objects.all().order_by("name")
 
 
 class EnrollmentForm(forms.ModelForm):
@@ -63,9 +71,13 @@ class EnrollmentForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
-        self.fields["department"].queryset = Department.objects.all().order_by("name")
+        if user is not None and is_dealing_assistant(user) and not user.is_superuser and not user.groups.filter(name="System Admin").exists():
+            self.fields["department"].queryset = assigned_departments_qs(user)
+        else:
+            self.fields["department"].queryset = Department.objects.all().order_by("name")
 
         dept_id = None
         if self.is_bound:
@@ -83,8 +95,12 @@ class EnrollmentForm(forms.ModelForm):
                 .order_by("name")
             )
         else:
-            self.fields["student"].queryset = Student.objects.all().order_by("name")
-            self.fields["program"].queryset = Program.objects.all().order_by("name")
+            if user is not None and is_dealing_assistant(user) and not user.is_superuser and not user.groups.filter(name="System Admin").exists():
+                self.fields["student"].queryset = Student.objects.filter(department__assigned_assistant=user).order_by("name")
+                self.fields["program"].queryset = Program.objects.filter(offerings__department__assigned_assistant=user, offerings__is_active=True).distinct().order_by("name")
+            else:
+                self.fields["student"].queryset = Student.objects.all().order_by("name")
+                self.fields["program"].queryset = Program.objects.all().order_by("name")
 
     def clean(self):
         cleaned = super().clean()
@@ -144,10 +160,14 @@ class ResultBatchForm(forms.ModelForm):
         }
 
     def __init__(self, *args, **kwargs):
+        user = kwargs.pop("user", None)
         super().__init__(*args, **kwargs)
 
         # Dependent dropdowns: Department -> Program
-        self.fields["department"].queryset = Department.objects.all().order_by("name")
+        if user is not None and hasattr(user, "groups") and user.groups.filter(name="Dealing Assistant").exists() and not user.is_superuser and not user.groups.filter(name="System Admin").exists():
+            self.fields["department"].queryset = Department.objects.filter(assigned_assistant=user).order_by("name")
+        else:
+            self.fields["department"].queryset = Department.objects.all().order_by("name")
 
         dept_id = None
         if self.is_bound:

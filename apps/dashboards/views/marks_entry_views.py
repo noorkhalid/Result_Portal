@@ -7,17 +7,20 @@ from django.forms import modelformset_factory
 from django.shortcuts import get_object_or_404, redirect, render
 
 from dashboards.decorators import group_required
+from dashboards.access import get_accessible_batch_or_none, deny_department_access
 from academics.models import CurriculumCourse
 from results.models import CourseResult, ResultBatch
 from results.services import recompute_batch
 from students.models import Enrollment
 
 
-@group_required("System Admin", "Data Entry")
+@group_required("System Admin", "Dealing Assistant")
 def batch_marks_select_course(request, pk: int):
     """Pick a course for manual marks entry within a ResultBatch."""
 
-    batch = get_object_or_404(ResultBatch, pk=pk)
+    batch = get_accessible_batch_or_none(request.user, pk)
+    if not batch:
+        return deny_department_access(request)
 
     courses = (
         CurriculumCourse.objects.filter(
@@ -45,11 +48,13 @@ def batch_marks_select_course(request, pk: int):
     )
 
 
-@group_required("System Admin", "Data Entry")
+@group_required("System Admin", "Dealing Assistant")
 def batch_marks_entry(request, pk: int, course_id: int):
     """Enter / edit marks for one course in a batch (all students)."""
 
-    batch = get_object_or_404(ResultBatch, pk=pk)
+    batch = get_accessible_batch_or_none(request.user, pk)
+    if not batch:
+        return deny_department_access(request)
 
     if batch.is_locked:
         messages.error(request, "This batch is locked. Unlock it before editing marks.")

@@ -127,13 +127,13 @@
 
   <div class="row g-0">
 
-    {% if is_system_admin %}
+    {% if is_system_admin or is_dealing_assistant %}
       <div class="col-12 col-md-3 p-0 sidebar-col">
         {% include "dashboards/_admin_sidebar.html" %}
       </div>
     {% endif %}
 
-    <div class="{% if is_system_admin %}col-12 col-md-9{% else %}col-12{% endif %} p-4 main-col">
+    <div class="{% if is_system_admin or is_dealing_assistant %}col-12 col-md-9{% else %}col-12{% endif %} p-4 main-col">
       {% block content %}{% endblock %}
     </div>
 
@@ -154,7 +154,7 @@
 </script>
 
 
-{% if is_system_admin %}
+{% if is_system_admin or is_dealing_assistant %}
 <script>
   (function () {
     const KEY = "rp_sidebar_open_sections";

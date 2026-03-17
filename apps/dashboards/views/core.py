@@ -20,6 +20,7 @@ from results.services import recompute_batch
 from students.models import Enrollment, Student
 
 from dashboards.decorators import group_required
+from dashboards.access import is_dealing_assistant, assigned_departments_qs
 
 
 # ======================================================
@@ -62,6 +63,9 @@ def dashboard(request):
 
     if user.groups.filter(name="Result Checker").exists():
         return redirect("dash_result_checker")
+
+    if user.groups.filter(name="Dealing Assistant").exists():
+        return redirect("dash_dealing_assistant")
 
     return render(request, "dashboards/no_group.html")
 
@@ -113,6 +117,16 @@ def document_generator_dashboard(request):
 @group_required("Result Checker")
 def result_checker_dashboard(request):
     return render(request, "dashboards/result_checker.html")
+
+
+
+
+@group_required("Dealing Assistant")
+def dealing_assistant_dashboard(request):
+    departments = assigned_departments_qs(request.user)
+    if not departments.exists():
+        return render(request, "dashboards/dealing_assistant.html", {"departments": departments, "batch_count": 0})
+    return redirect("admin_batch_list")
 
 
 @group_required("System Admin")
@@ -175,7 +189,7 @@ def _to_decimal_2_or_zero(v):
     return d if d is not None else Decimal("0.00")
 
 
-@group_required("Data Entry")
+@group_required("Data Entry", "System Admin", "Dealing Assistant")
 @transaction.atomic
 def data_entry_import_marks(request):
     """Upload Excel (.xlsx) file and import marks."""
@@ -282,6 +296,11 @@ def data_entry_import_marks(request):
                 if not enrollment:
                     errors.append(f"Row {row_num}: enrollment not found")
                     continue
+
+                if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+                    if enrollment.department_id not in assigned_departments_qs(request.user).values_list("id", flat=True):
+                        errors.append(f"Row {row_num}: you do not have access to department for registration '{registration_no}'")
+                        continue
 
                 course = None
                 course_code = None
@@ -392,7 +411,7 @@ def data_entry_import_marks(request):
     )
 
 
-@group_required("Data Entry")
+@group_required("Data Entry", "System Admin", "Dealing Assistant")
 def data_entry_marks_template(request):
     """Download an Excel template for marks import."""
     wb = openpyxl.Workbook()

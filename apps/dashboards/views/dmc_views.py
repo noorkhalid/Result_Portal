@@ -5,12 +5,13 @@ from django.db.models import F
 from django.shortcuts import redirect, render
 
 from dashboards.decorators import group_required
+from dashboards.access import assigned_departments_qs, restrict_department_queryset
 
 from academics.models import Department, Program, Session
 from results.models import ExamType, ResultBatch, SemesterResult
 
 
-@group_required("System Admin", "Document Generator", "Controller")
+@group_required("System Admin", "Document Generator", "Controller", "Dealing Assistant")
 def dmc_single(request):
     """UI: pick Department → Program → Session → Semester → Type → Batch → Student, then print DMC."""
 
@@ -34,7 +35,7 @@ def dmc_single(request):
             semester_no = str(b.semester_number)
             exam_type_id = str(b.exam_type_id)
 
-    departments = Department.objects.all().order_by("name")
+    departments = assigned_departments_qs(request.user) if request.user.groups.filter(name="Dealing Assistant").exists() and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()) else Department.objects.all().order_by("name")
 
     # Default department: active_department if not selected
     if not dept_id:
@@ -49,6 +50,7 @@ def dmc_single(request):
 
     # Base batches queryset from which we derive dependent options.
     batches = ResultBatch.objects.select_related("program", "session", "exam_type").order_by("-created_at")
+    batches = restrict_department_queryset(batches, request.user, "department")
     if dept_id:
         batches = batches.filter(department_id=dept_id)
     if program_id:

@@ -5,12 +5,15 @@ from django.core.paginator import Paginator
 
 from academics.models import Department, Program, ProgramOffering
 from dashboards.decorators import group_required
+from dashboards.access import assigned_departments_qs, is_dealing_assistant
 from dashboards.forms import ProgramOfferingForm
 
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def program_offering_list(request):
     qs = ProgramOffering.objects.select_related("department", "program").all()
+    if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+        qs = qs.filter(department__assigned_assistant=request.user)
 
     department_id = (request.GET.get("department") or "").strip()
     program_id = (request.GET.get("program") or "").strip()
@@ -29,7 +32,7 @@ def program_offering_list(request):
     params.pop("page", None)
     qs_params = params.urlencode()
 
-    departments = Department.objects.all().order_by("name")
+    departments = assigned_departments_qs(request.user) if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()) else Department.objects.all().order_by("name")
 
     # Program dropdown should depend on selected department.
     # In this project, ProgramOffering.program uses related_name="offerings"
@@ -58,10 +61,10 @@ def program_offering_list(request):
     )
 
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def program_offering_create(request):
     if request.method == "POST":
-        form = ProgramOfferingForm(request.POST)
+        form = ProgramOfferingForm(request.POST, user=request.user)
         if form.is_valid():
             try:
                 form.save()
@@ -70,7 +73,7 @@ def program_offering_create(request):
             except IntegrityError:
                 messages.error(request, "This offering already exists.")
     else:
-        form = ProgramOfferingForm()
+        form = ProgramOfferingForm(user=request.user)
 
     return render(
         request,
@@ -79,12 +82,15 @@ def program_offering_create(request):
     )
 
 
-@group_required("System Admin")
+@group_required("System Admin", "Dealing Assistant")
 def program_offering_update(request, pk):
-    item = get_object_or_404(ProgramOffering, pk=pk)
+    qs = ProgramOffering.objects.all()
+    if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+        qs = qs.filter(department__assigned_assistant=request.user)
+    item = get_object_or_404(qs, pk=pk)
 
     if request.method == "POST":
-        form = ProgramOfferingForm(request.POST, instance=item)
+        form = ProgramOfferingForm(request.POST, instance=item, user=request.user)
         if form.is_valid():
             try:
                 form.save()
@@ -93,7 +99,7 @@ def program_offering_update(request, pk):
             except IntegrityError:
                 messages.error(request, "This offering already exists.")
     else:
-        form = ProgramOfferingForm(instance=item)
+        form = ProgramOfferingForm(instance=item, user=request.user)
 
     return render(
         request,
@@ -104,7 +110,10 @@ def program_offering_update(request, pk):
 
 @group_required("System Admin")
 def program_offering_delete(request, pk):
-    item = get_object_or_404(ProgramOffering, pk=pk)
+    qs = ProgramOffering.objects.all()
+    if is_dealing_assistant(request.user) and not (request.user.is_superuser or request.user.groups.filter(name="System Admin").exists()):
+        qs = qs.filter(department__assigned_assistant=request.user)
+    item = get_object_or_404(qs, pk=pk)
 
     if request.method == "POST":
         item.delete()
