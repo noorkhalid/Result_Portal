@@ -183,10 +183,22 @@
 
     /* Batch: explicit page breaks between transcripts */
     .page-break{ page-break-after: always; }
-  </style>
+  
+/* Dynamic spacing for fewer semesters */
+body.few-sems table.pair-table td,
+body.few-sems table.single-sem td {
+  padding: 1.8mm 0.7mm;
+}
+
+body.few-sems table.pair-table tbody tr,
+body.few-sems table.single-sem tbody tr {
+  height: 8mm;
+}
+
+</style>
 </head>
 
-<body class="{% if layout_mode == 'double' %}double{% endif %}">
+<body class="{% if layout_mode == 'double' %}double{% endif %} {% if semester_pairs|length <= 2 %}few-sems{% endif %}">
 
   {{ rendered_html|safe }}
 

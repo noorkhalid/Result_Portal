@@ -22,7 +22,7 @@
       width: 100%;
       display: table;
       table-layout: fixed;
-      margin: 1mm 0 2mm;
+      margin: 10mm 0 2mm;
     }
     .hdr .cell { display: table-cell; vertical-align: middle; }
     .hdr .logo { width: 18mm; }
@@ -35,7 +35,7 @@
       width: 100%;
       display: table;
       table-layout: fixed;
-      margin: 1mm 0 2mm;
+      margin: 10mm 0 2mm;
       font-size: 9.6px;
     }
     .info .row { display: table-row; }
@@ -149,9 +149,21 @@
       line-height: 1.25;
       padding-top: 4.5mm;
     }
-  </style>
+  
+/* Dynamic spacing for fewer semesters */
+body.few-sems table.pair-table td,
+body.few-sems table.single-sem td {
+  padding: 1.8mm 0.7mm;
+}
+
+body.few-sems table.pair-table tbody tr,
+body.few-sems table.single-sem tbody tr {
+  height: 8mm;
+}
+
+</style>
 </head>
-<body>
+<body class="{% if semester_pairs|length <= 2 %}few-sems{% endif %}">
 <div class="page">
   <div class="hdr">
     <div class="cell logo"><img src="{% static 'img/university_logo.png' %}" alt="Logo"></div>
