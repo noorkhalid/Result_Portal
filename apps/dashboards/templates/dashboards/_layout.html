@@ -38,10 +38,12 @@
        FULL-WIDTH MESSAGE BAR (UNDER TOPBAR)
        ================================================== */
     .rp-msgbar {
-      position: sticky;
-      top: 0;
-      z-index: 1500;
-    }
+		position: fixed;   /* 🔥 KEY CHANGE */
+		top: 60px;         /* adjust based on your topbar height */
+		left: 0;
+		width: 100%;
+		z-index: 2000;
+	}
 
     .rp-msgbar .alert {
       margin: 0;
