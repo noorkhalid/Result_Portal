@@ -7,200 +7,208 @@
   <style>
     /* Styles are intentionally kept in-sync with results/transcript.html */
     @page { size: A4 portrait; margin: 8mm 10mm; }
-    *{ box-sizing: border-box; }
+    * { box-sizing: border-box; }
 
-    body{
+    body {
+      margin: 0;
+      color: #000;
       font-family: "Times New Roman", serif;
       font-size: 10px;
-      color:#000;
-      margin:0;
       line-height: 1.15;
     }
 
-    .page{ width:100%; }
+    .page { width: 100%; }
 
-    .hdr{ width:100%; display: table; table-layout: fixed; margin-top: 1mm; margin-bottom: 2mm; }
-    .hdr .cell{ display: table-cell; vertical-align: middle; }
-    .hdr .cell.logo{ width: 22mm; }
-    .hdr .cell.logo img{ width: 18mm; height: auto; display:block; }
-    .hdr .cell.title{ text-align: center; }
-    .u-name{ font-weight: 700; font-size: 14px; letter-spacing: .2px; }
-    .u-sub{ font-weight: 700; font-size: 11px; margin-top: 0.8mm; }
-    .u-doc{ font-weight: 700; font-size: 11px; margin-top: 0.8mm; }
-
-    .info{ width:100%; display: table; table-layout: fixed; margin: 1mm 0 2mm; font-size: 9.6px; }
-    .info .row{ display: table-row; }
-    .info .cell{ display: table-cell; padding: 0.6mm 0; vertical-align: top; }
-    .lbl{ font-weight: 700; width: 16mm; }
-    .val{ width: 57mm; }
-    .lbl-r{ font-weight: 700; width: 24mm; padding-left: 4mm; }
-    .val-r{ width: 44mm; }
-
-    .sem-title{ font-weight: 700; margin-top: 2.5mm; }
-
-    table.marks{ width:100%; border-collapse: collapse; margin-top: 1mm; table-layout: fixed; }
-    table.marks th, table.marks td{ border: 1px solid #000; padding: 1.2mm 1.4mm; vertical-align: middle; }
-    table.marks th{ font-weight: 700; text-align: center; }
-    table.marks td{ text-align: center; }
-    table.marks td.subj{ text-align: left; }
-
-    .sem-foot{ width:100%; display: table; table-layout: fixed; margin-top: 0.8mm; font-size: 11.5px; }
-    .sem-foot .cell{ display: table-cell; vertical-align: top; }
-    .sem-foot .left{ width: 45%; }
-    .sem-foot .right{ width: 55%; text-align: right; }
-    .sem-foot b{ font-weight:700; }
-    .sem-foot .right span{ display: inline-block; min-width: 26mm; text-align: left; }
-
-    .bottom{ width:100%; display: table; table-layout: fixed; margin-top: 4mm; }
-    .bottom .cell{ display: table-cell; vertical-align: bottom; }
-    .bottom .left{ width: 100%; }
-    .bottom .right{ width: 0%; text-align: center; font-weight:700; }
-
-    table.footer-summary{
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      margin-top: 5mm;
-      font-size: 10.5px;
-      page-break-inside: avoid;
-    }
-    table.footer-summary th,
-    table.footer-summary td{
-      border: 2px solid #000;
-      padding: 1.2mm 1.2mm;
-      text-align: center;
-      vertical-align: middle;
-    }
-    table.footer-summary th{ font-weight: 700; }
-    table.footer-summary td{ font-weight: 400; }
-
-    .errors{ font-style: italic; margin-top: 2.2mm; font-size: 9px; }
-    .avoid-break{ page-break-inside: avoid; }
-
-    /* Double-column layout (>3 semesters): KEEP EXACTLY in-sync with results/transcript.html */
-    body.double{
-      font-size: 10.5px; /* slightly smaller to keep everything on one page */
-    }
-
-    table.pair-table{
-      width: 100%;
-      border-collapse: collapse;
-      table-layout: fixed;
-      margin-top: 1.5mm;
-      page-break-inside: avoid;
-      border: 2px solid #000; /* strong outer border like sample */
-    }
-    table.pair-table th, table.pair-table td{
-      border: 0;
-      padding: 0.7mm 0.8mm;
-      font-size: 9px;
-      vertical-align: middle;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    table.pair-table th{
-      font-weight: 700;
-      text-align: center;
-    }
-    /* show column headings only once (top) */
-    table.pair-table thead tr.col-head th{
-      border-bottom: 1px solid #000;
-    }
-    /* semester heading row separator */
-    table.pair-table thead tr.semhead-row th{
-      border-top: 1px solid #000;
-      border-bottom: 1px solid #000;
-    }
-    /* keep only the middle divider like sample */
-    table.pair-table .mid{
-      border-left: 2px solid #000 !important;
-    }
-    /* summary separators */
-    table.pair-table tr.summary-top td{
-      border-top: 2px solid #000;
-    }
-    table.pair-table td{ text-align: center; }
-    table.pair-table td.title{ text-align: left; }
-    .mid{ border-left-width: 2px !important; }
-    /* keep clean like sample (no extra thick internal lines) */
-    .pair-top{ margin-top: 2mm; }
-    .pair-bottom{ border-bottom-width: 2px !important; }
-    .semhead{
-      font-weight: 700;
-      text-align: center;
-      background: #fff;
-    }
-
-    /* Summary rows inside paired semester blocks (match sample look) */
-    tr.summary-top td{ border-top: 2px solid #000; }
-
-    /* Bottom row in double layout: last semester on left, footer box on right */
-    .double-bottom-row{
+    .hdr {
       width: 100%;
       display: table;
       table-layout: fixed;
-      margin-top: 1.5mm;
+      margin: 10mm 0 2mm;
     }
-    .double-bottom-row .cell{ display: table-cell; vertical-align: top; }
-    .double-bottom-row .left{ width: 50%; padding-right: 2.5mm; }
-    .double-bottom-row .right{ width: 50%; padding-left: 2.5mm; }
+    .hdr .cell { display: table-cell; vertical-align: middle; }
+    .hdr .logo { width: 18mm; }
+    .hdr .logo img { width: 15mm; display: block; }
+    .hdr .title { text-align: center; }
+    .u-name { font-weight: 700; font-size: 14px; }
+    .u-doc { font-weight: 700; font-size: 11px; margin-top: 0.8mm; }
 
-    table.single-sem{
+    .info {
       width: 100%;
-      border: 2px solid #000;
+      display: table;
+      table-layout: fixed;
+      margin: 10mm 0 2mm;
+      font-size: 9.6px;
+    }
+    .info .row { display: table-row; }
+    .info .cell { display: table-cell; padding: 0.35mm 0; vertical-align: top; }
+    .lbl, .lbl-r { font-weight: 700; }
+    .lbl { width: 16mm; }
+    .val { width: 57mm; }
+    .lbl-r { width: 24mm; padding-left: 4mm; }
+    .val-r { width: 44mm; }
+
+    table.pair-table,
+    table.single-sem,
+    table.footer-summary {
+      width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
       page-break-inside: avoid;
     }
-    table.single-sem th, table.single-sem td{
-      border: 0;
-      padding: 0.7mm 0.8mm;
+
+    table.pair-table {
+      margin-top: 1.4mm;
+      margin-bottom: 2.2mm;
+      border: 1.7px solid #000;
+    }
+
+    table.pair-table th,
+    table.pair-table td,
+    table.single-sem th,
+    table.single-sem td {
+      padding: 0.6mm 0.7mm;
       font-size: 9px;
+      vertical-align: middle;
+      border: 0;
       overflow-wrap: anywhere;
       word-break: break-word;
     }
-    table.single-sem th{ font-weight:700; text-align:center; }
-    table.single-sem thead tr.semhead-row th{
-      border-top: 1px solid #000;
+
+    table.pair-table th,
+    table.single-sem th {
+      font-weight: 700;
+      text-align: center;
+    }
+
+    table.pair-table td,
+    table.single-sem td {
+      text-align: center;
+    }
+
+    table.pair-table td.title,
+    table.single-sem td.title {
+      text-align: left;
+      word-wrap: break-word;
+    }
+
+    table.pair-table thead tr.col-head th {
       border-bottom: 1px solid #000;
     }
-    table.single-sem tr.summary-top td{ border-top: 2px solid #000; }
-    table.single-sem td{ text-align:center; }
-    table.single-sem td.title{ text-align:left; }
 
-    .controller{
-      width: 100%;
-      margin-top: 6.5mm;
-      text-align: right;
-      font-weight: 700;
-      font-size: 10.4px;
-      line-height: 1.25;
-      padding-right: 1mm;
+    table.pair-table thead tr.semhead-row th,
+    table.single-sem thead tr.semhead-row th {
+      border-bottom: 1px solid #000;
+      font-size: 10px;
+      padding-top: 0.8mm;
+      padding-bottom: 0.8mm;
     }
 
-    /* Tighten bottom spacing in double layout to keep single page */
-    .bottom.double{ margin-top: 0; }
+    table.pair-table .mid {
+      border-left: 2.4px solid #000 !important;
+    }
+
+    table.pair-table tr.summary-top td,
+    table.single-sem tr.summary-top td {
+      border-top: 1.3px solid #000;
+    }
+
+    .pair-bottom td,
+    .pair-bottom th {
+      border-top: 0;
+    }
+
+    .double-bottom-row {
+      width: 100%;
+      display: table;
+      table-layout: fixed;
+      margin-top: 1.4mm;
+      page-break-inside: avoid;
+    }
+
+    .double-bottom-row .cell { display: table-cell; vertical-align: top; }
+    .double-bottom-row .left { width: 50%; padding-right: 2mm; }
+    .double-bottom-row .right { width: 50%; }
+
+    table.single-sem {
+      border: 1.7px solid #000;
+    }
+
+    table.single-sem thead tr.col-head th {
+      border-bottom: 1px solid #000;
+    }
+
+    table.single-sem tr.single-summary-row td {
+      border-top: 1.3px solid #000;
+      font-weight: 700;
+      padding-top: 0.8mm;
+      padding-bottom: 0.8mm;
+    }
+
+    .footer-block {
+      margin-top: 2.4mm;
+      page-break-inside: avoid;
+    }
+
+    table.footer-summary {
+      font-size: 9.2px;
+      border-collapse: collapse;
+      border: 2px solid #000;
+    }
+
+    table.footer-summary th,
+    table.footer-summary td {
+      border: 1.3px solid #000;
+      padding: 0.8mm 0.7mm;
+      text-align: center;
+      vertical-align: middle;
+    }
+
+    table.footer-summary thead th {
+      border-bottom: 1.8px solid #000;
+      font-weight: 700;
+    }
+
+    table.footer-summary tbody td {
+      font-weight: 700;
+    }
+
+    .footer-note {
+      width: 100%;
+      display: table;
+      table-layout: fixed;
+      margin-top: 2.2mm;
+      font-size: 9px;
+    }
+
+    .footer-note .cell { display: table-cell; vertical-align: bottom; }
+    .errors { font-style: italic; }
+
+    .controller {
+      text-align: right;
+      font-weight: 700;
+      white-space: nowrap;
+      font-size: 10.4px;
+      line-height: 1.25;
+      padding-top: 4.5mm;
+    }
 
     /* Batch: explicit page breaks between transcripts */
-    .page-break{ page-break-after: always; }
-  
-/* Dynamic spacing for fewer semesters */
-body.few-sems table.pair-table td,
-body.few-sems table.single-sem td {
-  padding: 1.8mm 0.7mm;
-}
+    .page-break { page-break-after: always; }
 
-body.few-sems table.pair-table tbody tr,
-body.few-sems table.single-sem tbody tr {
-  height: 8mm;
-}
+    /* Dynamic spacing for fewer semesters */
+    body.few-sems table.pair-table td,
+    body.few-sems table.single-sem td {
+      padding: 1.8mm 0.7mm;
+    }
 
-</style>
+    body.few-sems table.pair-table tbody tr,
+    body.few-sems table.single-sem tbody tr {
+      height: 8mm;
+    }
+  </style>
 </head>
 
 <body class="{% if layout_mode == 'double' %}double{% endif %} {% if semester_pairs|length <= 2 %}few-sems{% endif %}">
-
   {{ rendered_html|safe }}
-
 </body>
 </html>

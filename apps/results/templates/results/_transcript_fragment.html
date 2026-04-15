@@ -95,16 +95,30 @@
           </tr>
         </tbody>
       </table>
+
     {% elif pair.left %}
       <div class="double-bottom-row">
         <div class="cell left">
           <table class="single-sem">
             <colgroup>
-              <col style="width:50%"><col style="width:14%"><col style="width:16%"><col style="width:10%"><col style="width:10%">
+              <col style="width:38%">
+              <col style="width:10%">
+              <col style="width:14%">
+              <col style="width:12%">
+              <col style="width:11%">
+              <col style="width:15%">
             </colgroup>
             <thead>
               <tr class="semhead-row">
-                <th colspan="5">{{ pair.left.semester_no|ordinal }} Semester</th>
+                <th colspan="6">{{ pair.left.semester_no|ordinal }} Semester</th>
+              </tr>
+              <tr class="col-head">
+                <th>Title</th>
+                <th>CH</th>
+                <th>Marks %</th>
+                <th>Grade</th>
+                <th>GP</th>
+                <th>Remarks</th>
               </tr>
             </thead>
             <tbody>
@@ -115,13 +129,15 @@
                 <td>{{ r.marks_pct }}</td>
                 <td>{{ r.grade }}</td>
                 <td>{{ r.ng }}</td>
+                <td></td>
               </tr>
               {% endfor %}
-              <tr class="summary-top">
-                <td colspan="5"><b>SCH:</b> {{ pair.left.sch }} &nbsp;&nbsp; <b>CCH:</b> {{ pair.left.cch }} &nbsp;&nbsp; <b>GPA:</b> {{ pair.left.semester_result.gpa }}</td>
-              </tr>
-              <tr class="pair-bottom">
-                <td colspan="5"><b>Grade:</b> {{ pair.left.semester_result.letter_grade }} &nbsp;&nbsp; <b>Remarks:</b> {{ pair.left.semester_result.remarks }}</td>
+              <tr class="single-summary-row">
+                <td class="title"><b>SCH:</b> {{ pair.left.sch }}</td>
+                <td><b>CCH:</b> {{ pair.left.cch }}</td>
+                <td><b>GPA:</b> {{ pair.left.semester_result.gpa }}</td>
+                <td><b>Grade:</b> {{ pair.left.semester_result.letter_grade }}</td>
+                <td colspan="2"><b>Remarks:</b> {{ pair.left.semester_result.remarks }}</td>
               </tr>
             </tbody>
           </table>
@@ -156,6 +172,7 @@
         </tr>
       </tbody>
     </table>
+
     <div class="footer-note">
       <div class="cell errors">Errors and Omissions are Accepted</div>
       <div class="cell controller">Controller of Examinations<br>Gomal University, D.I.Khan</div>

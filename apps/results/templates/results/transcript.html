@@ -10,6 +10,7 @@
 
     body {
       margin: 0;
+      height: 100%;
       color: #000;
       font-family: "Times New Roman", serif;
       font-size: 10px;
@@ -18,155 +19,170 @@
 
     .page { width: 100%; }
 
+    /* HEADER */
     .hdr {
       width: 100%;
       display: table;
       table-layout: fixed;
-      margin: 10mm 0 2mm;
+      margin: 6mm 0 1mm;
     }
     .hdr .cell { display: table-cell; vertical-align: middle; }
     .hdr .logo { width: 18mm; }
     .hdr .logo img { width: 15mm; display: block; }
-    .hdr .title { text-align: center; }
-    .u-name { font-weight: 700; font-size: 14px; }
-    .u-doc { font-weight: 700; font-size: 11px; margin-top: 0.8mm; }
 
+    .hdr .title {
+      text-align: center;
+      width: 100%;
+    }
+
+    .u-name {
+      font-weight: 700;
+      font-size: 20px;
+      text-align: center;
+    }
+
+    .u-doc {
+      font-weight: 700;
+      font-size: 14px;
+      margin-top: 0.5mm;
+      text-align: center;
+    }
+
+    /* STUDENT INFO */
     .info {
       width: 100%;
       display: table;
       table-layout: fixed;
-      margin: 10mm 0 2mm;
-      font-size: 9.6px;
+      margin: 3mm 0 2mm;
+      font-size: 12px;
     }
+
     .info .row { display: table-row; }
-    .info .cell { display: table-cell; padding: 0.35mm 0; vertical-align: top; }
+    .info .cell { display: table-cell; padding: 0.5mm 0; vertical-align: top; }
     .lbl, .lbl-r { font-weight: 700; }
     .lbl { width: 16mm; }
     .val { width: 57mm; }
     .lbl-r { width: 24mm; padding-left: 4mm; }
     .val-r { width: 44mm; }
 
-    table.pair-table, table.single-sem, table.footer-summary {
+    table.pair-table,
+    table.single-table,
+    table.footer-summary {
       width: 100%;
       border-collapse: collapse;
       table-layout: fixed;
       page-break-inside: avoid;
     }
 
-    table.pair-table {
-      margin-top: 1.4mm;
-      border: 1.5px solid #000;
+    table.pair-table,
+    table.single-table {
+      border: 1.7px solid #000;
+      margin-top: 1.5mm;
+      margin-bottom: 2.8mm;
     }
+
     table.pair-table th,
     table.pair-table td,
-    table.single-sem th,
-    table.single-sem td {
-      padding: 0.6mm 0.7mm;
-      font-size: 9px;
-      vertical-align: middle;
+    table.single-table th,
+    table.single-table td {
       border: 0;
-      overflow-wrap: anywhere;
-      word-break: break-word;
-    }
-    table.pair-table th,
-    table.single-sem th {
-      font-weight: 700;
+      padding: 0.6mm 0.75mm;
+      font-size: 11.5px;
+      vertical-align: middle;
       text-align: center;
     }
-    table.pair-table td,
-    table.single-sem td {
-      text-align: center;
-    }
+
+    table.single-table td.title,
+    table.single-table th:first-child,
     table.pair-table td.title,
-    table.single-sem td.title {
+    table.pair-table th:first-child {
       text-align: left;
-      word-wrap: break-word;
+      padding-left: 1.2mm;
     }
-    table.pair-table thead tr.col-head th {
+
+    table.pair-table thead tr.col-head th,
+    table.single-table thead tr.col-head th {
       border-bottom: 1px solid #000;
+      font-weight: 700;
     }
+
     table.pair-table thead tr.semhead-row th,
-    table.single-sem thead tr.semhead-row th {
+    table.single-table thead tr.semhead-row th {
       border-bottom: 1px solid #000;
-      font-size: 10px;
-      padding-top: 0.8mm;
-      padding-bottom: 0.8mm;
+      font-weight: 700;
+      font-size: 12px;
+      padding-top: 1mm;
+      padding-bottom: 1mm;
     }
-    table.pair-table .mid { border-left: 1.5px solid #000 !important; }
-    table.pair-table tr.summary-top td,
-    table.single-sem tr.summary-top td {
-      border-top: 1px solid #000;
-    }
-    .pair-bottom td,
-    .pair-bottom th { border-top: 0; }
 
-    .double-bottom-row {
-      width: 100%;
-      display: table;
-      table-layout: fixed;
-      margin-top: 1.4mm;
-      page-break-inside: avoid;
+    table.pair-table .mid {
+      border-left: 2.2px solid #000 !important;
     }
-    .double-bottom-row .cell { display: table-cell; vertical-align: top; }
-    .double-bottom-row .left { width: 50%; padding-right: 2mm; }
-    .double-bottom-row .right { width: 50%; }
 
-    table.single-sem {
-      border: 1.5px solid #000;
+    table.pair-table tr.sem-summary-row td,
+    table.single-table tr.sem-summary-row td {
+      border-top: 1.3px solid #000;
+      font-weight: 700;
+      font-size: 11.5px;
+      padding-top: 1mm;
+      padding-bottom: 1mm;
     }
 
     .footer-block {
-      margin-top: 2.2mm;
+      margin-top: 2.6mm;
       page-break-inside: avoid;
     }
+
     table.footer-summary {
-      font-size: 9.2px;
+      font-size: 11.5px;
       border-collapse: collapse;
+      border: 2px solid #000;
     }
+
     table.footer-summary th,
     table.footer-summary td {
-      border: 1.5px solid #000;
-      padding: 0.8mm 0.7mm;
+      border: 1.25px solid #000;
+      padding: 1mm;
       text-align: center;
       vertical-align: middle;
     }
-    table.footer-summary th { font-weight: 700; }
+
+    table.footer-summary thead th {
+      font-weight: 700;
+      border-bottom: 1.7px solid #000;
+    }
 
     .footer-note {
       width: 100%;
       display: table;
       table-layout: fixed;
       margin-top: 2.2mm;
-      font-size: 9px;
+      font-size: 11.5px;
     }
+
     .footer-note .cell { display: table-cell; vertical-align: bottom; }
+
     .errors { font-style: italic; }
+
     .controller {
       text-align: right;
       font-weight: 700;
       white-space: nowrap;
-      font-size: 10.4px;
+      font-size: 12px;
       line-height: 1.25;
-      padding-top: 4.5mm;
+      padding-top: 5mm;
     }
-  
-/* Dynamic spacing for fewer semesters */
-body.few-sems table.pair-table td,
-body.few-sems table.single-sem td {
-  padding: 1.8mm 0.7mm;
-}
-
-body.few-sems table.pair-table tbody tr,
-body.few-sems table.single-sem tbody tr {
-  height: 8mm;
-}
-
-</style>
+  </style>
 </head>
-<body class="{% if semester_pairs|length <= 2 %}few-sems{% endif %}">
+
+<body class="ts-{{ total_semesters }}">
 <div class="page">
+
+  <!-- HEADER -->
   <div class="hdr">
-    <div class="cell logo"><img src="{% static 'img/university_logo.png' %}" alt="Logo"></div>
+    <div class="cell logo">
+      <img src="{% static 'img/university_logo.png' %}">
+    </div>
     <div class="cell title">
       <div class="u-name">GOMAL UNIVERSITY, DERA ISMAIL KHAN</div>
       <div class="u-doc">ACADEMIC TRANSCRIPT</div>
@@ -174,6 +190,7 @@ body.few-sems table.single-sem tbody tr {
     <div class="cell" style="width:18mm;"></div>
   </div>
 
+  <!-- INFO -->
   <div class="info">
     <div class="row">
       <div class="cell lbl">Name:</div>
@@ -196,104 +213,64 @@ body.few-sems table.single-sem tbody tr {
     <div class="row">
       <div class="cell lbl">College:</div>
       <div class="cell val">{{ enrollment.department.name }}</div>
-      <div class="cell lbl-r"></div>
-      <div class="cell val-r"></div>
     </div>
   </div>
 
-  {% for pair in semester_pairs %}
-    {% if pair.left and pair.right %}
-      <table class="pair-table">
+  <!-- SINGLE COLUMN -->
+  {% if total_semesters == 3 or total_semesters == 4 or total_semesters == 5 %}
+    {% for sem in semesters %}
+      <table class="single-table">
         <colgroup>
-          <col style="width:25%"><col style="width:7%"><col style="width:8%"><col style="width:5%"><col style="width:5%">
-          <col style="width:25%"><col style="width:7%"><col style="width:8%"><col style="width:5%"><col style="width:5%">
+          <col style="width:60%">
+          <col style="width:9%">
+          <col style="width:11%">
+          <col style="width:8%">
+          <col style="width:8%">
+          <col style="width:4%">
         </colgroup>
         <thead>
-          {% if forloop.first %}
+          <tr class="semhead-row">
+            <th colspan="6">{{ sem.semester_no|ordinal }} Semester</th>
+          </tr>
           <tr class="col-head">
             <th>Title</th>
             <th>CH</th>
             <th>Marks %</th>
             <th>Grade</th>
             <th>GP</th>
-            <th class="mid">Title</th>
-            <th>CH</th>
-            <th>Marks %</th>
-            <th>Grade</th>
-            <th>GP</th>
-          </tr>
-          {% endif %}
-          <tr class="semhead-row">
-            <th colspan="5">{{ pair.left.semester_no|ordinal }} Semester</th>
-            <th class="mid" colspan="5">{{ pair.right.semester_no|ordinal }} Semester</th>
+            <th>&nbsp;</th>
           </tr>
         </thead>
         <tbody>
-          {% with lrows=pair.left.course_rows rrows=pair.right.course_rows %}
-            {% for i in lrows|pair_max_range:rrows %}
-              {% with lr=lrows|idx:i rr=rrows|idx:i %}
-              <tr>
-                <td class="title">{% if lr %}{{ lr.title }}{% endif %}</td>
-                <td>{% if lr %}{{ lr.credit_hours }}{% endif %}</td>
-                <td>{% if lr %}{{ lr.marks_pct }}{% endif %}</td>
-                <td>{% if lr %}{{ lr.grade }}{% endif %}</td>
-                <td>{% if lr %}{{ lr.ng }}{% endif %}</td>
-
-                <td class="title mid">{% if rr %}{{ rr.title }}{% endif %}</td>
-                <td>{% if rr %}{{ rr.credit_hours }}{% endif %}</td>
-                <td>{% if rr %}{{ rr.marks_pct }}{% endif %}</td>
-                <td>{% if rr %}{{ rr.grade }}{% endif %}</td>
-                <td>{% if rr %}{{ rr.ng }}{% endif %}</td>
-              </tr>
-              {% endwith %}
-            {% endfor %}
-          {% endwith %}
-          <tr class="summary-top">
-            <td colspan="5"><b>SCH:</b> {{ pair.left.sch }} &nbsp;&nbsp; <b>CCH:</b> {{ pair.left.cch }} &nbsp;&nbsp; <b>GPA:</b> {{ pair.left.semester_result.gpa }}</td>
-            <td class="mid" colspan="5"><b>SCH:</b> {{ pair.right.sch }} &nbsp;&nbsp; <b>CCH:</b> {{ pair.right.cch }} &nbsp;&nbsp; <b>GPA:</b> {{ pair.right.semester_result.gpa }}</td>
+          {% for r in sem.course_rows %}
+          <tr>
+            <td class="title">{{ r.title }}</td>
+            <td>{{ r.credit_hours }}</td>
+            <td>{{ r.marks_pct }}</td>
+            <td>{{ r.grade }}</td>
+            <td>{{ r.ng }}</td>
+            <td>&nbsp;</td>
           </tr>
-          <tr class="pair-bottom">
-            <td colspan="5"><b>Grade:</b> {{ pair.left.semester_result.letter_grade }} &nbsp;&nbsp; <b>Remarks:</b> {{ pair.left.semester_result.remarks }}</td>
-            <td class="mid" colspan="5"><b>Grade:</b> {{ pair.right.semester_result.letter_grade }} &nbsp;&nbsp; <b>Remarks:</b> {{ pair.right.semester_result.remarks }}</td>
+          {% endfor %}
+          <tr class="sem-summary-row">
+            <td colspan="6">
+              <b>SCH:</b> {{ sem.sch }}
+              &nbsp;&nbsp;
+              <b>CCH:</b> {{ sem.cch }}
+              &nbsp;&nbsp;
+              <b>GPA:</b> {{ sem.semester_result.gpa }}
+              &nbsp;&nbsp;
+              <b>Grade:</b> {{ sem.semester_result.letter_grade }}
+              &nbsp;&nbsp;
+              <b>Remarks:</b> {{ sem.semester_result.remarks }}
+            </td>
           </tr>
         </tbody>
       </table>
-    {% elif pair.left %}
-      <div class="double-bottom-row">
-        <div class="cell left">
-          <table class="single-sem">
-            <colgroup>
-              <col style="width:50%"><col style="width:14%"><col style="width:16%"><col style="width:10%"><col style="width:10%">
-            </colgroup>
-            <thead>
-              <tr class="semhead-row">
-                <th colspan="5">{{ pair.left.semester_no|ordinal }} Semester</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for r in pair.left.course_rows %}
-              <tr>
-                <td class="title">{{ r.title }}</td>
-                <td>{{ r.credit_hours }}</td>
-                <td>{{ r.marks_pct }}</td>
-                <td>{{ r.grade }}</td>
-                <td>{{ r.ng }}</td>
-              </tr>
-              {% endfor %}
-              <tr class="summary-top">
-                <td colspan="5"><b>SCH:</b> {{ pair.left.sch }} &nbsp;&nbsp; <b>CCH:</b> {{ pair.left.cch }} &nbsp;&nbsp; <b>GPA:</b> {{ pair.left.semester_result.gpa }}</td>
-              </tr>
-              <tr class="pair-bottom">
-                <td colspan="5"><b>Grade:</b> {{ pair.left.semester_result.letter_grade }} &nbsp;&nbsp; <b>Remarks:</b> {{ pair.left.semester_result.remarks }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <div class="cell right"></div>
-      </div>
-    {% endif %}
-  {% endfor %}
-
+    {% endfor %}
+  {% endif %}
+<br>
+  <!-- FOOTER -->
   <div class="footer-block">
     <table class="footer-summary">
       <thead>
@@ -314,16 +291,26 @@ body.few-sems table.single-sem tbody tr {
           <td>{{ footer_remarks }}</td>
           <td>{{ overall_max }}</td>
           <td>{{ overall_obtained }}</td>
-          <td>{% if overall_percentage is not None %}{{ overall_percentage }}{% endif %}</td>
-          <td>{% if declaration_date %}{{ declaration_date|date:"d-m-Y" }}{% endif %}</td>
+          <td>{{ overall_percentage }}</td>
+          <td>{{ declaration_date|date:"d-m-Y" }}</td>
         </tr>
       </tbody>
     </table>
+
     <div class="footer-note">
       <div class="cell errors">Errors and Omissions are Accepted</div>
-      <div class="cell controller">Controller of Examinations<br>Gomal University, D.I.Khan</div>
+	  <br>
+	  <br>
+	  <br>
+	  <br>
+	  <br>
+      <div class="cell controller">
+        Controller of Examinations<br>
+        Gomal University, D.I.Khan
+      </div>
     </div>
   </div>
+
 </div>
 </body>
 </html>
