@@ -908,8 +908,17 @@ def transcript_batch_pdf(request, batch_id: int):
     if not total or int(batch.semester_number) != int(sem_end):
         return HttpResponse("Transcripts are available only for the final semester batch.", status=403)
 
+    selected_enrollment_ids = []
+    raw_enrollments = (request.GET.get("enrollments") or "").strip()
+    if raw_enrollments:
+        selected_enrollment_ids = [int(x) for x in raw_enrollments.split(",") if x.strip().isdigit()]
+
+    results = SemesterResult.objects.filter(batch=batch)
+    if selected_enrollment_ids:
+        results = results.filter(enrollment_id__in=selected_enrollment_ids)
+
     results = (
-        SemesterResult.objects.filter(batch=batch)
+        results
         .select_related("enrollment", "enrollment__student")
         .annotate(roll_suffix=_roll_suffix_annotation())
         .order_by("roll_suffix", "enrollment__roll_no")
@@ -1095,6 +1104,8 @@ def transcript_batch_pdf(request, batch_id: int):
                 "session": t["session"],
                 "session_display": t["session_display"],
                 "max_sem": t["max_sem"],
+                "sem_start": t["sem_start"],
+                "total_semesters": t["total_semesters"],
                 "semesters": t["semesters"],
                 "layout_mode": t["layout_mode"],
                 "semester_pairs": t["semester_pairs"],
@@ -1126,5 +1137,6 @@ def transcript_batch_pdf(request, batch_id: int):
 
     pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f'inline; filename="Transcripts_Batch_{batch.id}.pdf"'
+    filename_prefix = "Selected_Transcripts" if selected_enrollment_ids else "Transcripts_Batch"
+    response["Content-Disposition"] = f'inline; filename="{filename_prefix}_{batch.id}.pdf"'
     return response

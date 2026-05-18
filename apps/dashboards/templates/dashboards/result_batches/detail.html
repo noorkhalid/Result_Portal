@@ -44,6 +44,7 @@
 
     {% if is_last_semester %}
       <a href="{% url 'transcript_batch_pdf' batch.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print Transcripts</a>
+      <a href="{% url 'admin_transcript_selected' batch.id %}" class="btn btn-outline-secondary btn-sm py-1 px-2">Print Selected Transcripts</a>
       <a href="{% url 'admin_transcript_single' %}?batch={{ batch.id }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print Transcript (Single)</a>
     {% endif %}
 

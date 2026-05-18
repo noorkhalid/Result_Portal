@@ -2,12 +2,13 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.db.models import Count, F
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 
 from dashboards.decorators import group_required
 from dashboards.access import assigned_departments_qs, restrict_department_queryset
 from academics.models import Department, Program, Session, Curriculum
 from results.models import ResultBatch, SemesterResult
+from students.models import Enrollment
 
 
 def _semester_span_for(program_id: str | int, session_id: str | int) -> tuple[int, int, int]:
@@ -207,5 +208,84 @@ def transcript_single(request):
             "completed_map": completed_map,
             "enrollment_id": str(enrollment_id) if enrollment_id else "",
             "selected_completed": selected_completed,
+        },
+    )
+
+
+@group_required("System Admin", "Document Generator", "Controller", "Dealing Assistant")
+def transcript_selected(request, batch_id):
+    """UI: choose multiple students from a final-semester batch, then print one combined PDF.
+
+    The PDF generation is handled by results.transcript_batch_pdf using selected enrollment IDs.
+    """
+
+    batch = get_object_or_404(
+        ResultBatch.objects.select_related("department", "program", "session", "exam_type", "curriculum"),
+        id=batch_id,
+    )
+
+    # Keep department restrictions consistent with the dashboard.
+    allowed_batches = restrict_department_queryset(ResultBatch.objects.all(), request.user, "department")
+    if not allowed_batches.filter(id=batch.id).exists():
+        messages.error(request, "You do not have permission to access that result batch.")
+        return redirect("dashboard")
+
+    sem_start, sem_end, total_semesters = _semester_span_for(batch.program_id, batch.session_id)
+    if not total_semesters or int(batch.semester_number) != int(sem_end):
+        messages.error(request, "Selected transcripts are available only for the final semester batch.")
+        return redirect("admin_batch_detail", pk=batch.id)
+
+    students_qs = (
+        SemesterResult.objects.filter(batch=batch)
+        .select_related("enrollment", "enrollment__student")
+        .annotate(
+            roll=F("enrollment__roll_no"),
+            reg=F("enrollment__student__registration_no"),
+            name=F("enrollment__student__name"),
+            father_name=F("enrollment__student__father_name"),
+        )
+        .order_by("roll")
+    )
+    students = list(students_qs)
+
+    enrollment_ids = [r.enrollment_id for r in students]
+    counts = (
+        SemesterResult.objects.filter(
+            enrollment_id__in=enrollment_ids,
+            batch__program_id=batch.program_id,
+            batch__session_id=batch.session_id,
+            batch__semester_number__gte=sem_start,
+            batch__semester_number__lte=sem_end,
+        )
+        .values("enrollment_id")
+        .annotate(sem_count=Count("batch__semester_number", distinct=True))
+    )
+    completed_map = {
+        row["enrollment_id"]: (row["sem_count"] >= total_semesters and total_semesters > 0)
+        for row in counts
+    }
+
+    if request.method == "POST":
+        selected_ids = request.POST.getlist("enrollment_ids")
+        selected_ids = [x for x in selected_ids if x.isdigit()]
+
+        if not selected_ids:
+            messages.error(request, "Please select at least one student.")
+        else:
+            allowed_ids = {str(r.enrollment_id) for r in students if completed_map.get(r.enrollment_id, False)}
+            valid_ids = [x for x in selected_ids if x in allowed_ids]
+
+            if not valid_ids:
+                messages.error(request, "No selected student is eligible for transcript printing.")
+            else:
+                return redirect(f"/results/transcript/batch/{batch.id}/pdf/?enrollments={','.join(valid_ids)}")
+
+    return render(
+        request,
+        "dashboards/documents/transcript_selected.html",
+        {
+            "batch": batch,
+            "students": students,
+            "completed_map": completed_map,
         },
     )

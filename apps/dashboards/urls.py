@@ -105,6 +105,7 @@ from dashboards.views.dmc_views import (
 
 from dashboards.views.transcript_views import (
     transcript_single,
+    transcript_selected,
 )
 
 urlpatterns = [
@@ -274,5 +275,10 @@ urlpatterns = [
         "admin-dashboard/documents/transcript-single/",
         transcript_single,
         name="admin_transcript_single",
+    ),
+    path(
+        "admin-dashboard/result-batches/<int:batch_id>/transcripts-selected/",
+        transcript_selected,
+        name="admin_transcript_selected",
     ),
 ]
