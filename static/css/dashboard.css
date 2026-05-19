@@ -260,3 +260,386 @@ body.sidebar-collapsed .main-col {
   }
 }
 
+
+
+/* =========================================================
+   Mobile responsive dashboard, sidebar, forms, tables, buttons
+   Added for Result Portal responsive layout
+   ========================================================= */
+
+html {
+  overflow-x: hidden;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+.topbar {
+  position: sticky;
+  top: 0;
+  z-index: 1050;
+}
+
+.mobile-menu-btn {
+  display: none;
+  width: 40px;
+  height: 36px;
+  border: 1px solid rgba(255,255,255,.55);
+  border-radius: 8px;
+  background: rgba(255,255,255,.12);
+  padding: 7px 8px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.mobile-menu-btn span {
+  display: block;
+  width: 20px;
+  height: 2px;
+  background: #fff;
+  border-radius: 4px;
+}
+
+.sidebar-overlay {
+  display: none;
+}
+
+.dashboard-content {
+  min-width: 0;
+}
+
+.main-col .card,
+.main-col .card-body,
+.main-col form,
+.main-col .row {
+  min-width: 0;
+}
+
+/* Make common form controls comfortable and flexible */
+.main-col input:not([type="checkbox"]):not([type="radio"]),
+.main-col select,
+.main-col textarea,
+.main-col .form-control,
+.main-col .form-select {
+  max-width: 100%;
+}
+
+/* Tables should never break the mobile viewport */
+.main-col .table-responsive {
+  width: 100%;
+}
+
+.main-col table {
+  width: 100%;
+}
+
+@media (max-width: 767.98px) {
+  body {
+    font-size: 14px;
+  }
+
+  .mobile-menu-btn {
+    display: inline-flex;
+  }
+
+  .topbar .container,
+  .topbar .container-fluid {
+    gap: 8px;
+  }
+
+  .topbar .brand {
+    font-size: 15px;
+    white-space: nowrap;
+  }
+
+  .topbar small {
+    display: none;
+  }
+
+  .topbar .btn {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  .rp-msgbar {
+    top: 52px !important;
+  }
+
+  .rp-msgbar .alert {
+    padding: 10px 12px;
+    font-size: .9rem;
+  }
+
+  .sidebar-col {
+    position: fixed !important;
+    top: 52px;
+    left: 0;
+    bottom: 0;
+    width: 290px !important;
+    max-width: 86vw !important;
+    z-index: 1045;
+    transform: translateX(-105%);
+    transition: transform .22s ease-in-out;
+    box-shadow: 10px 0 28px rgba(15, 23, 42, .22);
+  }
+
+  body.mobile-sidebar-open .sidebar-col {
+    transform: translateX(0);
+  }
+
+  body.mobile-sidebar-open {
+    overflow: hidden;
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 52px 0 0 0;
+    z-index: 1040;
+    background: rgba(15, 23, 42, .45);
+  }
+
+  body.mobile-sidebar-open .sidebar-overlay {
+    display: block;
+  }
+
+  .sidebar {
+    height: calc(100vh - 52px);
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sidebar-inner {
+    position: relative;
+  }
+
+  .main-col,
+  .dashboard-content {
+    flex: 0 0 100% !important;
+    max-width: 100% !important;
+    width: 100% !important;
+    padding: 14px !important;
+  }
+
+  .main-col h1,
+  .main-col .h1 { font-size: 1.45rem; }
+  .main-col h2,
+  .main-col .h2 { font-size: 1.30rem; }
+  .main-col h3,
+  .main-col .h3 { font-size: 1.15rem; }
+  .main-col h4,
+  .main-col .h4 { font-size: 1.05rem; }
+
+  .card {
+    border-radius: 12px;
+  }
+
+  .card-body,
+  .card-header,
+  .card-footer {
+    padding: 14px !important;
+  }
+
+  /* Bootstrap columns become single column on mobile unless explicitly tiny */
+  .main-col .row > [class*="col-"] {
+    margin-bottom: 10px;
+  }
+
+  /* Forms */
+  .main-col form .row {
+    row-gap: 8px;
+  }
+
+  .main-col label,
+  .main-col .form-label {
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .main-col input:not([type="checkbox"]):not([type="radio"]),
+  .main-col select,
+  .main-col textarea,
+  .main-col .form-control,
+  .main-col .form-select {
+    width: 100% !important;
+    min-height: 40px;
+    font-size: 14px;
+  }
+
+  .main-col textarea {
+    min-height: 90px;
+  }
+
+  /* Buttons stack cleanly */
+  .main-col .btn,
+  .filter-actions .btn {
+    white-space: normal;
+  }
+
+  .main-col .d-flex.gap-2,
+  .main-col .btn-toolbar,
+  .main-col .btn-group:not(.dropdown) {
+    flex-wrap: wrap;
+  }
+
+  .main-col form .btn,
+  .main-col .card-footer .btn,
+  .main-col .filter-actions .btn,
+  .main-col .action-buttons .btn {
+    width: 100%;
+    margin-bottom: 6px;
+  }
+
+  .main-col .btn-group .btn {
+    width: auto;
+    margin-bottom: 0;
+  }
+
+  /* Tables: horizontal scroll without changing data */
+  .main-col .table-responsive,
+  .main-col table {
+    display: block;
+    width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .main-col table {
+    white-space: nowrap;
+  }
+
+  .main-col table th,
+  .main-col table td {
+    font-size: 13px;
+    padding: 8px;
+    vertical-align: middle;
+  }
+
+  .filter-inner {
+    max-width: 100%;
+  }
+
+  .filter-row {
+    padding: 6px 0;
+  }
+
+  .pagination {
+    flex-wrap: wrap;
+    gap: 4px;
+  }
+}
+
+@media (min-width: 768px) {
+  .sidebar-col {
+    display: block;
+  }
+}
+
+/* =========================================================
+   FINAL FIX: real hamburger/off-canvas menu on ALL screen sizes
+   This does not depend on Bootstrap grid being loaded.
+   ========================================================= */
+.topbar {
+  min-height: 64px;
+}
+
+.mobile-menu-btn {
+  display: inline-flex !important;
+  width: 46px;
+  height: 42px;
+  border: 1px solid rgba(255,255,255,.75);
+  border-radius: 10px;
+  background: rgba(255,255,255,.16);
+  padding: 8px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 5px;
+  cursor: pointer;
+  flex: 0 0 auto;
+}
+
+.mobile-menu-btn:hover,
+.mobile-menu-btn:focus {
+  background: rgba(255,255,255,.25);
+  outline: 2px solid rgba(255,255,255,.35);
+  outline-offset: 2px;
+}
+
+.mobile-menu-btn span {
+  display: block !important;
+  width: 24px;
+  height: 3px;
+  background: #ffffff;
+  border-radius: 99px;
+}
+
+main.container-fluid > .row.g-0 {
+  display: block !important;
+  margin: 0 !important;
+}
+
+.sidebar-col {
+  position: fixed !important;
+  top: 64px !important;
+  left: 0 !important;
+  bottom: 0 !important;
+  width: 320px !important;
+  max-width: 88vw !important;
+  height: calc(100vh - 64px) !important;
+  z-index: 2050 !important;
+  transform: translateX(-110%) !important;
+  transition: transform .25s ease-in-out !important;
+  box-shadow: 14px 0 34px rgba(15, 23, 42, .28) !important;
+  background: #f3f6f8 !important;
+  overflow-y: auto !important;
+  -webkit-overflow-scrolling: touch;
+}
+
+body.mobile-sidebar-open .sidebar-col {
+  transform: translateX(0) !important;
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  top: 64px;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 2040;
+  background: rgba(15, 23, 42, .45);
+}
+
+body.mobile-sidebar-open .sidebar-overlay {
+  display: block !important;
+}
+
+body.mobile-sidebar-open {
+  overflow: hidden;
+}
+
+.main-col,
+.dashboard-content {
+  width: 100% !important;
+  max-width: 100% !important;
+  flex: none !important;
+}
+
+.sidebar {
+  height: 100% !important;
+  min-height: 100% !important;
+}
+
+@media (max-width: 575.98px) {
+  .topbar { min-height: 56px; }
+  .sidebar-col {
+    top: 56px !important;
+    height: calc(100vh - 56px) !important;
+    width: 292px !important;
+  }
+  .sidebar-overlay { top: 56px; }
+  .topbar .brand { font-size: 18px !important; }
+}

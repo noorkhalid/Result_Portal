@@ -75,8 +75,13 @@
 
 <!-- TOP BAR -->
 <nav class="topbar py-2">
-  <div class="container d-flex justify-content-between align-items-center">
+  <div class="container-fluid px-3 d-flex justify-content-between align-items-center">
     <div class="d-flex align-items-center gap-2">
+      {% if is_system_admin or is_dealing_assistant %}
+        <button type="button" class="mobile-menu-btn" id="mobileSidebarToggle" aria-label="Open menu" aria-controls="dashboardSidebar" aria-expanded="false">
+          <span></span><span></span><span></span>
+        </button>
+      {% endif %}
       <div class="brand">Result Portal</div>
     </div>
     <div>
@@ -123,6 +128,8 @@
   </div>
 {% endif %}
 
+<div class="sidebar-overlay" id="sidebarOverlay" aria-hidden="true"></div>
+
 <!-- MAIN CONTENT -->
 <!-- Full-width container so the left sidebar sits flush to the browser edge -->
 <main class="container-fluid px-0">
@@ -130,12 +137,12 @@
   <div class="row g-0">
 
     {% if is_system_admin or is_dealing_assistant %}
-      <div class="col-12 col-md-3 p-0 sidebar-col">
+      <div class="col-12 col-md-3 p-0 sidebar-col" id="dashboardSidebar">
         {% include "dashboards/_admin_sidebar.html" %}
       </div>
     {% endif %}
 
-    <div class="{% if is_system_admin or is_dealing_assistant %}col-12 col-md-9{% else %}col-12{% endif %} p-4 main-col">
+    <div class="{% if is_system_admin or is_dealing_assistant %}col-12 col-md-9{% else %}col-12{% endif %} p-4 main-col dashboard-content">
       {% block content %}{% endblock %}
     </div>
 
@@ -223,6 +230,46 @@
 
         try { localStorage.setItem(KEY, JSON.stringify(Array.from(openSet))); } catch (e) {}
       });
+    });
+  })();
+</script>
+{% endif %}
+
+
+
+{% if is_system_admin or is_dealing_assistant %}
+<script>
+  (function () {
+    const body = document.body;
+    const btn = document.getElementById("mobileSidebarToggle");
+    const overlay = document.getElementById("sidebarOverlay");
+    const sidebarLinks = document.querySelectorAll("#dashboardSidebar a");
+
+    function openMobileSidebar() {
+      body.classList.add("mobile-sidebar-open");
+      if (btn) btn.setAttribute("aria-expanded", "true");
+    }
+
+    function closeMobileSidebar() {
+      body.classList.remove("mobile-sidebar-open");
+      if (btn) btn.setAttribute("aria-expanded", "false");
+    }
+
+    if (btn) {
+      btn.addEventListener("click", function () {
+        if (body.classList.contains("mobile-sidebar-open")) closeMobileSidebar();
+        else openMobileSidebar();
+      });
+    }
+
+    if (overlay) overlay.addEventListener("click", closeMobileSidebar);
+
+    sidebarLinks.forEach(link => link.addEventListener("click", function () {
+      if (window.innerWidth < 768) closeMobileSidebar();
+    }));
+
+    window.addEventListener("resize", function () {
+      if (window.innerWidth >= 768) closeMobileSidebar();
     });
   })();
 </script>
