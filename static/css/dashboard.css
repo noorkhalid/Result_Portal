@@ -1095,3 +1095,94 @@ span[class*="badge"] {
     padding: 9px 10px;
   }
 }
+
+/* =========================================================
+   FINAL SIDEBAR VISIBILITY FIX (desktop vs mobile)
+   This must stay at the very end of the file.
+   Desktop/tablet: show normal left sidebar and hide hamburger.
+   Mobile only: show hamburger and off-canvas sidebar.
+   ========================================================= */
+@media screen and (min-width: 768px) {
+  .topbar .mobile-menu-btn,
+  button.mobile-menu-btn,
+  #mobileSidebarToggle {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  #dashboardSidebar.sidebar-col,
+  .sidebar-col {
+    display: block !important;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    transform: none !important;
+    width: 25% !important;
+    max-width: 25% !important;
+    height: auto !important;
+    min-height: calc(100vh - 56px) !important;
+    overflow: visible !important;
+    z-index: auto !important;
+    box-shadow: none !important;
+    flex: 0 0 25% !important;
+  }
+
+  .main-col.dashboard-content,
+  .dashboard-content.main-col {
+    width: 75% !important;
+    max-width: 75% !important;
+    flex: 0 0 75% !important;
+  }
+
+  body.mobile-sidebar-open {
+    overflow: auto !important;
+  }
+
+  body.mobile-sidebar-open #dashboardSidebar.sidebar-col {
+    transform: none !important;
+  }
+
+  .sidebar-overlay,
+  body.mobile-sidebar-open .sidebar-overlay {
+    display: none !important;
+    visibility: hidden !important;
+  }
+}
+
+@media screen and (max-width: 767.98px) {
+  .topbar .mobile-menu-btn,
+  button.mobile-menu-btn,
+  #mobileSidebarToggle {
+    display: inline-flex !important;
+    visibility: visible !important;
+    pointer-events: auto !important;
+  }
+
+  #dashboardSidebar.sidebar-col,
+  .sidebar-col {
+    position: fixed !important;
+    top: 56px !important;
+    left: 0 !important;
+    bottom: 0 !important;
+    width: 292px !important;
+    max-width: 88vw !important;
+    height: calc(100vh - 56px) !important;
+    transform: translateX(-110%) !important;
+    z-index: 2050 !important;
+  }
+
+  body.mobile-sidebar-open #dashboardSidebar.sidebar-col,
+  body.mobile-sidebar-open .sidebar-col {
+    transform: translateX(0) !important;
+  }
+
+  .main-col.dashboard-content,
+  .dashboard-content.main-col {
+    width: 100% !important;
+    max-width: 100% !important;
+    flex: none !important;
+  }
+}

@@ -8,7 +8,7 @@
 
   <link href="{% static 'css/css/bootstrap.min.css' %}" rel="stylesheet">
   <link rel="stylesheet" href="{% static 'css/bootstrap-icons-local.css' %}?v=offline1">
-  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}">
+  <link rel="stylesheet" href="{% static 'css/dashboard.css' %}?v=sidebar-desktop-fix-20260520">
 
   <style>
     body { background:#f6f7fb; }
@@ -277,6 +277,33 @@
 {% endif %}
 
 {% block extra_js %}{% endblock %}
+
+
+<script>
+  // Defensive desktop/mobile sidebar state fix, also protects against old cached classes.
+  (function () {
+    const mq = window.matchMedia("(min-width: 768px)");
+    const body = document.body;
+    const toggle = document.getElementById("mobileSidebarToggle");
+    const overlay = document.getElementById("sidebarOverlay");
+    function syncSidebarMode() {
+      if (mq.matches) {
+        body.classList.remove("mobile-sidebar-open");
+        if (toggle) {
+          toggle.setAttribute("aria-expanded", "false");
+          toggle.style.display = "none";
+        }
+        if (overlay) overlay.style.display = "none";
+      } else {
+        if (toggle) toggle.style.display = "inline-flex";
+      }
+    }
+    syncSidebarMode();
+    if (mq.addEventListener) mq.addEventListener("change", syncSidebarMode);
+    else if (mq.addListener) mq.addListener(syncSidebarMode);
+    window.addEventListener("resize", syncSidebarMode);
+  })();
+</script>
 
 </body>
 </html>
