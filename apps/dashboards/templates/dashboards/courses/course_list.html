@@ -21,18 +21,14 @@
                 placeholder="Search by code or title"
                 autocomplete="off"
             />
-            <button class="btn btn-outline-primary" type="submit">Search</button>
+            <button class="btn btn-outline-primary btn-icon-only" type="submit" title="Search" aria-label="Search"><i class="bi bi-search"></i></button>
             {% if q %}
-                <a class="btn btn-outline-secondary" href="{% url 'admin_course_list' %}">Clear</a>
+                <a class="btn btn-outline-secondary btn-icon-only" href="{% url 'admin_course_list' %}" title="Clear" aria-label="Clear"><i class="bi bi-x-circle"></i></a>
             {% endif %}
         </form>
 
-{% if is_system_admin %}<a href="{% url 'admin_import_courses' %}" class="btn btn-outline-secondary">
-            Import from Excel
-        </a>
-        <a href="{% url 'admin_course_add' %}" class="btn btn-primary">
-            + Add Course
-        </a>{% endif %}
+{% if is_system_admin %}<a href="{% url 'admin_import_courses' %}" class="btn btn-outline-secondary">Import from Excel</a>
+        <a href="{% url 'admin_course_add' %}" class="btn btn-primary btn-icon-only" title="Add Course" aria-label="Add Course"><i class="bi bi-plus-circle"></i></a>{% endif %}
     </div>
 </div>
 
@@ -56,18 +52,14 @@
                 <td>
 {% if is_system_admin %}<a
                         href="{% url 'admin_course_edit' course.id %}"
-                        class="btn btn-sm btn-warning"
-                    >
-                        Edit
-                    </a>
+                        class="btn btn-sm btn-warning btn-icon-only"
+                     title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></a>
 
                    <a
                 href="{% url 'admin_course_delete' course.id %}"
-                class="btn btn-sm btn-outline-danger"
+                class="btn btn-sm btn-outline-danger btn-icon-only"
                  title="This will permanently delete the course"
->
-                         Delete
-                    </a>{% else %}<span class="text-muted small">View only</span>{% endif %}
+ aria-label="Delete"><i class="bi bi-trash"></i></a>{% else %}<span class="text-muted small">View only</span>{% endif %}
 
                 </td>
             </tr>

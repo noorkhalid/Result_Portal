@@ -9,13 +9,13 @@
     <div class="alert alert-warning">
       Cannot delete this session because it is linked with enrollments, semesters, or result batches.
     </div>
-    <a href="{% url 'admin_session_list' %}" class="btn btn-outline-secondary">Back</a>
+    <a href="{% url 'admin_session_list' %}" class="btn btn-outline-secondary btn-icon-only" title="Back" aria-label="Back"><i class="bi bi-arrow-left"></i></a>
   {% else %}
     <div class="alert alert-danger">Are you sure you want to delete this session?</div>
     <form method="post">
       {% csrf_token %}
-      <button class="btn btn-danger">Yes, Delete</button>
-      <a href="{% url 'admin_session_list' %}" class="btn btn-outline-secondary">Cancel</a>
+      <button class="btn btn-danger btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+      <a href="{% url 'admin_session_list' %}" class="btn btn-outline-secondary btn-icon-only" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></a>
     </form>
   {% endif %}
 </div>

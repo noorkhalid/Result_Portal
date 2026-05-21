@@ -8,7 +8,7 @@
       <h3 class="m-0">Students / Holds</h3>
       <div class="text-muted">Batch: {{ batch }}</div>
     </div>
-    <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm">Back to Batch</a>
+    <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm btn-icon-only" title="Back to Batch" aria-label="Back to Batch"><i class="bi bi-arrow-left"></i></a>
   </div>
 
   {% if not rows %}
@@ -52,7 +52,7 @@
         </table>
       </div>
 
-      <button type="submit" class="btn btn-primary btn-sm">Save Holds</button>
+      <button type="submit" class="btn btn-primary btn-sm btn-icon-only" title="Save" aria-label="Save"><i class="bi bi-floppy"></i></button>
     </form>
   {% endif %}
 </div>

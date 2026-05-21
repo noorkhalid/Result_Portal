@@ -9,7 +9,7 @@
     <div class="text-muted">Enter marks manually or import from Excel (unlocked batches only).</div>
   </div>
   <div class="d-flex gap-2">
-    <a class="btn btn-sm btn-outline-secondary" href="/admin/" target="_blank" rel="noopener">Admin</a>
+    <a class="btn btn-sm btn-outline-secondary btn-icon-only" href="/admin/" target="_blank" rel="noopener" title="Admin" aria-label="Admin"><i class="bi bi-gear"></i></a>
     <a class="btn btn-sm btn-primary" href="{% url 'data_entry_import_marks' %}">Import Marks (Excel)</a>
   </div>
 </div>
@@ -56,28 +56,28 @@
       </div>
       <div class="row g-2">
         <div class="col-md-6">
-          <a class="btn btn-outline-dark w-100" href="/admin/results/resultbatch/" target="_blank" rel="noopener">Manage Result Batches</a>
+          <a class="btn btn-outline-dark w-100 btn-icon-only" href="/admin/results/resultbatch/" target="_blank" rel="noopener" title="Manage Result Batches" aria-label="Manage Result Batches"><i class="bi bi-collection"></i></a>
         </div>
         <div class="col-md-6">
-          <a class="btn btn-outline-dark w-100" href="/admin/results/courseresult/add/" target="_blank" rel="noopener">Enter Marks (Manual)</a>
+          <a class="btn btn-outline-dark w-100 btn-icon-only" href="/admin/results/courseresult/add/" target="_blank" rel="noopener" title="Enter Marks (Manual)" aria-label="Enter Marks (Manual)"><i class="bi bi-pencil-square"></i></a>
         </div>
         <div class="col-md-6">
-          <a class="btn btn-outline-dark w-100" href="/admin/results/courseresult/" target="_blank" rel="noopener">View Entered Marks</a>
+          <a class="btn btn-outline-dark w-100 btn-icon-only" href="/admin/results/courseresult/" target="_blank" rel="noopener" title="View Entered Marks" aria-label="View Entered Marks"><i class="bi bi-eye"></i></a>
         </div>
         <div class="col-md-6">
-          <a class="btn btn-outline-dark w-100" href="/admin/students/student/" target="_blank" rel="noopener">Students</a>
+          <a class="btn btn-outline-dark w-100 btn-icon-only" href="/admin/students/student/" target="_blank" rel="noopener" title="Students" aria-label="Students"><i class="bi bi-people"></i></a>
         </div>
         <div class="col-md-6">
-          <a class="btn btn-outline-dark w-100" href="/admin/students/enrollment/" target="_blank" rel="noopener">Enrollments</a>
+          <a class="btn btn-outline-dark w-100 btn-icon-only" href="/admin/students/enrollment/" target="_blank" rel="noopener" title="Enrollments" aria-label="Enrollments"><i class="bi bi-person-lines-fill"></i></a>
         </div>
         <div class="col-md-6">
-          <a class="btn btn-outline-dark w-100" href="/admin/academics/course/" target="_blank" rel="noopener">Courses</a>
+          <a class="btn btn-outline-dark w-100 btn-icon-only" href="/admin/academics/course/" target="_blank" rel="noopener" title="Courses" aria-label="Courses"><i class="bi bi-book"></i></a>
         </div>
       </div>
       <hr class="my-3">
       <div class="d-flex flex-wrap gap-2">
         <a class="btn btn-sm btn-primary" href="{% url 'data_entry_import_marks' %}">Import Marks (Excel)</a>
-        <a class="btn btn-sm btn-outline-secondary" href="/admin/results/resultbatch/add/" target="_blank" rel="noopener">Create New Batch</a>
+        <a class="btn btn-sm btn-outline-secondary btn-icon-only" href="/admin/results/resultbatch/add/" target="_blank" rel="noopener" title="Create New Batch" aria-label="Create New Batch"><i class="bi bi-plus-circle"></i></a>
       </div>
     </div>
   </div>

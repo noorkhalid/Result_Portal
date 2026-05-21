@@ -22,7 +22,7 @@ document.addEventListener("DOMContentLoaded", function () {
     <h3 class="mb-0">Result Batches</h3>
     <div class="text-muted">Program + Session + Semester + Exam Type</div>
   </div>
-  <a href="{% url 'admin_batch_add' %}" class="btn btn-primary">+ Add Batch</a>
+  <a href="{% url 'admin_batch_add' %}" class="btn btn-primary btn-icon-only" title="Add Batch" aria-label="Add Batch"><i class="bi bi-plus-circle"></i></a>
 </div>
 
 <form id="batchFiltersForm" class="row g-2 mb-3" method="get">
@@ -72,7 +72,7 @@ document.addEventListener("DOMContentLoaded", function () {
     </select>
   </div>
   <div class="col-md-1 align-self-end">
-    <button class="btn btn-outline-secondary w-100">Go</button>
+    <button class="btn btn-outline-secondary w-100 btn-icon-only" title="Go" aria-label="Go"><i class="bi bi-arrow-right-circle"></i></button>
   </div>
 </form>
 

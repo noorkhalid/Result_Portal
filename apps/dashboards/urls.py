@@ -101,6 +101,7 @@ from dashboards.views.result_notification_views import (
 
 from dashboards.views.dmc_views import (
     dmc_single,
+    dmc_selected,
 )
 
 from dashboards.views.transcript_views import (
@@ -269,6 +270,11 @@ urlpatterns = [
         "admin-dashboard/documents/dmc-single/",
         dmc_single,
         name="admin_dmc_single",
+    ),
+    path(
+        "admin-dashboard/result-batches/<int:batch_id>/dmcs-selected/",
+        dmc_selected,
+        name="admin_dmc_selected",
     ),
 
     path(

@@ -7,7 +7,7 @@
     <h3 class="mb-0">Departments</h3>
     <div class="text-muted">Organizational units (used to separate data)</div>
   </div>
-  <a href="{% url 'admin_department_add' %}" class="btn btn-primary">+ Add Department</a>
+  <a href="{% url 'admin_department_add' %}" class="btn btn-primary btn-icon-only" title="Add Department" aria-label="Add Department"><i class="bi bi-plus-circle"></i></a>
 </div>
 
 <form method="get" class="row g-2 align-items-end mb-3">
@@ -23,11 +23,11 @@
   </div>
 
   <div class="col-auto">
-    <button type="submit" class="btn btn-outline-primary">Search</button>
+    <button type="submit" class="btn btn-outline-primary btn-icon-only" title="Search" aria-label="Search"><i class="bi bi-search"></i></button>
   </div>
 
   <div class="col-auto">
-    <a href="{% url 'admin_department_list' %}" class="btn btn-outline-secondary">Clear</a>
+    <a href="{% url 'admin_department_list' %}" class="btn btn-outline-secondary btn-icon-only" title="Clear" aria-label="Clear"><i class="bi bi-x-circle"></i></a>
   </div>
 </form>
 
@@ -51,8 +51,8 @@
           <td>{{ d.get_type_display }}</td>
           <td>{% if d.assigned_assistant_name %}{{ d.assigned_assistant_name }}{% else %}<span class="text-muted">—</span>{% endif %}</td>
           <td>
-            <a href="{% url 'admin_department_edit' d.id %}" class="btn btn-sm btn-warning">Edit</a>
-            <a href="{% url 'admin_department_delete' d.id %}" class="btn btn-sm btn-danger">Delete</a>
+            <a href="{% url 'admin_department_edit' d.id %}" class="btn btn-sm btn-warning btn-icon-only" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></a>
+            <a href="{% url 'admin_department_delete' d.id %}" class="btn btn-sm btn-danger btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></a>
           </td>
         </tr>
         {% empty %}

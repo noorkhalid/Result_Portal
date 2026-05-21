@@ -6,9 +6,7 @@
     <div>
       <h3 class="mb-0">Programs</h3>
 </div>
-    <a href="{% url 'admin_program_add' %}" class="btn btn-primary">
-        + Add Program
-    </a>
+    <a href="{% url 'admin_program_add' %}" class="btn btn-primary btn-icon-only" title="Add Program" aria-label="Add Program"><i class="bi bi-plus-circle"></i></a>
 </div>
 
 <form method="get" class="row g-2 align-items-end mb-3">
@@ -24,11 +22,11 @@
   </div>
 
   <div class="col-auto">
-    <button type="submit" class="btn btn-outline-primary">Search</button>
+    <button type="submit" class="btn btn-outline-primary btn-icon-only" title="Search" aria-label="Search"><i class="bi bi-search"></i></button>
   </div>
 
   <div class="col-auto">
-    <a href="{% url 'admin_program_list' %}" class="btn btn-outline-secondary">Clear</a>
+    <a href="{% url 'admin_program_list' %}" class="btn btn-outline-secondary btn-icon-only" title="Clear" aria-label="Clear"><i class="bi bi-x-circle"></i></a>
   </div>
 </form>
 
@@ -58,17 +56,13 @@
                     <td>
                         <a
                             href="{% url 'admin_program_edit' program.id %}"
-                            class="btn btn-sm btn-warning"
-                        >
-                            Edit
-                        </a>
+                            class="btn btn-sm btn-warning btn-icon-only"
+                         title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></a>
 
                         <a
                             href="{% url 'admin_program_delete' program.id %}"
-                            class="btn btn-sm btn-danger"
-                        >
-                            Delete
-                        </a>
+                            class="btn btn-sm btn-danger btn-icon-only"
+                         title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></a>
                     </td>
                 </tr>
                 {% empty %}

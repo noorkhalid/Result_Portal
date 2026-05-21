@@ -3,7 +3,7 @@
 {% block content %}
 <div class="d-flex justify-content-between align-items-center mb-4">
   <h3 class="mb-0">Exam Types</h3>
-  <a href="{% url 'admin_exam_type_add' %}" class="btn btn-primary">+ Add Exam Type</a>
+  <a href="{% url 'admin_exam_type_add' %}" class="btn btn-primary btn-icon-only" title="Add Exam Type" aria-label="Add Exam Type"><i class="bi bi-plus-circle"></i></a>
 </div>
 
 <div class="card">
@@ -32,8 +32,8 @@
             {% endif %}
           </td>
           <td>
-            <a href="{% url 'admin_exam_type_edit' t.id %}" class="btn btn-sm btn-warning">Edit</a>
-            <a href="{% url 'admin_exam_type_delete' t.id %}" class="btn btn-sm btn-danger">Delete</a>
+            <a href="{% url 'admin_exam_type_edit' t.id %}" class="btn btn-sm btn-warning btn-icon-only" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></a>
+            <a href="{% url 'admin_exam_type_delete' t.id %}" class="btn btn-sm btn-danger btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></a>
           </td>
         </tr>
         {% empty %}

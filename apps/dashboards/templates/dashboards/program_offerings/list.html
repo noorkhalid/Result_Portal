@@ -7,7 +7,7 @@
     <div class="text-muted">Which programs are available in which department</div>
   </div>
   <div>
-    <a href="{% url 'admin_program_offering_add' %}" class="btn btn-primary">+ Add Offering</a>
+    <a href="{% url 'admin_program_offering_add' %}" class="btn btn-primary btn-icon-only" title="Add Offering" aria-label="Add Offering"><i class="bi bi-plus-circle"></i></a>
   </div>
 </div>
 
@@ -31,7 +31,7 @@
     </select>
   </div>
   <div class="col-md-2 align-self-end">
-    <button class="btn btn-outline-secondary w-100">Filter</button>
+    <button class="btn btn-outline-secondary w-100 btn-icon-only" title="Filter" aria-label="Filter"><i class="bi bi-funnel"></i></button>
   </div>
 </form>
 
@@ -59,8 +59,8 @@
             {% endif %}
           </td>
           <td>
-            <a href="{% url 'admin_program_offering_edit' it.id %}" class="btn btn-sm btn-warning">Edit</a>
-            {% if is_system_admin %}<a href="{% url 'admin_program_offering_delete' it.id %}" class="btn btn-sm btn-danger">Delete</a>{% endif %}
+            <a href="{% url 'admin_program_offering_edit' it.id %}" class="btn btn-sm btn-warning btn-icon-only" title="Edit" aria-label="Edit"><i class="bi bi-pencil-square"></i></a>
+            {% if is_system_admin %}<a href="{% url 'admin_program_offering_delete' it.id %}" class="btn btn-sm btn-danger btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></a>{% endif %}
           </td>
         </tr>
         {% empty %}

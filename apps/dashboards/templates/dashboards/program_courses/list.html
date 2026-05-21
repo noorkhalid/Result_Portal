@@ -10,7 +10,7 @@
 
   <div class="d-flex gap-2 flex-wrap">
     <a href="{% url 'admin_import_program_courses' %}" class="btn btn-outline-secondary">Import from Excel</a>
-    <a href="{% url 'admin_template_program_courses' %}" class="btn btn-outline-secondary">Download Excel Template</a>
+    <a href="{% url 'admin_template_program_courses' %}" class="btn btn-outline-secondary btn-icon-only" title="Download Excel Template" aria-label="Download Excel Template"><i class="bi bi-download"></i></a>
   </div>
 </div>
 
@@ -25,7 +25,7 @@
     </select>
   </div>
   <div class="col-md-2 align-self-end">
-    <button class="btn btn-outline-secondary w-100">Load</button>
+    <button class="btn btn-outline-secondary w-100 btn-icon-only" title="Load" aria-label="Load"><i class="bi bi-box-arrow-in-down"></i></button>
   </div>
 </form>
 
@@ -62,7 +62,7 @@
                   <td>
                     <form method="post" action="{% url 'admin_program_course_delete' pc.id %}" class="d-inline">
                       {% csrf_token %}
-                      <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                      <button type="submit" class="btn btn-sm btn-outline-danger btn-icon-only" title="Remove" aria-label="Remove"><i class="bi bi-trash"></i></button>
                     </form>
                   </td>
                 </tr>
@@ -86,7 +86,7 @@
             {% endfor %}
           </select>
 
-          <button type="submit" class="btn btn-primary">Add</button>
+          <button type="submit" class="btn btn-primary btn-icon-only" title="Add" aria-label="Add"><i class="bi bi-plus-circle"></i></button>
         </form>
 
       </div>

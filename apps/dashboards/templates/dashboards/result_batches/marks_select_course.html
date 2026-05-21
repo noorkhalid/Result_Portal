@@ -9,7 +9,7 @@
         {{ batch.department }} • {{ batch.program }} • {{ batch.session }} • Sem {{ batch.semester_number }} • {{ batch.exam_type.name }}
       </div>
     </div>
-    <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm">Back</a>
+    <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm btn-icon-only" title="Back" aria-label="Back"><i class="bi bi-arrow-left"></i></a>
   </div>
 
   <div class="card p-3" style="max-width: 720px;">
@@ -28,7 +28,7 @@
         {% endif %}
       </div>
       <div class="col-12 col-md-4">
-        <button class="btn btn-primary w-100" type="submit" {% if not courses %}disabled{% endif %}>Continue</button>
+        <button class="btn btn-primary w-100 btn-icon-only" type="submit" {% if not courses %}disabled{% endif %} title="Continue" aria-label="Continue"><i class="bi bi-arrow-right-circle"></i></button>
       </div>
     </form>
   </div>

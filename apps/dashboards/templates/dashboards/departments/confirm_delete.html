@@ -10,13 +10,13 @@
     <div class="alert alert-warning">
       You cannot delete this department because it has programs/students/enrollments or program-course mappings linked to it.
     </div>
-    <a href="{% url 'admin_department_list' %}" class="btn btn-outline-secondary">Back</a>
+    <a href="{% url 'admin_department_list' %}" class="btn btn-outline-secondary btn-icon-only" title="Back" aria-label="Back"><i class="bi bi-arrow-left"></i></a>
   {% else %}
     <div class="alert alert-danger">This action cannot be undone.</div>
     <form method="post">
       {% csrf_token %}
-      <button class="btn btn-danger">Yes, delete</button>
-      <a href="{% url 'admin_department_list' %}" class="btn btn-outline-secondary ms-2">Cancel</a>
+      <button class="btn btn-danger btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+      <a href="{% url 'admin_department_list' %}" class="btn btn-outline-secondary ms-2 btn-icon-only" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></a>
     </form>
   {% endif %}
 </div>

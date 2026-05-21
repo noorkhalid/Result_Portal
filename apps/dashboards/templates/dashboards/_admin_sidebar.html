@@ -31,8 +31,6 @@
       <button type="button" class="sidebar-section-toggle" data-target="documents" aria-expanded="false">DOCUMENTS</button>
       <div class="sidebar-group" data-group="documents">
         <a href="{% url 'admin_result_notifications' %}" class="sidebar-item {% if '/admin-dashboard/documents/result-notifications/' in request.path %}active{% endif %}">Result Notifications</a>
-        <a href="{% url 'admin_dmc_single' %}" class="sidebar-item {% if '/admin-dashboard/documents/dmc-single/' in request.path %}active{% endif %}">DMC (Single Student)</a>
-        <a href="{% url 'admin_transcript_single' %}" class="sidebar-item {% if '/admin-dashboard/documents/transcript-single/' in request.path %}active{% endif %}">Transcript (Single Student)</a>
       </div>
     </nav>
   </div>

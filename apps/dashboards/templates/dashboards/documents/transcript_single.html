@@ -13,7 +13,7 @@
 <div class="card">
   <div class="filter-card-header d-flex align-items-center justify-content-between">
     <div class="filter-card-title">Filters</div>
-    <a href="." class="btn btn-sm btn-outline-secondary">Reset</a>
+    <a href="." class="btn btn-sm btn-outline-secondary btn-icon-only" title="Reset" aria-label="Reset"><i class="bi bi-arrow-clockwise"></i></a>
   </div>
 
   <div class="card-body">
@@ -107,9 +107,7 @@
         </div>
 
         <div class="filter-actions d-flex justify-content-end">
-          <button name="action" value="print" class="btn btn-primary px-4" {% if not batch_id or selected_completed is False %}disabled{% endif %}>
-            Generate PDF
-          </button>
+          <button name="action" value="print" class="btn btn-primary px-4 btn-icon-only" {% if not batch_id or selected_completed is False %}disabled{% endif %} title="Generate PDF" aria-label="Generate PDF"><i class="bi bi-file-earmark-pdf"></i></button>
         </div>
 
       </form>

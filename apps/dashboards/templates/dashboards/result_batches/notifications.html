@@ -12,7 +12,7 @@
       <h3 class="m-0">Notifications</h3>
       <div class="text-muted">Batch: {{ batch }}</div>
     </div>
-    <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm">Back to Batch</a>
+    <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm btn-icon-only" title="Back to Batch" aria-label="Back to Batch"><i class="bi bi-arrow-left"></i></a>
   </div>
 
   <div class="row g-3">
@@ -31,7 +31,7 @@
               <label class="form-label form-label-sm">Notification Date</label>
               <input type="date" name="notification_date" class="form-control form-control-sm" required>
             </div>
-            <button type="submit" class="btn btn-primary btn-sm">Create Full Notification</button>
+            <button type="submit" class="btn btn-primary btn-sm btn-icon-only" title="Create Full Notification" aria-label="Create Full Notification"><i class="bi bi-megaphone"></i></button>
           </form>
         </div>
       </div>
@@ -51,7 +51,7 @@
               <label class="form-label form-label-sm">Notification Date</label>
               <input type="date" name="notification_date" class="form-control form-control-sm" required>
             </div>
-            <button type="submit" class="btn btn-outline-primary btn-sm" {% if eligible_clearance_count|add:0 == 0 %}disabled{% endif %}>Create Clearance Notification</button>
+            <button type="submit" class="btn btn-outline-primary btn-sm btn-icon-only" {% if eligible_clearance_count|add:0 == 0 %}disabled{% endif %} title="Create Clearance Notification" aria-label="Create Clearance Notification"><i class="bi bi-megaphone-fill"></i></button>
           </form>
         </div>
       </div>
@@ -84,11 +84,11 @@
                       <td>{{ n.declaration_date }}</td>
                       <td>{{ n.items.count }}</td>
                       <td class="notification-actions">
-                        <a href="{% url 'result_notification_by_id_pdf' n.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print</a>
+                        <a href="{% url 'result_notification_by_id_pdf' n.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2 btn-icon-only" title="Print" aria-label="Print"><i class="bi bi-printer"></i></a>
 
                         {% if can_delete_results %}<form method="post" action="{% url 'admin_batch_notification_delete' batch.id n.id %}" style="display:inline;" onsubmit="return confirm('Delete this notification? This cannot be undone.');">
                           {% csrf_token %}
-                          <button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2">Delete</button>
+                          <button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2 btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
                         </form>{% endif %}
                       </td>
                     </tr>

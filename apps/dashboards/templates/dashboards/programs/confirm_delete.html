@@ -17,9 +17,7 @@
             Total Semesters: {{ program.total_semesters }}
         </p>
 
-        <a href="{% url 'admin_program_list' %}" class="btn btn-secondary">
-            Back to Programs
-        </a>
+        <a href="{% url 'admin_program_list' %}" class="btn btn-secondary btn-icon-only" title="Back to Programs" aria-label="Back to Programs"><i class="bi bi-arrow-left"></i></a>
 
     {% else %}
         <!-- ✅ Safe to Delete -->
@@ -31,12 +29,8 @@
 
         <form method="post">
             {% csrf_token %}
-            <button type="submit" class="btn btn-danger">
-                Yes, Delete
-            </button>
-            <a href="{% url 'admin_program_list' %}" class="btn btn-secondary ms-2">
-                Cancel
-            </a>
+            <button type="submit" class="btn btn-danger btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+            <a href="{% url 'admin_program_list' %}" class="btn btn-secondary ms-2 btn-icon-only" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></a>
         </form>
     {% endif %}
 

@@ -6,7 +6,7 @@
     <h3 class="mb-0">Import Courses (Excel)</h3>
     <div class="text-muted">Upload .xlsx to create/update courses.</div>
   </div>
-  <a class="btn btn-sm btn-outline-secondary" href="{% url 'admin_course_list' %}">Back</a>
+  <a class="btn btn-sm btn-outline-secondary btn-icon-only" href="{% url 'admin_course_list' %}" title="Back" aria-label="Back"><i class="bi bi-arrow-left"></i></a>
 </div>
 
 <div class="card p-4" style="max-width: 900px;">
@@ -21,7 +21,7 @@
       <input type="file" name="file" accept=".xlsx" class="form-control" required>
     </div>
     <div class="col-12">
-      <button class="btn btn-primary">Import Courses</button>
+      <button class="btn btn-primary" type="submit">Import Courses</button>
     </div>
   </form>
 

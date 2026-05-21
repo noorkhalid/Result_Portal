@@ -8,8 +8,8 @@
   <div class="alert alert-danger">Are you sure you want to delete this semester?</div>
   <form method="post">
     {% csrf_token %}
-    <button class="btn btn-danger">Yes, Delete</button>
-    <a href="{% url 'admin_semester_list' %}" class="btn btn-outline-secondary">Cancel</a>
+    <button class="btn btn-danger btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+    <a href="{% url 'admin_semester_list' %}" class="btn btn-outline-secondary btn-icon-only" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></a>
   </form>
 </div>
 {% endblock %}

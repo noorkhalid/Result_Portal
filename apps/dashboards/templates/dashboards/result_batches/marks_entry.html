@@ -31,8 +31,8 @@
       </div>
     </div>
     <div class="d-flex gap-2">
-      <a href="{% url 'admin_batch_marks_select_course' batch.id %}" class="btn btn-outline-primary btn-sm">Change Course</a>
-      <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm">Back</a>
+      <a href="{% url 'admin_batch_marks_select_course' batch.id %}" class="btn btn-outline-primary btn-sm btn-icon-only" title="Change Course" aria-label="Change Course"><i class="bi bi-arrow-left-right"></i></a>
+      <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm btn-icon-only" title="Back" aria-label="Back"><i class="bi bi-arrow-left"></i></a>
     </div>
   </div>
 
@@ -90,7 +90,7 @@
 
     <div class="sticky-actions">
       <div class="d-flex justify-content-end gap-2">
-        <button type="submit" class="btn btn-primary">Save Marks</button>
+        <button type="submit" class="btn btn-primary btn-icon-only" title="Save" aria-label="Save"><i class="bi bi-floppy"></i></button>
       </div>
     </div>
   </form>

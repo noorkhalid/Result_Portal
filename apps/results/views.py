@@ -562,12 +562,19 @@ def dmc_batch_pdf(request, batch_id):
 
 
     fail_letters = _fail_letter_set()
+    selected_enrollment_ids = []
+    raw_enrollments = request.GET.get("enrollments", "").strip()
+    if raw_enrollments:
+        selected_enrollment_ids = [int(x) for x in raw_enrollments.split(",") if x.strip().isdigit()]
+
     results = (
         SemesterResult.objects.filter(batch=batch)
         .select_related("enrollment", "enrollment__student")
         .annotate(roll_suffix=_roll_suffix_annotation())
         .order_by("roll_suffix", "enrollment__roll_no")
     )
+    if selected_enrollment_ids:
+        results = results.filter(enrollment_id__in=selected_enrollment_ids)
 
     cr_qs = (
         CourseResult.objects.filter(batch=batch)
@@ -627,7 +634,8 @@ def dmc_batch_pdf(request, batch_id):
 
     pdf = HTML(string=html, base_url=request.build_absolute_uri("/")).write_pdf()
     response = HttpResponse(pdf, content_type="application/pdf")
-    response["Content-Disposition"] = f'inline; filename="DMC_Batch_{batch.id}.pdf"'
+    filename_prefix = "Selected_DMCs" if selected_enrollment_ids else "DMC_Batch"
+    response["Content-Disposition"] = f'inline; filename="{filename_prefix}_{batch.id}.pdf"'
     return response
 
 

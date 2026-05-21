@@ -26,6 +26,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Allow importing apps from /apps folder
 sys.path.insert(0, str(BASE_DIR / "apps"))
 
+
 # ------------------------------------------------>
 # Environment Settings
 # ------------------------------------------------>
@@ -35,10 +36,6 @@ DEBUG = os.environ.get("DEBUG", "True").lower() in ["true", "1", "yes"]
 
 # Split the string by commas into a Python list
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
-
-# Read trusted origins from environment or default to local development
-CSRF_TRUSTED_ORIGINS = os.environ.get("CSRF_TRUSTED_ORIGINS", "http://127.0.0.1:8000,http://localhost:8000").split(",")
-
 
 # ---------------------------------------------------------
 # Application definition
@@ -99,9 +96,7 @@ TEMPLATES = [
 
 WSGI_APPLICATION = "config.wsgi.application"
 
-# ---------------------------------------------------------
-# Database (dev)
-# ---------------------------------------------------------
+
 
 # ------------------------------------------------>
 # Database Configuration
@@ -120,6 +115,7 @@ DATABASES = {
 # Apply custom charset option only if we are actively using MySQL/MariaDB
 if os.environ.get("DB_ENGINE") == "django.db.backends.mysql":
     DATABASES["default"]["OPTIONS"] = {"charset": "utf8mb4"}
+
 
 
 

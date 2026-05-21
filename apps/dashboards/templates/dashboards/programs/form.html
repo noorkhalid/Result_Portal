@@ -77,17 +77,9 @@
     </div>
 
     <!-- Actions -->
-    <button type="submit" class="btn btn-success">
-      {% if program %}
-        Update Program
-      {% else %}
-        Save Program
-      {% endif %}
-    </button>
+    <button type="submit" class="btn btn-success btn-icon-only" title="Save" aria-label="Save"><i class="bi bi-floppy"></i></button>
 
-    <a href="{% url 'admin_program_list' %}" class="btn btn-secondary ms-2">
-      Cancel
-    </a>
+    <a href="{% url 'admin_program_list' %}" class="btn btn-secondary ms-2 btn-icon-only" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></a>
 
   </form>
 </div>

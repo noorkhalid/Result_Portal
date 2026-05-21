@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from django.contrib import messages
 from django.db.models import F
-from django.shortcuts import redirect, render
+from django.shortcuts import redirect, render, get_object_or_404
 
 from dashboards.decorators import group_required
 from dashboards.access import assigned_departments_qs, restrict_department_queryset
@@ -152,5 +152,60 @@ def dmc_single(request):
             "batch_id": str(batch_id) if batch_id else "",
             "students": students,
             "enrollment_id": str(enrollment_id) if enrollment_id else "",
+        },
+    )
+
+
+@group_required("System Admin", "Document Generator", "Controller", "Dealing Assistant")
+def dmc_selected(request, batch_id):
+    """UI: choose one or more students from a batch, then print one combined DMC PDF.
+
+    The PDF generation is handled by results.dmc_batch_pdf using selected enrollment IDs.
+    Selecting one student prints a single DMC; selecting many prints multiple DMCs.
+    """
+
+    batch = get_object_or_404(
+        ResultBatch.objects.select_related("department", "program", "session", "exam_type"),
+        id=batch_id,
+    )
+
+    allowed_batches = restrict_department_queryset(ResultBatch.objects.all(), request.user, "department")
+    if not allowed_batches.filter(id=batch.id).exists():
+        messages.error(request, "You do not have permission to access that result batch.")
+        return redirect("dashboard")
+
+    students = list(
+        SemesterResult.objects.filter(batch=batch)
+        .select_related("enrollment", "enrollment__student")
+        .annotate(
+            roll=F("enrollment__roll_no"),
+            reg=F("enrollment__student__registration_no"),
+            name=F("enrollment__student__name"),
+            father_name=F("enrollment__student__father_name"),
+        )
+        .order_by("roll")
+    )
+
+    if request.method == "POST":
+        selected_ids = request.POST.getlist("enrollment_ids")
+        selected_ids = [x for x in selected_ids if x.isdigit()]
+
+        if not selected_ids:
+            messages.error(request, "Please select at least one student.")
+        else:
+            allowed_ids = {str(r.enrollment_id) for r in students}
+            valid_ids = [x for x in selected_ids if x in allowed_ids]
+
+            if not valid_ids:
+                messages.error(request, "No selected student belongs to this result batch.")
+            else:
+                return redirect(f"/results/dmc/{batch.id}/pdf/?enrollments={','.join(valid_ids)}")
+
+    return render(
+        request,
+        "dashboards/documents/dmc_selected.html",
+        {
+            "batch": batch,
+            "students": students,
         },
     )

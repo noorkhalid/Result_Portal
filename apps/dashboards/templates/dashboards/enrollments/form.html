@@ -78,8 +78,8 @@
     {% endif %}
 
     <div class="d-flex gap-2 mt-3">
-      <button type="submit" class="btn btn-primary">Save</button>
-      <a href="{% url 'admin_enrollment_list' %}" class="btn btn-outline-secondary">Cancel</a>
+      <button type="submit" class="btn btn-primary btn-icon-only" title="Save" aria-label="Save"><i class="bi bi-floppy"></i></button>
+      <a href="{% url 'admin_enrollment_list' %}" class="btn btn-outline-secondary btn-icon-only" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></a>
     </div>
   </form>
 </div>

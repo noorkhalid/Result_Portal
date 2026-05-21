@@ -1,11 +1,11 @@
 {% extends "dashboards/_layout.html" %}
-{% load results_extras %}
+{% load static results_extras %}
 {% block title %}Curriculum Designer (By Session){% endblock %}
 
 {% block content %}
 
 {# --- Choices.js (Multi-select) CSS --- #}
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/choices.js/public/assets/styles/choices.min.css">
+<link rel="stylesheet" href="{% static 'vendor/choices/choices.min.css' %}">
 
 <style>
   .curriculum-add-form {
@@ -21,7 +21,6 @@
 
   .curriculum-add-form .choices__inner {
     min-height: 38px !important;
-    height: 38px !important;
   }
 
   /* Make button same height as dropdown */
@@ -75,9 +74,7 @@
       {% csrf_token %}
       <input type="hidden" name="program" value="{{ selected_program.id }}">
       <input type="hidden" name="session" value="{{ selected_session.id }}">
-      <button type="submit" class="btn btn-outline-primary" {% if not prev_session %}disabled{% endif %}>
-        Copy Curriculum from Previous Session
-      </button>
+      <button type="submit" class="btn btn-outline-primary" {% if not prev_session %}disabled{% endif %}>Copy Previous</button>
     </form>
   </div>
 {% endif %}
@@ -172,7 +169,7 @@
   </div>
 {% endif %}
 
-<script src="https://cdn.jsdelivr.net/npm/choices.js/public/assets/scripts/choices.min.js"></script>
+<script src="{% static 'vendor/choices/choices.min.js' %}"></script>
 <script>
   document.addEventListener("DOMContentLoaded", function () {
     const STORAGE_KEY = "curriculumDesignerUIState";

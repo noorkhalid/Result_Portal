@@ -1,0 +1,61 @@
+/* Local offline icon fallback for Bootstrap Icons class names used in Result Portal.
+   This file removes the need for the online Bootstrap Icons CDN. */
+.bi {
+  display: inline-block !important;
+  font-style: normal !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+  vertical-align: -0.125em;
+  text-rendering: auto;
+}
+.bi::before {
+  display: inline-block !important;
+  font-family: Arial, "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif !important;
+  font-style: normal !important;
+  font-weight: 700 !important;
+  line-height: 1 !important;
+}
+.bi-house::before { content: "⌂"; }
+.bi-box-arrow-right::before { content: "↪"; }
+.bi-gear::before { content: "⚙"; }
+.bi-pencil-square::before { content: "✎"; }
+.bi-person-fill-lock::before { content: "🔒"; }
+.bi-megaphone::before { content: "📢"; }
+.bi-megaphone-fill::before { content: "📢"; }
+.bi-printer::before { content: "🖨"; }
+.bi-printer-fill::before { content: "☑"; }
+.bi-journal-text::before { content: "▤"; }
+.bi-journal-check::before { content: "☑"; }
+.bi-calculator::before { content: "🧮"; }
+.bi-trash::before { content: "🗑"; }
+.bi-arrow-left::before { content: "←"; }
+.bi-arrow-right-circle::before { content: "➜"; }
+.bi-floppy::before { content: "💾"; }
+.bi-check2-square::before { content: "✓"; }
+.bi-plus-circle::before { content: "+"; }
+.bi-search::before { content: "⌕"; }
+.bi-x-circle::before { content: "×"; }
+.bi-x-lg::before { content: "×"; }
+.bi-file-earmark-excel::before { content: "X"; }
+.bi-file-earmark-pdf::before { content: "PDF"; font-size: .68em; }
+.bi-upload::before { content: "↑"; }
+.bi-download::before { content: "↓"; }
+.bi-people::before { content: "👥"; }
+.bi-person-lines-fill::before { content: "☷"; }
+.bi-book::before { content: "▣"; }
+.bi-collection::before { content: "▦"; }
+.bi-eye::before { content: "◉"; }
+.bi-box-arrow-in-down::before { content: "⇩"; }
+.bi-copy::before { content: "⧉"; }
+.bi-arrow-clockwise::before { content: "↻"; }
+.bi-arrow-left-right::before { content: "↔"; }
+.bi-box-arrow-up-right::before { content: "↗"; }
+.bi-funnel::before { content: "▾"; }
+.bi-card-list::before { content: "▤"; }
+.bi-file-text::before { content: "▤"; }
+.bi-check-circle::before { content: "✓"; }
+.bi-exclamation-triangle::before { content: "!"; }
+.bi-info-circle::before { content: "i"; }
+.bi-lock::before { content: "🔒"; }
+.bi-unlock::before { content: "🔓"; }
+.bi-save::before { content: "💾"; }

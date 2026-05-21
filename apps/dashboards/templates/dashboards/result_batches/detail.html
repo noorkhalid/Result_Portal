@@ -2,7 +2,22 @@
 {% block title %}Result Batch Detail{% endblock %}
 {% block content %}
 <div class="container-fluid">
-  <h3 class="mb-3">Result Batch Detail</h3>
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h3 class="mb-0">Result Batch Detail</h3>
+    <div class="d-flex gap-1 align-items-center">
+      <a href="{% url 'admin_batch_edit' batch.id %}" class="btn btn-warning btn-sm btn-icon-only" title="Edit Result Batch" aria-label="Edit Result Batch">
+        <i class="bi bi-pencil-square"></i>
+      </a>
+      {% if can_delete_results %}
+      <a href="{% url 'admin_batch_delete' batch.id %}" class="btn btn-danger btn-sm btn-icon-only" title="Delete Result Batch" aria-label="Delete Result Batch">
+        <i class="bi bi-trash"></i>
+      </a>
+      {% endif %}
+      <a href="{% url 'admin_batch_list' %}" class="btn btn-outline-dark btn-sm btn-icon-only" title="Back" aria-label="Back">
+        <i class="bi bi-arrow-left"></i>
+      </a>
+    </div>
+  </div>
 
   <table class="table table-bordered">
     <tr><th>Department</th><td>{{ batch.department }}</td></tr>
@@ -35,34 +50,32 @@
     <tr><th>Status</th><td>{% if batch.is_locked %}Locked{% else %}Open{% endif %}</td></tr>
   </table>
 
-  <div class="d-flex gap-1 mt-3 align-items-center">
-    <a href="{% url 'admin_batch_marks_select_course' batch.id %}" class="btn btn-primary btn-sm py-1 px-2">Enter / Edit Marks</a>
-    <a href="{% url 'admin_batch_students_holds' batch.id %}" class="btn btn-outline-primary btn-sm py-1 px-2">Students / Holds</a>
-    <a href="{% url 'admin_batch_notifications' batch.id %}" class="btn btn-outline-primary btn-sm py-1 px-2">Notifications</a>
-    <a href="{% url 'dmc_batch_pdf' batch.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print DMCs</a>
-    <a href="{% url 'admin_dmc_single' %}?batch={{ batch.id }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print DMC (Single)</a>
+  <div class="d-flex gap-1 mt-3 align-items-center flex-wrap">
+    <a href="{% url 'admin_batch_marks_select_course' batch.id %}" class="btn btn-primary btn-sm btn-icon-only" title="Enter / Edit Marks" aria-label="Enter / Edit Marks"><i class="bi bi-pencil-square"></i></a>
+    <a href="{% url 'admin_batch_students_holds' batch.id %}" class="btn btn-outline-primary btn-sm btn-icon-only" title="Hold Student Result" aria-label="Hold Student Result"><i class="bi bi-person-fill-lock"></i></a>
+    <a href="{% url 'admin_batch_notifications' batch.id %}" class="btn btn-outline-primary btn-sm btn-icon-only" title="Result Official Notification" aria-label="Result Official Notification"><i class="bi bi-megaphone"></i></a>
+    <a href="{% url 'dmc_batch_pdf' batch.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm btn-icon-only" title="Print All DMCs" aria-label="Print All DMCs"><i class="bi bi-printer"></i></a>
+    <a href="{% url 'admin_dmc_selected' batch.id %}" class="btn btn-outline-secondary btn-sm btn-icon-only" title="Print Selected DMCs" aria-label="Print Selected DMCs"><i class="bi bi-printer-fill"></i></a>
 
     {% if is_last_semester %}
-      <a href="{% url 'transcript_batch_pdf' batch.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print Transcripts</a>
-      <a href="{% url 'admin_transcript_selected' batch.id %}" class="btn btn-outline-secondary btn-sm py-1 px-2">Print Selected Transcripts</a>
-      <a href="{% url 'admin_transcript_single' %}?batch={{ batch.id }}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2">Print Transcript (Single)</a>
+      <a href="{% url 'transcript_batch_pdf' batch.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm btn-icon-only" title="Print All Transcripts" aria-label="Print All Transcripts"><i class="bi bi-journal-text"></i></a>
+      <a href="{% url 'admin_transcript_selected' batch.id %}" class="btn btn-outline-secondary btn-sm btn-icon-only" title="Print Selected Transcripts" aria-label="Print Selected Transcripts"><i class="bi bi-journal-check"></i></a>
     {% endif %}
 
     <form method="post" action="{% url 'admin_batch_recompute' batch.id %}" class="m-0">
       {% csrf_token %}
       <button
         type="submit"
-        class="btn btn-outline-info btn-sm py-1 px-2"
+        class="btn btn-outline-info btn-sm btn-icon-only"
+        title="Recompute GPA / CGPA"
+        aria-label="Recompute GPA / CGPA"
         {% if not has_marks %}disabled{% endif %}
         onclick="return confirm('Recompute GPA/CGPA for this batch now?');"
       >
-        Recompute GPA / CGPA
+        <i class="bi bi-calculator"></i>
       </button>
     </form>
 
-    <a href="{% url 'admin_batch_edit' batch.id %}" class="btn btn-warning btn-sm py-1 px-2">Edit</a>
-    {% if can_delete_results %}<a href="{% url 'admin_batch_delete' batch.id %}" class="btn btn-danger btn-sm py-1 px-2">Delete</a>{% endif %}
-    <a href="{% url 'admin_batch_list' %}" class="btn btn-outline-dark btn-sm py-1 px-2">Back</a>
   </div>
 </div>
 {% endblock %}

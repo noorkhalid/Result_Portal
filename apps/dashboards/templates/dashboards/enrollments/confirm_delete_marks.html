@@ -27,7 +27,7 @@
     <div class="alert alert-danger">
       Cannot delete because this student's semester result is already included in a notification.
     </div>
-    <a href="{% url 'admin_enrollment_detail' enrollment.id %}" class="btn btn-outline-dark">Back</a>
+    <a href="{% url 'admin_enrollment_detail' enrollment.id %}" class="btn btn-outline-dark btn-icon-only" title="Back" aria-label="Back"><i class="bi bi-arrow-left"></i></a>
   {% else %}
     <div class="alert alert-warning">
       Are you sure you want to delete this student's marks from the batch?
@@ -36,8 +36,8 @@
 
     <form method="post" class="d-flex gap-2">
       {% csrf_token %}
-      <button type="submit" class="btn btn-danger" onclick="return confirm('Delete marks now?');">Yes, Delete</button>
-      <a href="{% url 'admin_enrollment_detail' enrollment.id %}" class="btn btn-outline-dark">Cancel</a>
+      <button type="submit" class="btn btn-danger btn-icon-only" onclick="return confirm('Delete marks now?');" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+      <a href="{% url 'admin_enrollment_detail' enrollment.id %}" class="btn btn-outline-dark btn-icon-only" title="Cancel" aria-label="Cancel"><i class="bi bi-x-lg"></i></a>
     </form>
   {% endif %}
 </div>
