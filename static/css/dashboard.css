@@ -1186,3 +1186,82 @@ span[class*="badge"] {
     flex: none !important;
   }
 }
+
+
+/* =========================================================
+   Mobile card-table fix for Result Batches and similar lists
+   Shows every column value vertically instead of cropping rows.
+   ========================================================= */
+@media screen and (max-width: 767.98px) {
+  .dashboard-content .table-responsive:has(.mobile-card-table) {
+    overflow-x: visible !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+  }
+
+  .dashboard-content table.mobile-card-table,
+  .dashboard-content table.mobile-card-table thead,
+  .dashboard-content table.mobile-card-table tbody,
+  .dashboard-content table.mobile-card-table th,
+  .dashboard-content table.mobile-card-table td,
+  .dashboard-content table.mobile-card-table tr {
+    display: block !important;
+    width: 100% !important;
+  }
+
+  .dashboard-content table.mobile-card-table {
+    background: transparent !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    border-radius: 0 !important;
+    white-space: normal !important;
+  }
+
+  .dashboard-content table.mobile-card-table thead {
+    display: none !important;
+  }
+
+  .dashboard-content table.mobile-card-table tbody tr {
+    margin: 0 0 12px 0 !important;
+    padding: 10px 12px !important;
+    background: #ffffff !important;
+    border: 1px solid var(--rp-border) !important;
+    border-radius: 14px !important;
+    box-shadow: var(--rp-soft-shadow) !important;
+  }
+
+  .dashboard-content table.mobile-card-table tbody td,
+  .dashboard-content table.mobile-card-table.table tbody td {
+    display: grid !important;
+    grid-template-columns: 112px minmax(0, 1fr) !important;
+    gap: 10px !important;
+    align-items: start !important;
+    padding: 8px 0 !important;
+    border: 0 !important;
+    border-bottom: 1px dashed #e3e9f0 !important;
+    background: transparent !important;
+    white-space: normal !important;
+    overflow-wrap: anywhere !important;
+    word-break: normal !important;
+  }
+
+  .dashboard-content table.mobile-card-table tbody td:last-child {
+    border-bottom: 0 !important;
+  }
+
+  .dashboard-content table.mobile-card-table tbody td::before {
+    content: attr(data-label);
+    font-weight: 800;
+    color: #334155;
+    min-width: 0;
+  }
+
+  .dashboard-content table.mobile-card-table tbody td a {
+    overflow-wrap: anywhere !important;
+  }
+
+  .dashboard-content table.mobile-card-table .text-muted.small {
+    font-size: 12px !important;
+    margin-top: 2px;
+  }
+}

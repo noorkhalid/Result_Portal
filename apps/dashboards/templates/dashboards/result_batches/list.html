@@ -126,7 +126,7 @@ document.addEventListener("DOMContentLoaded", function () {
 
 <div class="card">
   <div class="table-responsive">
-        <table class="table table-striped align-middle mb-0">
+        <table class="table table-striped align-middle mb-0 mobile-card-table result-batches-table">
       <thead>
         <tr>
           <th>Department</th>
@@ -141,12 +141,12 @@ document.addEventListener("DOMContentLoaded", function () {
       <tbody>
         {% for b in batches %}
         <tr class="clickable-row" data-href="{% url 'admin_batch_detail' b.id %}">
-          <td>{{ b.department.name }}</td>
-          <td><a href="{% url 'admin_batch_detail' b.id %}">{{ b.program.name }}</a></td>
-          <td>{{ b.session.start_year }}</td>
-          <td>{{ b.semester_number }}</td>
-          <td><span class="badge bg-dark">{{ b.exam_type.name }}</span></td>
-          <td>
+          <td data-label="Department">{{ b.department.name }}</td>
+          <td data-label="Program"><a href="{% url 'admin_batch_detail' b.id %}">{{ b.program.name }}</a></td>
+          <td data-label="Session">{{ b.session.start_year }}</td>
+          <td data-label="Semester">{{ b.semester_number }}</td>
+          <td data-label="Exam Type"><span class="badge bg-dark">{{ b.exam_type.name }}</span></td>
+          <td data-label="Declared via">
             {% with n=b.notifications.all|first %}
               {% if n %}
                 {{ n.notification_no }}<div class="text-muted small">{{ n.notification_date }}</div>
@@ -157,7 +157,7 @@ document.addEventListener("DOMContentLoaded", function () {
               {% endif %}
             {% endwith %}
           </td>
-          <td>
+          <td data-label="Locked">
             {% if b.is_locked %}<span class="badge bg-danger">Locked</span>{% else %}<span class="badge bg-success">Open</span>{% endif %}
           </td>
         </tr>
