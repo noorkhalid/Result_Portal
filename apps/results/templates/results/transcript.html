@@ -1,11 +1,8 @@
-{% load static %}
-{% load results_extras %}
-<!doctype html>
-<html>
+{% load static %}                                  {% load results_extras %}
+<!doctype html>                                    <html>
 <head>
   <meta charset="utf-8">
-  <style>
-    @page { size: A4 portrait; margin: 8mm 10mm; }
+  <style>                                              @page { size: A4 portrait; margin: 8mm 10mm; }
     * { box-sizing: border-box; }
 
     body {
@@ -151,27 +148,6 @@
       font-weight: 700;
       border-bottom: 1.7px solid #000;
     }
-
-    .footer-note {
-      width: 100%;
-      display: table;
-      table-layout: fixed;
-      margin-top: 2.2mm;
-      font-size: 11.5px;
-    }
-
-    .footer-note .cell { display: table-cell; vertical-align: bottom; }
-
-    .errors { font-style: italic; }
-
-    .controller {
-      text-align: right;
-      font-weight: 700;
-      white-space: nowrap;
-      font-size: 12px;
-      line-height: 1.25;
-      padding-top: 5mm;
-    }
   </style>
 </head>
 
@@ -269,7 +245,7 @@
       </table>
     {% endfor %}
   {% endif %}
-<br>
+
   <!-- FOOTER -->
   <div class="footer-block">
     <table class="footer-summary">
@@ -280,7 +256,7 @@
           <th>Remarks</th>
           <th>Total Marks</th>
           <th>Obtained Marks</th>
-          <th>Obtained %</th>
+          <th>Obtained Marks %</th>
           <th>Result Date</th>
         </tr>
       </thead>
@@ -297,13 +273,18 @@
       </tbody>
     </table>
 
-    <div class="footer-note">
-      <div class="cell errors">Errors and Omissions are Accepted</div>
-	
-      <div class="cell controller">
-        Controller of Examinations<br>
-        Gomal University, D.I.Khan
-      </div>
+    <!-- Errors text - directly below summary table -->
+    <div style="margin-top: 3mm; font-size: 11.5px; font-style: italic; text-align: left;">
+      Errors and Omissions are Accepted
+    </div>
+
+    <!-- Space for controller signature (adjust this value: 10mm, 12mm, 15mm, 18mm) -->
+    <div style="margin-top: 15mm;"></div>
+
+    <!-- Controller signature block -->
+    <div style="text-align: right; font-weight: 700; font-size: 12px;">
+      Controller of Examinations<br>
+      Gomal University, D.I.Khan
     </div>
   </div>
 

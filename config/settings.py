@@ -37,6 +37,18 @@ DEBUG = os.environ.get("DEBUG", "True").lower() in ["true", "1", "yes"]
 # Split the string by commas into a Python list
 ALLOWED_HOSTS = os.environ.get("ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
+# Dynamically construct CSRF trusted origins from ALLOWED_HOSTS for convenience
+CSRF_TRUSTED_ORIGINS = []
+for host in ALLOWED_HOSTS:
+    host = host.strip()
+    if host:
+        # Check if it's already a full URI or just a domain name
+        if not host.startswith(('http://', 'https://')):
+            CSRF_TRUSTED_ORIGINS.append(f"http://{host}")
+            CSRF_TRUSTED_ORIGINS.append(f"https://{host}")
+        else:
+            CSRF_TRUSTED_ORIGINS.append(host)
+
 # ---------------------------------------------------------
 # Application definition
 # ---------------------------------------------------------

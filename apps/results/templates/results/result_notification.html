@@ -3,8 +3,8 @@
 <!doctype html>
 <html>
 <head>
-  <meta charset="utf-8">
-  <style>
+    <meta charset="utf-8">
+    <style>
     /* Page size + tight margins (WeasyPrint) */
     @page {
       size: A4 landscape;
@@ -158,6 +158,39 @@
       padding-top:0 !important;
       padding-bottom:0 !important;
     }
+    /* Updated styles for increased signature space (2x2 Grid) */
+    .signature-grid {
+        width: 100%;
+        margin-top: 15px; /* Slight increase in overall top margin */
+        font-family: "Times New Roman", serif;
+        font-size: 12px;
+        border-collapse: separate; /* Allow specific padding */
+        border-spacing: 0;
+    }
+    .signature-grid td {
+        vertical-align: bottom;
+        padding-bottom: 2px;
+        line-height: 1.4;
+    }
+    /* Add substantial whitespace above each title */
+    .role-title {
+        font-weight: 700;
+        display: block;
+        margin-top: 15px; /* Creates initial space for sig */
+    }
+    /* Add extra space within the cells to ensure whitespace is large */
+    .grid-cell-content {
+        padding-top: 25px; /* Adjust this for signature height */
+    }
+    .university-address {
+        font-weight: 700;
+    }
+    .assistant-name {
+        font-weight: 400;
+    }
+    .sig-row-top td {
+        padding-bottom: 45px !important; /* SIGNIFICANT gap below Row 1 signatures */
+    }
   </style>
 </head>
 
@@ -268,34 +301,44 @@
 
       <tr class="sig-spacer"><td colspan="{{ total_colspan }}"></td></tr>
 
-      <!-- Dealing Assistant -->
-      <tr>
-        <td colspan="{{ total_colspan }}" style="border:none; text-align:center;">
-          <div class="bold">Dealing Assistant</div>
-          <div>
-            {% if batch.department.assigned_assistant %}
-              {{ batch.department.assigned_assistant.get_full_name|default:batch.department.assigned_assistant.username }}
-            {% else %}
-              Not Assigned
-            {% endif %}
-          </div>
-        </td>
-      </tr>
-
-      <tr class="sig-spacer"><td colspan="{{ total_colspan }}"></td></tr>
-
       <tr class="signature-row">
         <td colspan="{{ total_colspan }}">
-          <div class="foot">
-            <div class="sig">
-              <div class="bold nowrap">Assistant Controller of Examinations (Secrecy)</div>
-              <div class="bold nowrap">Gomal University, Dera Ismail Khan</div>
-            </div>
-            <div class="sig">
-              <div class="bold nowrap">Controller of Examinations</div>
-              <div class="bold nowrap">Gomal University, Dera Ismail Khan</div>
-            </div>
-          </div>
+          <table class="signature-grid">
+            <tr class="sig-row-top">
+              <td class="leftcell" style="width: 50%;">
+                  <div class="grid-cell-content">
+                      <span class="role-title">Dealing Assistant</span>:
+                      <span class="assistant-name">
+                          {% if batch.department.assigned_assistant %}
+                            {{ batch.department.assigned_assistant.get_full_name|default:batch.department.assigned_assistant.username }}
+                          {% else %}
+                            Not Assigned
+                          {% endif %}
+                      </span>
+                  </div>
+              </td>
+              <td class="leftcell" style="width: 50%;">
+                  <div class="grid-cell-content">
+                      <div class="role-title">Assistant Controller of Examinations (Secrecy-II)</div>
+                      <div class="university-address">Gomal University, D.I.Khan</div>
+                  </div>
+              </td>
+            </tr>
+            <tr class="sig-row-bottom">
+              <td class="leftcell">
+                  <div class="grid-cell-content">
+                      <div class="role-title">Checked By PA to Controller of Examinations</div>
+                      <div class="university-address">Gomal University, D.I.Khan</div>
+                  </div>
+              </td>
+              <td class="leftcell">
+                  <div class="grid-cell-content">
+                      <div class="role-title">Controller of Examinations</div>
+                      <div class="university-address">Gomal University, D.I.Khan</div>
+                  </div>
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
     </tbody>
@@ -324,34 +367,44 @@
 
       <tr class="sig-spacer"><td colspan="{{ total_colspan }}"></td></tr>
 
-      <!-- Dealing Assistant -->
-      <tr>
-		<td colspan="{{ total_colspan }}" style="border:none; text-align:left; padding-left:10px;">
-			<div class="bold">Dealing Assistant</div>
-			<div>
-      {% if batch.department.assigned_assistant %}
-        {{ batch.department.assigned_assistant.get_full_name|default:batch.department.assigned_assistant.username }}
-      {% else %}
-        Not Assigned
-      {% endif %}
-			</div>
-		</td>
-	</tr>
-
-      <tr class="sig-spacer"><td colspan="{{ total_colspan }}"></td></tr>
-
       <tr class="signature-row">
         <td colspan="{{ total_colspan }}">
-          <div class="foot">
-            <div class="sig">
-              <div class="bold nowrap">Assistant Controller of Examinations (Secrecy)</div>
-              <div class="bold nowrap">Gomal University, Dera Ismail Khan</div>
-            </div>
-            <div class="sig">
-              <div class="bold nowrap">Controller of Examinations</div>
-              <div class="bold nowrap">Gomal University, Dera Ismail Khan</div>
-            </div>
-          </div>
+          <table class="signature-grid">
+            <tr class="sig-row-top">
+              <td class="leftcell" style="width: 50%;">
+                  <div class="grid-cell-content">
+                      <span class="role-title">Dealing Assistant</span>:
+                      <span class="assistant-name">
+                          {% if batch.department.assigned_assistant %}
+                            {{ batch.department.assigned_assistant.get_full_name|default:batch.department.assigned_assistant.username }}
+                          {% else %}
+                            Not Assigned
+                          {% endif %}
+                      </span>
+                  </div>
+              </td>
+              <td class="leftcell" style="width: 50%;">
+                  <div class="grid-cell-content">
+                      <div class="role-title">Assistant Controller of Examinations (Secrecy-II)</div>
+                      <div class="university-address">Gomal University, D.I.Khan</div>
+                  </div>
+              </td>
+            </tr>
+            <tr class="sig-row-bottom">
+              <td class="leftcell">
+                  <div class="grid-cell-content">
+                      <div class="role-title">Checked By PA to Controller of Examinations</div>
+                      <div class="university-address">Gomal University, D.I.Khan</div>
+                  </div>
+              </td>
+              <td class="leftcell">
+                  <div class="grid-cell-content">
+                      <div class="role-title">Controller of Examinations</div>
+                      <div class="university-address">Gomal University, D.I.Khan</div>
+                  </div>
+              </td>
+            </tr>
+          </table>
         </td>
       </tr>
     </tbody>
