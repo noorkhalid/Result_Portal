@@ -95,3 +95,8 @@ Noor Khalid
 GitHub: https://github.com/noorkhalid
 NOTE
 This document reflects the current development stage of the project and will evolve as the project matures.
+
+
+## Environment Configuration
+
+Local development and production use separate `.env` files. Environment-specific settings and passwords are not stored in Git.
