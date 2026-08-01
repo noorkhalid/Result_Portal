@@ -1,6 +1,9 @@
 from django.contrib import messages
 from django.shortcuts import get_object_or_404, redirect, render
+from django.core.exceptions import ValidationError
 from django.db import IntegrityError
+from django.utils import timezone
+from django.utils.dateparse import parse_date
 
 from dashboards.decorators import group_required
 from dashboards.forms import ResultBatchForm
@@ -15,6 +18,11 @@ from results.models import ExamType, ResultBatch
 from results.models import SemesterResult, CourseResult, ResultNotification, ResultNotificationItem
 from academics.models import Program, Session
 from results.services import recompute_batch
+from results.notification_services import (
+    create_result_notification,
+    eligible_clearance_results,
+    ensure_batch_semester_results,
+)
 
 
 @group_required("System Admin", "Dealing Assistant")
@@ -211,31 +219,67 @@ def batch_notifications(request, pk):
     batch = get_accessible_batch_or_none(request.user, pk)
     if not batch:
         return deny_department_access(request)
-    enrollment_ids = list(CourseResult.objects.filter(batch=batch).values_list("enrollment_id", flat=True).distinct())
-    for eid in enrollment_ids:
-        SemesterResult.objects.get_or_create(batch=batch, enrollment_id=eid)
-    notifications = ResultNotification.objects.filter(batch=batch).order_by("-created_at")
-    first_notification = notifications.order_by("created_at").first()
-    eligible_clearance = SemesterResult.objects.filter(batch=batch, hold_status=SemesterResult.HOLD_NONE)
-    eligible_clearance = eligible_clearance.filter(notification_items__hold_status_snapshot__in=[SemesterResult.HOLD_DUES, SemesterResult.HOLD_DOCUMENTS]).exclude(notification_items__hold_status_snapshot=SemesterResult.HOLD_NONE).distinct()
+
+    ensure_batch_semester_results(batch)
+    notifications = (
+        ResultNotification.objects.filter(batch=batch)
+        .prefetch_related("items")
+        .order_by("notification_date", "created_at", "id")
+    )
+    full_notification = notifications.filter(
+        notification_type=ResultNotification.NotificationType.FULL
+    ).first()
+    eligible_clearance = eligible_clearance_results(batch)
+
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
+        notification_type = {
+            "create_full": ResultNotification.NotificationType.FULL,
+            "create_clearance": ResultNotification.NotificationType.CLEARANCE,
+        }.get(action)
         notification_no = (request.POST.get("notification_no") or "").strip()
-        notification_date = request.POST.get("notification_date")
-        if not notification_no or not notification_date:
-            messages.error(request, "Notification number and date are required.")
+        notification_date = parse_date(request.POST.get("notification_date") or "")
+        selected_ids = request.POST.getlist("selected_students")
+
+        if not notification_type:
+            messages.error(request, "Invalid notification action.")
             return redirect("admin_batch_notifications", pk=batch.pk)
-        declaration_date = first_notification.declaration_date if first_notification else notification_date
-        notif = ResultNotification.objects.create(batch=batch, notification_no=notification_no, notification_date=notification_date, declaration_date=declaration_date)
-        srs = list(eligible_clearance if action == "create_clearance" else SemesterResult.objects.filter(batch=batch))
-        if action == "create_clearance" and not srs:
-            notif.delete()
-            messages.error(request, "No cleared students found for a clearance notification.")
+
+        try:
+            notification = create_result_notification(
+                batch=batch,
+                notification_type=notification_type,
+                notification_no=notification_no,
+                notification_date=notification_date,
+                selected_semester_result_ids=selected_ids,
+            )
+        except ValidationError as exc:
+            if hasattr(exc, "messages"):
+                error_message = " ".join(exc.messages)
+            else:
+                error_message = str(exc)
+            messages.error(request, error_message)
             return redirect("admin_batch_notifications", pk=batch.pk)
-        ResultNotificationItem.objects.bulk_create([ResultNotificationItem(notification=notif, semester_result=sr, hold_status_snapshot=sr.hold_status) for sr in srs])
-        messages.success(request, f"Notification created: {notif.notification_no} ({len(srs)} student(s)).")
+
+        messages.success(
+            request,
+            f"{notification.get_notification_type_display()} created: "
+            f"{notification.notification_no} ({notification.items.count()} student(s)).",
+        )
         return redirect("admin_batch_notifications", pk=batch.pk)
-    return render(request, "dashboards/result_batches/notifications.html", {"batch": batch, "notifications": notifications, "eligible_clearance_count": eligible_clearance.count()})
+
+    return render(
+        request,
+        "dashboards/result_batches/notifications.html",
+        {
+            "batch": batch,
+            "notifications": notifications,
+            "full_notification": full_notification,
+            "eligible_clearance": eligible_clearance,
+            "eligible_clearance_count": eligible_clearance.count(),
+            "today": timezone.localdate(),
+        },
+    )
 
 
 @group_required("System Admin")
@@ -244,10 +288,25 @@ def batch_notification_delete(request, pk, notification_id):
     if request.method != "POST":
         messages.error(request, "Invalid request method.")
         return redirect("admin_batch_notifications", pk=batch.pk)
-    notif = get_object_or_404(ResultNotification, pk=notification_id, batch=batch)
-    notif_no = notif.notification_no
-    notif.delete()
-    messages.success(request, f"Notification deleted: {notif_no}.")
+
+    notification = get_object_or_404(
+        ResultNotification, pk=notification_id, batch=batch
+    )
+    if (
+        notification.notification_type == ResultNotification.NotificationType.FULL
+        and batch.notifications.filter(
+            notification_type=ResultNotification.NotificationType.CLEARANCE
+        ).exists()
+    ):
+        messages.error(
+            request,
+            "The Full Notification cannot be deleted after a Clearance Notification exists.",
+        )
+        return redirect("admin_batch_notifications", pk=batch.pk)
+
+    notification_no = notification.notification_no
+    notification.delete()
+    messages.success(request, f"Notification deleted: {notification_no}.")
     return redirect("admin_batch_notifications", pk=batch.pk)
 
 

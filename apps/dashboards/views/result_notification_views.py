@@ -62,11 +62,11 @@ def result_notifications(request):
         if len(only) == 1:
             batch_id = str(only[0])
 
-    if request.GET.get("action") == "print":
+    if request.GET.get("action") in {"manage", "print"}:
         if not batch_id:
             messages.error(request, "Please select a Result Batch.")
         else:
-            return redirect("result_notification_pdf", batch_id=int(batch_id))
+            return redirect("admin_batch_notifications", pk=int(batch_id))
 
     return render(request, "dashboards/documents/result_notifications.html", {
         "departments": departments,

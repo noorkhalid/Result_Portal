@@ -81,6 +81,14 @@ class ResultBatch(models.Model):
     notification_no = models.CharField(max_length=100, blank=True)
     notification_date = models.DateField(null=True, blank=True)
 
+    # Permanent date set by the first Full Result Notification.
+    # It remains unchanged even when later clearance notifications are issued.
+    official_result_declaration_date = models.DateField(
+        null=True,
+        blank=True,
+        editable=False,
+    )
+
     is_locked = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -96,7 +104,36 @@ class ResultBatch(models.Model):
         )
         ordering = ["-created_at"]
 
+    @property
+    def is_final_semester(self) -> bool:
+        sem_end = int(getattr(self.curriculum, "semester_end", 0) or 0)
+        if not sem_end:
+            sem_end = int(getattr(self.program, "semester_end", 0) or 0)
+        return bool(sem_end and int(self.semester_number) == sem_end)
+
     def save(self, *args, **kwargs):
+        if self.pk:
+            previous_date = (
+                ResultBatch.objects.filter(pk=self.pk)
+                .values_list("official_result_declaration_date", flat=True)
+                .first()
+            )
+            update_fields = kwargs.get("update_fields")
+            date_is_being_saved = (
+                update_fields is None
+                or "official_result_declaration_date" in update_fields
+            )
+            if previous_date:
+                if (
+                    date_is_being_saved
+                    and self.official_result_declaration_date not in (None, previous_date)
+                ):
+                    raise ValidationError(
+                        "The official result declaration date cannot be changed once set."
+                    )
+                # Protect stale model instances from clearing the permanent date.
+                self.official_result_declaration_date = previous_date
+
         # Department fallback
         if not self.department_id:
             self.department = get_default_department()
@@ -313,31 +350,50 @@ class SemesterResult(models.Model):
 
 
 class ResultNotification(models.Model):
-    """A printable notification for a ResultBatch.
+    """A Full or Clearance notification for one ResultBatch."""
 
-    A batch may have multiple notifications:
-      - initial (full) notification
-      - later clearance notifications for held students
-    """
+    class NotificationType(models.TextChoices):
+        FULL = "full", "Full Notification"
+        CLEARANCE = "clearance", "Clearance Notification"
 
     batch = models.ForeignKey(
         ResultBatch, on_delete=models.CASCADE, related_name="notifications"
     )
+    notification_type = models.CharField(
+        max_length=16,
+        choices=NotificationType.choices,
+        default=NotificationType.FULL,
+    )
 
-    notification_no = models.CharField(max_length=100)
+    notification_no = models.CharField(max_length=100, unique=True)
     notification_date = models.DateField()
 
-    # Declaration date is fixed per batch (set on first notification; reused later)
+    # Snapshot of the permanent batch declaration date.
     declaration_date = models.DateField()
 
     remarks = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["notification_date", "created_at", "id"]
+        indexes = [
+            models.Index(
+                fields=["batch", "notification_type"],
+                name="result_notif_batch_type_idx",
+            )
+        ]
+
+    def clean(self):
+        super().clean()
+        if self.batch_id and self.notification_type == self.NotificationType.CLEARANCE:
+            official_date = self.batch.official_result_declaration_date
+            if official_date and self.declaration_date != official_date:
+                raise ValidationError(
+                    {"declaration_date": "Clearance notifications must retain the official declaration date."}
+                )
 
     def __str__(self) -> str:
-        return f"{self.batch} | {self.notification_no}"
+        return f"{self.batch} | {self.notification_no} | {self.get_notification_type_display()}"
 
 
 class ResultNotificationItem(models.Model):
@@ -355,6 +411,7 @@ class ResultNotificationItem(models.Model):
         choices=SemesterResult.HOLD_CHOICES,
         default=SemesterResult.HOLD_NONE,
     )
+    hold_label_snapshot = models.CharField(max_length=100, blank=True)
 
     class Meta:
         unique_together = ("notification", "semester_result")
