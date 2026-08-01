@@ -228,6 +228,14 @@
       <td class="label">Result Type</td>
       <td class="bold">{{ result_type_label }}</td>
     </tr>
+    {% if notification %}
+    <tr>
+      <td class="label">Notification Type</td>
+      <td class="bold">{{ notification.get_notification_type_display }}</td>
+      <td class="label">Declaration Date</td>
+      <td class="bold">{{ notification.declaration_date|date:"d-m-Y" }}</td>
+    </tr>
+    {% endif %}
   </table>
 
   <table class="main mt12">
@@ -264,16 +272,22 @@
         <td class="leftcell">{{ r.enrollment.student.name }}</td>
         <td class="leftcell">{{ r.enrollment.student.father_name }}</td>
 
-        {% for col in columns %}
-        <td>
-          {% with row=grades_map|get_item:r.enrollment_id %}
-            {{ row|get_item:col.course_id }}
-          {% endwith %}
-        </td>
-        {% endfor %}
+        {% with hold_label=hold_map|get_item:r.enrollment_id %}
+          {% if hold_label %}
+            <td colspan="{{ rl_colspan }}" class="bold">{{ hold_label }} — Result Withheld</td>
+          {% else %}
+            {% for col in columns %}
+            <td>
+              {% with row=grades_map|get_item:r.enrollment_id %}
+                {{ row|get_item:col.course_id }}
+              {% endwith %}
+            </td>
+            {% endfor %}
 
-        <td>{{ r.gpa }}</td>
-        {% if show_cgpa %}<td>{{ r.cgpa }}</td>{% endif %}
+            <td>{{ r.gpa }}</td>
+            {% if show_cgpa %}<td>{{ r.cgpa }}</td>{% endif %}
+          {% endif %}
+        {% endwith %}
       </tr>
       {% endfor %}
     </tbody>
@@ -286,16 +300,22 @@
         <td class="leftcell">{{ r.enrollment.student.name }}</td>
         <td class="leftcell">{{ r.enrollment.student.father_name }}</td>
 
-        {% for col in columns %}
-        <td>
-          {% with row=grades_map|get_item:r.enrollment_id %}
-            {{ row|get_item:col.course_id }}
-          {% endwith %}
-        </td>
-        {% endfor %}
+        {% with hold_label=hold_map|get_item:r.enrollment_id %}
+          {% if hold_label %}
+            <td colspan="{{ rl_colspan }}" class="bold">{{ hold_label }} — Result Withheld</td>
+          {% else %}
+            {% for col in columns %}
+            <td>
+              {% with row=grades_map|get_item:r.enrollment_id %}
+                {{ row|get_item:col.course_id }}
+              {% endwith %}
+            </td>
+            {% endfor %}
 
-        <td>{{ r.gpa }}</td>
-        {% if show_cgpa %}<td>{{ r.cgpa }}</td>{% endif %}
+            <td>{{ r.gpa }}</td>
+            {% if show_cgpa %}<td>{{ r.cgpa }}</td>{% endif %}
+          {% endif %}
+        {% endwith %}
       </tr>
       {% endfor %}
 
@@ -352,16 +372,22 @@
         <td class="leftcell">{{ r.enrollment.student.name }}</td>
         <td class="leftcell">{{ r.enrollment.student.father_name }}</td>
 
-        {% for col in columns %}
-        <td>
-          {% with row=grades_map|get_item:r.enrollment_id %}
-            {{ row|get_item:col.course_id }}
-          {% endwith %}
-        </td>
-        {% endfor %}
+        {% with hold_label=hold_map|get_item:r.enrollment_id %}
+          {% if hold_label %}
+            <td colspan="{{ rl_colspan }}" class="bold">{{ hold_label }} — Result Withheld</td>
+          {% else %}
+            {% for col in columns %}
+            <td>
+              {% with row=grades_map|get_item:r.enrollment_id %}
+                {{ row|get_item:col.course_id }}
+              {% endwith %}
+            </td>
+            {% endfor %}
 
-        <td>{{ r.gpa }}</td>
-        {% if show_cgpa %}<td>{{ r.cgpa }}</td>{% endif %}
+            <td>{{ r.gpa }}</td>
+            {% if show_cgpa %}<td>{{ r.cgpa }}</td>{% endif %}
+          {% endif %}
+        {% endwith %}
       </tr>
       {% endfor %}
 

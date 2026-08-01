@@ -3,14 +3,20 @@
 
 {% block content %}
 <style>
-  /* Scope button sizing to Notification History only (avoid affecting other .btn-sm globally) */
   .notification-actions .btn-sm { min-width: 75px; text-align: center; }
+  .clearance-student-list { max-height: 360px; overflow-y: auto; }
 </style>
 <div class="container-fluid">
   <div class="d-flex align-items-center justify-content-between mb-3">
     <div>
-      <h3 class="m-0">Notifications</h3>
+      <h3 class="m-0">Result Notifications</h3>
       <div class="text-muted">Batch: {{ batch }}</div>
+      {% if batch.official_result_declaration_date %}
+        <div class="small text-success mt-1">
+          Official Result Declaration Date:
+          <strong>{{ batch.official_result_declaration_date|date:"d-m-Y" }}</strong>
+        </div>
+      {% endif %}
     </div>
     <a href="{% url 'admin_batch_detail' batch.id %}" class="btn btn-outline-dark btn-sm btn-icon-only" title="Back to Batch" aria-label="Back to Batch"><i class="bi bi-arrow-left"></i></a>
   </div>
@@ -19,40 +25,103 @@
     <div class="col-lg-5">
       <div class="card">
         <div class="card-body">
-          <h6 class="card-title mb-3">Create Notification (Full)</h6>
-          <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="create_full">
-            <div class="mb-2">
-              <label class="form-label form-label-sm">Notification No</label>
-              <input name="notification_no" class="form-control form-control-sm" placeholder="e.g., FECS (43/08)/2025" required>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="card-title m-0">Create Full Notification</h6>
+            {% if full_notification %}<span class="badge text-bg-success">Created</span>{% endif %}
+          </div>
+
+          {% if full_notification %}
+            <div class="alert alert-light border mb-0">
+              The Full Notification for this batch has already been created as
+              <strong>{{ full_notification.notification_no }}</strong>.
             </div>
-            <div class="mb-2">
-              <label class="form-label form-label-sm">Notification Date</label>
-              <input type="date" name="notification_date" class="form-control form-control-sm" required>
+          {% else %}
+            <div class="small text-muted mb-3">
+              The complete batch will be included. Students having a hold will appear, but their marks, SGPA and CGPA will remain withheld.
             </div>
-            <button type="submit" class="btn btn-primary btn-sm btn-icon-only" title="Create Full Notification" aria-label="Create Full Notification"><i class="bi bi-megaphone"></i></button>
-          </form>
+            <form method="post">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="create_full">
+              <div class="mb-2">
+                <label class="form-label form-label-sm">Notification No</label>
+                <input name="notification_no" class="form-control form-control-sm" placeholder="e.g., FECS (43/08)/2025" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label form-label-sm">Notification Date</label>
+                <input type="date" name="notification_date" value="{{ today|date:'Y-m-d' }}" class="form-control form-control-sm" required>
+              </div>
+              <button type="submit" class="btn btn-primary btn-sm">
+                <i class="bi bi-megaphone me-1"></i>Create Full Notification
+              </button>
+            </form>
+          {% endif %}
         </div>
       </div>
 
       <div class="card mt-3">
         <div class="card-body">
-          <h6 class="card-title mb-3">Create Clearance Notification</h6>
-          <div class="text-muted mb-2">Eligible cleared students: <b>{{ eligible_clearance_count }}</b></div>
-          <form method="post">
-            {% csrf_token %}
-            <input type="hidden" name="action" value="create_clearance">
-            <div class="mb-2">
-              <label class="form-label form-label-sm">Notification No</label>
-              <input name="notification_no" class="form-control form-control-sm" placeholder="e.g., FECS (44/08)/2025" required>
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="card-title m-0">Create Clearance Notification</h6>
+            <span class="badge text-bg-secondary">{{ eligible_clearance_count }} Eligible</span>
+          </div>
+
+          {% if not full_notification %}
+            <div class="alert alert-warning mb-0">Create the Full Notification first.</div>
+          {% elif eligible_clearance_count == 0 %}
+            <div class="alert alert-light border mb-0">
+              No previously withheld student is currently eligible for clearance.
             </div>
-            <div class="mb-2">
-              <label class="form-label form-label-sm">Notification Date</label>
-              <input type="date" name="notification_date" class="form-control form-control-sm" required>
-            </div>
-            <button type="submit" class="btn btn-outline-primary btn-sm btn-icon-only" {% if eligible_clearance_count|add:0 == 0 %}disabled{% endif %} title="Create Clearance Notification" aria-label="Create Clearance Notification"><i class="bi bi-megaphone-fill"></i></button>
-          </form>
+          {% else %}
+            <form method="post" id="clearance-notification-form">
+              {% csrf_token %}
+              <input type="hidden" name="action" value="create_clearance">
+              <div class="mb-2">
+                <label class="form-label form-label-sm">Notification No</label>
+                <input name="notification_no" class="form-control form-control-sm" placeholder="e.g., FECS (44/08)/2025" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label form-label-sm">Notification Date</label>
+                <input type="date" name="notification_date" value="{{ today|date:'Y-m-d' }}" class="form-control form-control-sm" required>
+              </div>
+
+              <div class="d-flex align-items-center justify-content-between mb-2">
+                <label class="form-label form-label-sm m-0">Select Students</label>
+                <div class="btn-group btn-group-sm" role="group" aria-label="Clearance student selection">
+                  <button type="button" class="btn btn-outline-secondary" id="select-all-clearance">Select All</button>
+                  <button type="button" class="btn btn-outline-secondary" id="deselect-all-clearance">Deselect All</button>
+                </div>
+              </div>
+
+              <div class="border rounded clearance-student-list mb-3">
+                <table class="table table-sm table-hover align-middle mb-0">
+                  <thead class="table-light sticky-top">
+                    <tr>
+                      <th style="width:42px;" class="text-center">Select</th>
+                      <th>Roll No.</th>
+                      <th>Student</th>
+                      <th>Registration No.</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for result in eligible_clearance %}
+                      <tr>
+                        <td class="text-center">
+                          <input class="form-check-input clearance-student-checkbox" type="checkbox" name="selected_students" value="{{ result.id }}" aria-label="Select {{ result.enrollment.student.name }}">
+                        </td>
+                        <td>{{ result.enrollment.roll_no }}</td>
+                        <td>{{ result.enrollment.student.name }}</td>
+                        <td>{{ result.enrollment.student.registration_no }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+
+              <button type="submit" class="btn btn-outline-primary btn-sm">
+                <i class="bi bi-megaphone-fill me-1"></i>Create Clearance Notification
+              </button>
+            </form>
+          {% endif %}
         </div>
       </div>
     </div>
@@ -69,27 +138,37 @@
               <table class="table table-bordered align-middle">
                 <thead>
                   <tr>
-                    <th style="width:220px;">Notification No</th>
-                    <th style="width:130px;">Notification Date</th>
-                    <th style="width:130px;">Declaration Date</th>
-                    <th style="width:90px;">Students</th>
+                    <th>Notification No</th>
+                    <th style="width:120px;">Type</th>
+                    <th style="width:120px;">Date</th>
+                    <th style="width:135px;">Declaration Date</th>
+                    <th style="width:85px;">Students</th>
                     <th style="width:120px;">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {% for n in notifications %}
+                  {% for notification in notifications %}
                     <tr>
-                      <td>{{ n.notification_no }}</td>
-                      <td>{{ n.notification_date }}</td>
-                      <td>{{ n.declaration_date }}</td>
-                      <td>{{ n.items.count }}</td>
+                      <td>{{ notification.notification_no }}</td>
+                      <td>
+                        {% if notification.notification_type == 'full' %}
+                          <span class="badge text-bg-primary">Full</span>
+                        {% else %}
+                          <span class="badge text-bg-info">Clearance</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ notification.notification_date|date:"d-m-Y" }}</td>
+                      <td>{{ notification.declaration_date|date:"d-m-Y" }}</td>
+                      <td>{{ notification.items.count }}</td>
                       <td class="notification-actions">
-                        <a href="{% url 'result_notification_by_id_pdf' n.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2 btn-icon-only" title="Print" aria-label="Print"><i class="bi bi-printer"></i></a>
+                        <a href="{% url 'result_notification_by_id_pdf' notification.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2 btn-icon-only" title="Print" aria-label="Print"><i class="bi bi-printer"></i></a>
 
-                        {% if can_delete_results %}<form method="post" action="{% url 'admin_batch_notification_delete' batch.id n.id %}" style="display:inline;" onsubmit="return confirm('Delete this notification? This cannot be undone.');">
-                          {% csrf_token %}
-                          <button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2 btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
-                        </form>{% endif %}
+                        {% if can_delete_results %}
+                          <form method="post" action="{% url 'admin_batch_notification_delete' batch.id notification.id %}" style="display:inline;" onsubmit="return confirm('Delete this notification? This cannot be undone.');">
+                            {% csrf_token %}
+                            <button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2 btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
+                          </form>
+                        {% endif %}
                       </td>
                     </tr>
                   {% endfor %}
@@ -102,4 +181,23 @@
     </div>
   </div>
 </div>
+
+<script>
+  document.addEventListener("DOMContentLoaded", function () {
+    const checkboxes = Array.from(document.querySelectorAll(".clearance-student-checkbox"));
+    const selectAllButton = document.getElementById("select-all-clearance");
+    const deselectAllButton = document.getElementById("deselect-all-clearance");
+
+    if (selectAllButton) {
+      selectAllButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) { checkbox.checked = true; });
+      });
+    }
+    if (deselectAllButton) {
+      deselectAllButton.addEventListener("click", function () {
+        checkboxes.forEach(function (checkbox) { checkbox.checked = false; });
+      });
+    }
+  });
+</script>
 {% endblock %}

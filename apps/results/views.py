@@ -31,6 +31,24 @@ def _fail_letter_set():
     return {str(x).strip() for x in s if str(x).strip()}
 
 
+def _official_result_date(batch: ResultBatch):
+    """Return the permanent declaration date, with legacy fallbacks."""
+
+    if batch.official_result_declaration_date:
+        return batch.official_result_declaration_date
+
+    first_full = (
+        batch.notifications.filter(
+            notification_type=ResultNotification.NotificationType.FULL
+        )
+        .order_by("created_at", "id")
+        .first()
+    )
+    if first_full:
+        return first_full.declaration_date or first_full.notification_date
+    return getattr(batch, "notification_date", None)
+
+
 def _display_letter_grade_for_pdf(cr: CourseResult, batch: ResultBatch, fail_letters: set[str]) -> str:
     """
     Display-only letter grade used in DMC/Transcript PDFs.
@@ -274,7 +292,14 @@ def result_notification_pdf(request, batch_id):
     # -------------------------------------------------
     # 3.1) Hold map for RL masking (per student)
     # -------------------------------------------------
-    hold_map = {sr.enrollment_id: (sr.hold_status or SemesterResult.HOLD_NONE) for sr in results_list}
+    hold_map = {
+        sr.enrollment_id: (
+            sr.get_hold_status_display()
+            if (sr.hold_status or SemesterResult.HOLD_NONE) != SemesterResult.HOLD_NONE
+            else ""
+        )
+        for sr in results_list
+    }
 
     # -------------------------------------------------
     # 4) grades_map[enrollment_id][course_id] = letter_grade
@@ -439,7 +464,11 @@ def result_notification_by_id_pdf(request, notification_id):
     # hold_map from snapshot
     hold_map = {}
     for item in notification.items.select_related("semester_result"):
-        hold_map[item.semester_result.enrollment_id] = item.hold_status_snapshot or SemesterResult.HOLD_NONE
+        hold_code = item.hold_status_snapshot or SemesterResult.HOLD_NONE
+        hold_label = item.hold_label_snapshot
+        if not hold_label and hold_code != SemesterResult.HOLD_NONE:
+            hold_label = item.get_hold_status_snapshot_display()
+        hold_map[item.semester_result.enrollment_id] = hold_label if hold_code != SemesterResult.HOLD_NONE else ""
 
     session_display = batch.session.display_for_program(batch.program)
     try:
@@ -522,8 +551,7 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
 
     # Date of Result on DMC should show the FIRST date the result was notified.
     # If the result is later re-notified, that date may be for declaration purposes only.
-    first_notification = batch.notifications.order_by("notification_date", "id").first()
-    result_date = first_notification.notification_date if first_notification else getattr(batch, "notification_date", None)
+    result_date = _official_result_date(batch)
 
     html = render_to_string(
         "results/dmc_batch.html",
@@ -618,8 +646,7 @@ def dmc_batch_pdf(request, batch_id):
         )
 
     # Date of Result on DMC should show the FIRST date the result was notified.
-    first_notification = batch.notifications.order_by("notification_date", "id").first()
-    result_date = first_notification.notification_date if first_notification else getattr(batch, "notification_date", None)
+    result_date = _official_result_date(batch)
 
     html = render_to_string(
         "results/dmc_batch.html",
@@ -854,8 +881,7 @@ def transcript_pdf(request, enrollment_id: int):
     declaration_date = None
     if semesters:
         final_batch = semesters[-1]["batch"]
-        first_notification = final_batch.notifications.order_by("notification_date", "id").first()
-        declaration_date = first_notification.notification_date if first_notification else getattr(final_batch, "notification_date", None)
+        declaration_date = _official_result_date(final_batch)
 
     # Always use the uniform two-column transcript layout.
     layout_mode = "double"
@@ -1057,8 +1083,7 @@ def transcript_batch_pdf(request, batch_id: int):
         declaration_date = None
         if semesters:
             final_batch = semesters[-1]["batch"]
-            first_notification = final_batch.notifications.order_by("notification_date", "id").first()
-            declaration_date = first_notification.notification_date if first_notification else getattr(final_batch, "notification_date", None)
+            declaration_date = _official_result_date(final_batch)
 
         semester_pairs = []
         sem_map = {s["semester_no"]: s for s in semesters}
