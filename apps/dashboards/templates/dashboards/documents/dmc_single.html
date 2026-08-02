@@ -1,4 +1,5 @@
 {% extends "dashboards/_layout.html" %}
+{% load results_extras %}
 {% block title %}DMC (Single Student){% endblock %}
 
 {% block content %}
@@ -99,22 +100,27 @@
         <div class="filter-row row align-items-center">
           <label class="col-12 col-md-3 col-form-label filter-label">Student</label>
           <div class="col-12 col-md-9">
-            <select name="enrollment" class="form-select" {% if not batch_id %}disabled{% endif %}>
+            <select name="enrollment" class="form-select" onchange="this.form.submit();" {% if not batch_id %}disabled{% endif %}>
               <option value="">Select Student</option>
               {% for r in students %}
-                <option value="{{ r.enrollment_id }}" {% if r.enrollment_id|stringformat:"s" == enrollment_id %}selected{% endif %}>
-                  {{ r.roll }} | {{ r.reg }} | {{ r.name }}
-                </option>
+                {% with status=eligibility_map|get_item:r.id %}
+                  <option value="{{ r.enrollment_id }}" {% if r.enrollment_id|stringformat:"s" == enrollment_id %}selected{% endif %}>
+                    {{ r.roll }} | {{ r.reg }} | {{ r.name }}{% if not status.is_eligible %} (Not Eligible){% endif %}
+                  </option>
+                {% endwith %}
               {% endfor %}
             </select>
             {% if batch_id and not students %}
               <div class="text-muted small mt-1">No semester results found in this batch.</div>
             {% endif %}
+            {% if enrollment_id and selected_eligibility and not selected_eligibility.is_eligible %}
+              <div class="text-danger small mt-1">DMC not available: {{ selected_eligibility.reason }}</div>
+            {% endif %}
           </div>
         </div>
 
         <div class="filter-actions d-flex justify-content-end">
-          <button name="action" value="print" class="btn btn-primary px-4 btn-icon-only" {% if not batch_id %}disabled{% endif %} title="Generate PDF" aria-label="Generate PDF"><i class="bi bi-file-earmark-pdf"></i></button>
+          <button name="action" value="print" class="btn btn-primary px-4 btn-icon-only" {% if not batch_id or not enrollment_id or selected_eligibility and not selected_eligibility.is_eligible %}disabled{% endif %} title="Generate PDF" aria-label="Generate PDF"><i class="bi bi-file-earmark-pdf"></i></button>
         </div>
 
       </form>
