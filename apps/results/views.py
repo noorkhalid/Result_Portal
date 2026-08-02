@@ -19,6 +19,7 @@ from weasyprint import HTML
 
 from academics.models import Program, Curriculum, CurriculumCourse
 from students.models import Enrollment
+from .dmc_services import dmc_eligibility_map, evaluate_dmc_eligibility
 from .hold_services import hold_category_map, hold_label_for_code
 from .models import ResultBatch, SemesterResult, CourseResult, GradeScale, ResultNotification, ResultNotificationItem
 from .services import find_grade_by_gpa, q2
@@ -528,6 +529,12 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
         batch=batch,
         enrollment_id=enrollment_id,
     )
+    eligibility = evaluate_dmc_eligibility(sem_res)
+    if not eligibility.is_eligible:
+        return HttpResponse(
+            f"DMC is not available: {eligibility.reason}",
+            status=403,
+        )
 
     columns = list(_course_columns_for_batch(batch))
     course_map = {
@@ -604,14 +611,47 @@ def dmc_batch_pdf(request, batch_id):
     if raw_enrollments:
         selected_enrollment_ids = [int(x) for x in raw_enrollments.split(",") if x.strip().isdigit()]
 
-    results = (
-        SemesterResult.objects.filter(batch=batch)
+    results = SemesterResult.objects.filter(batch=batch)
+    if selected_enrollment_ids:
+        results = results.filter(enrollment_id__in=selected_enrollment_ids)
+    results = list(
+        results
         .select_related("enrollment", "enrollment__student")
         .annotate(roll_suffix=_roll_suffix_annotation())
         .order_by("roll_suffix", "enrollment__roll_no")
     )
+
+    batch_enrollment_ids = {result.enrollment_id for result in results}
     if selected_enrollment_ids:
-        results = results.filter(enrollment_id__in=selected_enrollment_ids)
+        invalid_ids = sorted(set(selected_enrollment_ids) - batch_enrollment_ids)
+        if invalid_ids:
+            return HttpResponse(
+                "One or more selected students do not belong to this result batch.",
+                status=403,
+            )
+
+    eligibility_map = dmc_eligibility_map(results)
+    if selected_enrollment_ids:
+        ineligible_results = [
+            result
+            for result in results
+            if not eligibility_map[result.id].is_eligible
+        ]
+        if ineligible_results:
+            details = "; ".join(
+                f"{result.enrollment.roll_no}: {eligibility_map[result.id].reason}"
+                for result in ineligible_results
+            )
+            return HttpResponse(
+                f"DMC is not available for the selected student(s): {details}",
+                status=403,
+            )
+    else:
+        results = [
+            result
+            for result in results
+            if eligibility_map[result.id].is_eligible
+        ]
 
     cr_qs = (
         CourseResult.objects.filter(batch=batch)
@@ -652,6 +692,12 @@ def dmc_batch_pdf(request, batch_id):
                 "semester_result": sr,
                 "course_rows": course_rows,
             }
+        )
+
+    if not dmcs:
+        return HttpResponse(
+            "No eligible DMCs were found for this batch.",
+            status=400,
         )
 
     # Date of Result on DMC should show the FIRST date the result was notified.

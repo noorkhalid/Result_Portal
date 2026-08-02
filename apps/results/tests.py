@@ -24,6 +24,7 @@ from results.models import (
     ResultNotification,
     SemesterResult,
 )
+from results.dmc_services import evaluate_dmc_eligibility
 from results.notification_services import (
     create_result_notification,
     eligible_clearance_results,
@@ -711,3 +712,227 @@ class TranscriptEligibilityTests(TestCase):
             "Transcript is not available for the selected student",
             status_code=403,
         )
+
+
+class DMCEligibilityTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser(
+            username="dmc-admin",
+            email="dmc@example.com",
+            password="test-pass-123",
+        )
+        self.department = Department.objects.create(name="DMC Department")
+        self.program = Program.objects.create(
+            name="BS DMC Test",
+            total_semesters=1,
+            semester_start=1,
+        )
+        ProgramOffering.objects.create(
+            department=self.department,
+            program=self.program,
+        )
+        self.session = Session.objects.create(start_year=2023)
+        self.curriculum = Curriculum.objects.create(
+            program=self.program,
+            session=self.session,
+            total_semesters=1,
+            semester_start=1,
+        )
+        self.regular = ExamType.objects.create(
+            code="regular-dmc-test",
+            name="Regular DMC Test",
+            sort_order=1,
+        )
+        self.course_one = Course.objects.create(
+            code="DMC-101",
+            title="DMC Course One",
+            credit_hours="3.0",
+        )
+        self.course_two = Course.objects.create(
+            code="DMC-102",
+            title="DMC Course Two",
+            credit_hours="3.0",
+        )
+        CurriculumCourse.objects.create(
+            curriculum=self.curriculum,
+            semester_number=1,
+            course=self.course_one,
+        )
+        CurriculumCourse.objects.create(
+            curriculum=self.curriculum,
+            semester_number=1,
+            course=self.course_two,
+        )
+        self.batch = ResultBatch.objects.create(
+            department=self.department,
+            program=self.program,
+            session=self.session,
+            curriculum=self.curriculum,
+            semester_number=1,
+            exam_type=self.regular,
+        )
+
+        self.results = []
+        for index in range(1, 3):
+            student = Student.objects.create(
+                department=self.department,
+                name=f"DMC Student {index}",
+                father_name=f"DMC Father {index}",
+                registration_no=f"DMC-REG-{index}",
+            )
+            enrollment = Enrollment.objects.create(
+                department=self.department,
+                student=student,
+                program=self.program,
+                session=self.session,
+                curriculum=self.curriculum,
+                roll_no=f"DMC-ROLL-{index}",
+            )
+            semester_result = SemesterResult.objects.create(
+                batch=self.batch,
+                enrollment=enrollment,
+                gpa="3.00",
+                cgpa="3.00",
+            )
+            CourseResult.objects.create(
+                batch=self.batch,
+                enrollment=enrollment,
+                course=self.course_one,
+                marks_obtained="45.00",
+                letter_grade="B",
+                grade_point="3.00",
+            )
+            CourseResult.objects.create(
+                batch=self.batch,
+                enrollment=enrollment,
+                course=self.course_two,
+                marks_obtained="45.00",
+                letter_grade="B",
+                grade_point="3.00",
+            )
+            self.results.append(semester_result)
+
+    def publish_full(self):
+        return create_result_notification(
+            batch=self.batch,
+            notification_type=ResultNotification.NotificationType.FULL,
+            notification_no="0201-2026/Results/Exam/GU",
+            notification_date=date(2026, 8, 2),
+        )
+
+    def test_dmc_requires_official_release(self):
+        before = evaluate_dmc_eligibility(self.results[0])
+        self.assertFalse(before.is_eligible)
+        self.assertIn("Result has not been officially released", before.reason)
+
+        self.publish_full()
+
+        after = evaluate_dmc_eligibility(self.results[0])
+        self.assertTrue(after.is_eligible)
+
+    def test_dmc_requires_all_batch_course_results(self):
+        CourseResult.objects.filter(
+            batch=self.batch,
+            enrollment=self.results[0].enrollment,
+            course=self.course_two,
+        ).delete()
+        self.publish_full()
+
+        status = evaluate_dmc_eligibility(self.results[0])
+
+        self.assertFalse(status.is_eligible)
+        self.assertIn("Missing course result(s): DMC-102.", status.reason)
+
+    def test_failed_course_does_not_block_dmc(self):
+        failed_course = CourseResult.objects.get(
+            batch=self.batch,
+            enrollment=self.results[0].enrollment,
+            course=self.course_one,
+        )
+        failed_course.letter_grade = "F"
+        failed_course.grade_point = "0.00"
+        failed_course.save(update_fields=["letter_grade", "grade_point"])
+        self.publish_full()
+
+        status = evaluate_dmc_eligibility(self.results[0])
+
+        self.assertTrue(status.is_eligible)
+
+    def test_held_result_requires_clearance_notification(self):
+        held_result = self.results[0]
+        held_result.hold_status = SemesterResult.HOLD_DOCUMENTS
+        held_result.save(update_fields=["hold_status"])
+        self.publish_full()
+
+        held = evaluate_dmc_eligibility(held_result)
+        self.assertFalse(held.is_eligible)
+        self.assertIn("Active result hold: RL Documents.", held.reason)
+        self.assertIn("Result has not been officially released", held.reason)
+
+        held_result.hold_status = SemesterResult.HOLD_NONE
+        held_result.save(update_fields=["hold_status"])
+        still_unreleased = evaluate_dmc_eligibility(held_result)
+        self.assertFalse(still_unreleased.is_eligible)
+
+        create_result_notification(
+            batch=self.batch,
+            notification_type=ResultNotification.NotificationType.CLEARANCE,
+            notification_no="0202-2026/Results/Exam/GU",
+            notification_date=date(2026, 8, 3),
+            selected_semester_result_ids=[held_result.id],
+        )
+
+        cleared = evaluate_dmc_eligibility(held_result)
+        self.assertTrue(cleared.is_eligible)
+
+    def test_direct_single_dmc_url_is_protected(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse(
+                "dmc_single_pdf",
+                args=[self.batch.id, self.results[0].enrollment_id],
+            )
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(
+            response,
+            "Result has not been officially released",
+            status_code=403,
+        )
+
+    def test_direct_selected_dmc_url_rejects_ineligible_student(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse("dmc_batch_pdf", args=[self.batch.id]),
+            {"enrollments": str(self.results[0].enrollment_id)},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(
+            response,
+            "DMC is not available for the selected student",
+            status_code=403,
+        )
+
+    def test_selected_dmc_page_shows_eligibility_reasons(self):
+        held_result = self.results[0]
+        held_result.hold_status = SemesterResult.HOLD_DOCUMENTS
+        held_result.save(update_fields=["hold_status"])
+        self.publish_full()
+        from dashboards.views.dmc_views import dmc_selected
+
+        request = RequestFactory().get(
+            reverse("admin_dmc_selected", args=[self.batch.id])
+        )
+        request.user = self.user
+        request.session = {}
+        response = dmc_selected(request, self.batch.id)
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Eligible")
+        self.assertContains(response, "Not Eligible")
+        self.assertContains(response, "Active result hold: RL Documents.")
+        self.assertContains(response, "Select All Eligible")

@@ -1,4 +1,5 @@
 {% extends "dashboards/_layout.html" %}
+{% load results_extras %}
 {% block title %}DMCs (Selected Students){% endblock %}
 
 {% block content %}
@@ -27,7 +28,7 @@
     <div class="filter-card-header d-flex align-items-center justify-content-between">
       <div class="filter-card-title">Students</div>
       <div>
-        <button type="button" class="btn btn-sm btn-outline-primary btn-icon-only" onclick="setChecks(true)" title="Select All" aria-label="Select All"><i class="bi bi-check2-square"></i></button>
+        <button type="button" class="btn btn-sm btn-outline-primary btn-icon-only" onclick="setChecks(true)" title="Select All Eligible" aria-label="Select All Eligible"><i class="bi bi-check2-square"></i></button>
         <button type="button" class="btn btn-sm btn-outline-secondary btn-icon-only" onclick="setChecks(false)" title="Clear" aria-label="Clear"><i class="bi bi-x-circle"></i></button>
       </div>
     </div>
@@ -41,22 +42,33 @@
             <th>Registration No</th>
             <th>Student Name</th>
             <th>Father Name</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody>
           {% for r in students %}
-            <tr>
-              <td class="text-center">
-                <input type="checkbox" name="enrollment_ids" value="{{ r.enrollment_id }}" class="student-check">
-              </td>
-              <td>{{ r.roll }}</td>
-              <td>{{ r.reg }}</td>
-              <td>{{ r.name }}</td>
-              <td>{{ r.father_name }}</td>
-            </tr>
+            {% with status=eligibility_map|get_item:r.id %}
+              <tr>
+                <td class="text-center">
+                  <input type="checkbox" name="enrollment_ids" value="{{ r.enrollment_id }}" class="student-check" {% if not status.is_eligible %}disabled{% endif %}>
+                </td>
+                <td>{{ r.roll }}</td>
+                <td>{{ r.reg }}</td>
+                <td>{{ r.name }}</td>
+                <td>{{ r.father_name }}</td>
+                <td>
+                  {% if status.is_eligible %}
+                    <span class="badge bg-success">Eligible</span>
+                  {% else %}
+                    <span class="badge bg-danger">Not Eligible</span>
+                    <div class="text-danger small mt-1">{{ status.reason }}</div>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endwith %}
           {% empty %}
             <tr>
-              <td colspan="5" class="text-center text-muted py-4">No students found in this batch.</td>
+              <td colspan="6" class="text-center text-muted py-4">No students found in this batch.</td>
             </tr>
           {% endfor %}
         </tbody>
@@ -72,7 +84,7 @@
 
 <script>
   function setChecks(value) {
-    document.querySelectorAll('.student-check').forEach(function (box) {
+    document.querySelectorAll('.student-check:not(:disabled)').forEach(function (box) {
       box.checked = value;
     });
   }

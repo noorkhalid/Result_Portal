@@ -8,6 +8,7 @@ from dashboards.decorators import group_required
 from dashboards.access import assigned_departments_qs, restrict_department_queryset
 
 from academics.models import Department, Program, Session
+from results.dmc_services import dmc_eligibility_map
 from results.models import ExamType, ResultBatch, SemesterResult
 
 
@@ -99,8 +100,10 @@ def dmc_single(request):
 
     # Students dropdown: only after selecting a batch
     students = []
+    eligibility_map = {}
+    selected_eligibility = None
     if batch_id:
-        students = (
+        students = list(
             SemesterResult.objects.filter(batch_id=batch_id)
             .select_related("enrollment", "enrollment__student")
             .annotate(
@@ -110,16 +113,27 @@ def dmc_single(request):
             )
             .order_by("roll")
         )
+        eligibility_map = dmc_eligibility_map(students)
 
         # If there is only one student result, auto-select it
         if not enrollment_id and request.GET.get("action") != "print":
-            only_enr = list(students.values_list("enrollment_id", flat=True)[:2])
+            only_enr = [result.enrollment_id for result in students][:2]
             if len(only_enr) == 1:
                 enrollment_id = str(only_enr[0])
 
         # Reset stale enrollment selection
-        if enrollment_id and not students.filter(enrollment_id=enrollment_id).exists():
+        selected_result = next(
+            (
+                result
+                for result in students
+                if str(result.enrollment_id) == str(enrollment_id)
+            ),
+            None,
+        )
+        if enrollment_id and selected_result is None:
             enrollment_id = ""
+        elif selected_result is not None:
+            selected_eligibility = eligibility_map.get(selected_result.id)
 
     # Action: print
     if request.GET.get("action") == "print":
@@ -127,6 +141,11 @@ def dmc_single(request):
             messages.error(request, "Please select a Result Batch.")
         elif not enrollment_id:
             messages.error(request, "Please select a Student.")
+        elif selected_eligibility and not selected_eligibility.is_eligible:
+            messages.error(
+                request,
+                f"DMC is not available: {selected_eligibility.reason}",
+            )
         else:
             return redirect(
                 "dmc_single_pdf",
@@ -151,7 +170,9 @@ def dmc_single(request):
             "batches": batches,
             "batch_id": str(batch_id) if batch_id else "",
             "students": students,
+            "eligibility_map": eligibility_map,
             "enrollment_id": str(enrollment_id) if enrollment_id else "",
+            "selected_eligibility": selected_eligibility,
         },
     )
 
@@ -185,6 +206,7 @@ def dmc_selected(request, batch_id):
         )
         .order_by("roll")
     )
+    eligibility_map = dmc_eligibility_map(students)
 
     if request.method == "POST":
         selected_ids = request.POST.getlist("enrollment_ids")
@@ -193,13 +215,29 @@ def dmc_selected(request, batch_id):
         if not selected_ids:
             messages.error(request, "Please select at least one student.")
         else:
-            allowed_ids = {str(r.enrollment_id) for r in students}
-            valid_ids = [x for x in selected_ids if x in allowed_ids]
-
-            if not valid_ids:
-                messages.error(request, "No selected student belongs to this result batch.")
+            student_map = {str(result.enrollment_id): result for result in students}
+            invalid_ids = [value for value in selected_ids if value not in student_map]
+            if invalid_ids:
+                messages.error(request, "One or more selected students do not belong to this result batch.")
             else:
-                return redirect(f"/results/dmc/{batch.id}/pdf/?enrollments={','.join(valid_ids)}")
+                ineligible_results = [
+                    student_map[value]
+                    for value in selected_ids
+                    if not eligibility_map[student_map[value].id].is_eligible
+                ]
+                if ineligible_results:
+                    details = "; ".join(
+                        f"{result.enrollment.roll_no}: {eligibility_map[result.id].reason}"
+                        for result in ineligible_results
+                    )
+                    messages.error(
+                        request,
+                        f"DMC is not available for the selected student(s): {details}",
+                    )
+                else:
+                    return redirect(
+                        f"/results/dmc/{batch.id}/pdf/?enrollments={','.join(selected_ids)}"
+                    )
 
     return render(
         request,
@@ -207,5 +245,6 @@ def dmc_selected(request, batch_id):
         {
             "batch": batch,
             "students": students,
+            "eligibility_map": eligibility_map,
         },
     )
