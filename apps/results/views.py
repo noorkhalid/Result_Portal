@@ -18,6 +18,7 @@ from weasyprint import HTML
 # Note: We use WeasyPrint for all PDF generation. Avoid adding extra PDF merger deps.
 
 from academics.models import Program, Curriculum, CurriculumCourse
+from documents.models import DocumentInventory, DocumentIssuance
 from students.models import Enrollment
 from .dmc_services import dmc_eligibility_map, evaluate_dmc_eligibility
 from .hold_services import hold_category_map, hold_label_for_code
@@ -536,6 +537,24 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
             status=403,
         )
 
+    issuance = None
+    raw_issuance = (request.GET.get("issuance") or "").strip()
+    if raw_issuance:
+        if not raw_issuance.isdigit():
+            return HttpResponse("Invalid document issuance reference.", status=403)
+        issuance = DocumentIssuance.objects.filter(
+            pk=int(raw_issuance),
+            document_type=DocumentInventory.DocumentType.DMC,
+            semester_result=sem_res,
+            enrollment_id=enrollment_id,
+            source_batch=batch,
+        ).first()
+        if not issuance:
+            return HttpResponse(
+                "Document issuance reference does not match this DMC.",
+                status=403,
+            )
+
     columns = list(_course_columns_for_batch(batch))
     course_map = {
         cr.course_id: cr
@@ -581,6 +600,7 @@ def dmc_single_pdf(request, batch_id, enrollment_id):
                     "student": sem_res.enrollment.student,
                     "semester_result": sem_res,
                     "course_rows": course_rows,
+                    "document_no": issuance.document_no if issuance else "",
                 }
             ],
         },
@@ -610,6 +630,28 @@ def dmc_batch_pdf(request, batch_id):
     raw_enrollments = request.GET.get("enrollments", "").strip()
     if raw_enrollments:
         selected_enrollment_ids = [int(x) for x in raw_enrollments.split(",") if x.strip().isdigit()]
+
+    issuance = None
+    raw_issuance = (request.GET.get("issuance") or "").strip()
+    if raw_issuance:
+        if not raw_issuance.isdigit():
+            return HttpResponse("Invalid document issuance reference.", status=403)
+        issuance = DocumentIssuance.objects.filter(
+            pk=int(raw_issuance),
+            document_type=DocumentInventory.DocumentType.DMC,
+            source_batch=batch,
+        ).first()
+        if not issuance:
+            return HttpResponse(
+                "Document issuance reference does not match this DMC batch.",
+                status=403,
+            )
+        if selected_enrollment_ids and selected_enrollment_ids != [issuance.enrollment_id]:
+            return HttpResponse(
+                "Document issuance reference does not match the selected student.",
+                status=403,
+            )
+        selected_enrollment_ids = [issuance.enrollment_id]
 
     results = SemesterResult.objects.filter(batch=batch)
     if selected_enrollment_ids:
@@ -691,6 +733,11 @@ def dmc_batch_pdf(request, batch_id):
                 "student": sr.enrollment.student,
                 "semester_result": sr,
                 "course_rows": course_rows,
+                "document_no": (
+                    issuance.document_no
+                    if issuance and issuance.semester_result_id == sr.id
+                    else ""
+                ),
             }
         )
 
@@ -804,6 +851,23 @@ def transcript_pdf(request, enrollment_id: int):
             f"Transcript is not available: {eligibility.reason}",
             status=403,
         )
+
+    issuance = None
+    raw_issuance = (request.GET.get("issuance") or "").strip()
+    if raw_issuance:
+        if not raw_issuance.isdigit():
+            return HttpResponse("Invalid document issuance reference.", status=403)
+        issuance = DocumentIssuance.objects.filter(
+            pk=int(raw_issuance),
+            document_type=DocumentInventory.DocumentType.TRANSCRIPT,
+            enrollment=enrollment,
+            semester_result__isnull=True,
+        ).first()
+        if not issuance:
+            return HttpResponse(
+                "Document issuance reference does not match this transcript.",
+                status=403,
+            )
 
     qs = (
         SemesterResult.objects.filter(
@@ -955,6 +1019,7 @@ def transcript_pdf(request, enrollment_id: int):
             "footer_letter_grade": footer_grade,
             "footer_remarks": footer_remarks,
             "declaration_date": declaration_date,
+            "document_no": issuance.document_no if issuance else "",
         },
         request=request,
     )

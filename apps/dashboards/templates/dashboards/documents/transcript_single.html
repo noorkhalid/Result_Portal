@@ -106,7 +106,10 @@
           </div>
         </div>
 
-        <div class="filter-actions d-flex justify-content-end">
+        <div class="filter-actions d-flex justify-content-end gap-2">
+          {% if can_issue_documents and enrollment_id and selected_eligibility.is_eligible %}
+            <a href="{% url 'admin_issue_transcript' enrollment_id %}" class="btn btn-outline-primary" title="Record official issuance"><i class="bi bi-journal-check"></i> Issue Transcript</a>
+          {% endif %}
           <button name="action" value="print" class="btn btn-primary px-4 btn-icon-only" {% if not batch_id or not enrollment_id or selected_eligibility and not selected_eligibility.is_eligible %}disabled{% endif %} title="Generate PDF" aria-label="Generate PDF"><i class="bi bi-file-earmark-pdf"></i></button>
         </div>
 

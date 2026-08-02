@@ -1,0 +1,15 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Banks{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div><h3 class="mb-0">Banks</h3><div class="text-muted">Banks available for document payment recording</div></div>
+  <a href="{% url 'admin_document_bank_add' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Bank</a>
+</div>
+<div class="card"><div class="card-body p-0"><div class="table-responsive">
+<table class="table table-bordered table-striped align-middle mb-0">
+<thead><tr><th>Name</th><th class="text-center">Order</th><th>Status</th><th style="width:70px;">Action</th></tr></thead>
+<tbody>
+{% for bank in banks %}<tr><td>{{ bank.name }}</td><td class="text-center">{{ bank.sort_order }}</td><td>{% if bank.is_active %}<span class="badge bg-success">Active</span>{% else %}<span class="badge bg-secondary">Inactive</span>{% endif %}</td><td><a href="{% url 'admin_document_bank_edit' bank.id %}" class="btn btn-sm btn-outline-primary btn-icon-only"><i class="bi bi-pencil"></i></a></td></tr>
+{% empty %}<tr><td colspan="4" class="text-center text-muted py-4">No banks have been added.</td></tr>{% endfor %}
+</tbody></table></div></div></div>
+{% endblock %}

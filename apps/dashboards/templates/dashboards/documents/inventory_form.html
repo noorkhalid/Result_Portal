@@ -1,0 +1,63 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-0">{{ title }}</h3>
+    <div class="text-muted">Record one common bundle of preprinted sheets used for both DMCs and transcripts.</div>
+  </div>
+  <a href="{% url 'admin_document_inventory_list' %}" class="btn btn-outline-secondary btn-icon-only" title="Back" aria-label="Back"><i class="bi bi-arrow-left"></i></a>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    {% if inventory and inventory.used_count %}
+      <div class="alert alert-info">This bundle has already been used. Its start serial and bundle size are locked; only its active status may be changed.</div>
+    {% endif %}
+    <form method="post" novalidate>
+      {% csrf_token %}
+      {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+      <div class="row g-3">
+        {% for field in form %}
+          <div class="col-md-6">
+            {% if field.field.widget.input_type == 'checkbox' %}
+              <div class="form-check mt-4">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>
+            {% else %}
+              <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+              {{ field }}
+            {% endif %}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+        <div class="col-md-6">
+          <label class="form-label">Calculated End Serial No.</label>
+          <input id="calculated-end-serial" class="form-control" value="{% if inventory %}{{ inventory.end_number }}{% endif %}" disabled>
+          <div class="form-text">Calculated as Start Serial + Bundle Size − 1.</div>
+        </div>
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="{% url 'admin_document_inventory_list' %}" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary">Save Bundle</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+(function () {
+  const start = document.getElementById('id_start_number');
+  const size = document.getElementById('id_bundle_size');
+  const output = document.getElementById('calculated-end-serial');
+  function updateEnd() {
+    const s = parseInt(start && start.value, 10);
+    const n = parseInt(size && size.value, 10);
+    output.value = Number.isFinite(s) && Number.isFinite(n) && n > 0 ? s + n - 1 : '';
+  }
+  if (start && size && output) {
+    start.addEventListener('input', updateEnd);
+    size.addEventListener('input', updateEnd);
+    updateEnd();
+  }
+})();
+</script>
+{% endblock %}

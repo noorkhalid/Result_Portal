@@ -42,6 +42,10 @@
         {% if can_manage_results %}<a href="{% url 'admin_result_notifications' %}" class="sidebar-item {% if '/admin-dashboard/documents/result-notifications/' in request.path %}active{% endif %}">Result Notifications</a>{% endif %}
         <a href="{% url 'admin_dmc_single' %}" class="sidebar-item {% if '/admin-dashboard/documents/dmc-single/' in request.path %}active{% endif %}">DMC (Single Student)</a>
         <a href="{% url 'admin_transcript_single' %}" class="sidebar-item {% if '/admin-dashboard/documents/transcript-single/' in request.path %}active{% endif %}">Transcript (Single Student)</a>
+        {% if can_issue_documents %}<a href="{% url 'admin_document_issuance_register' %}" class="sidebar-item {% if '/admin-dashboard/documents/issuance-register/' in request.path or '/admin-dashboard/documents/issue-' in request.path %}active{% endif %}">Issuance Register</a>{% endif %}
+        {% if can_issue_documents %}<a href="{% url 'admin_document_bank_slip_list' %}" class="sidebar-item {% if '/admin-dashboard/documents/bank-slips/' in request.path %}active{% endif %}">Bank Slips</a>{% endif %}
+        {% if can_manage_document_inventory %}<a href="{% url 'admin_document_inventory_list' %}" class="sidebar-item {% if '/admin-dashboard/documents/inventory/' in request.path %}active{% endif %}">Sheet Inventory</a>{% endif %}
+        {% if can_manage_document_inventory %}<a href="{% url 'admin_document_bank_list' %}" class="sidebar-item {% if '/admin-dashboard/documents/banks/' in request.path %}active{% endif %}">Banks</a>{% endif %}
       </div>
       {% endif %}
     </nav>

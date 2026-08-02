@@ -203,6 +203,7 @@
     </div>
 
     <div class="center grade-card">GRADE CARD</div>
+    {% if d.document_no %}<div style="text-align:right; font-weight:700; font-size:13px; margin-top:2px;">Document No: {{ d.document_no }}</div>{% endif %}
 
     <div class="center program-line">
       {{ batch.program.name }}, {{ batch.semester_number|ordinal }} Semester
