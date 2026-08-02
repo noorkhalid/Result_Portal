@@ -34,6 +34,80 @@ def get_default_exam_type() -> "ExamType":
     return obj
 
 
+class HoldCategoryQuerySet(models.QuerySet):
+    def delete(self):
+        for category in self:
+            if category.is_in_use:
+                raise ValidationError(
+                    "This hold category is already used in results or notification history. "
+                    "Deactivate it instead of deleting it."
+                )
+        return super().delete()
+
+
+class HoldCategory(models.Model):
+    """Database-managed result hold category (for example RL Dues)."""
+
+    code = models.SlugField(max_length=32, unique=True)
+    name = models.CharField(max_length=100, unique=True)
+    is_active = models.BooleanField(default=True)
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    objects = HoldCategoryQuerySet.as_manager()
+
+    class Meta:
+        ordering = ["sort_order", "name"]
+        verbose_name_plural = "Hold categories"
+
+    def clean(self):
+        super().clean()
+        self.code = (self.code or "").strip().lower()
+        self.name = (self.name or "").strip()
+        if self.code == "none":
+            raise ValidationError({"code": 'The reserved code "none" cannot be used.'})
+
+        if self.pk:
+            previous_code = (
+                HoldCategory.objects.filter(pk=self.pk)
+                .values_list("code", flat=True)
+                .first()
+            )
+            if previous_code and previous_code != self.code:
+                if (
+                    SemesterResult.objects.filter(hold_status=previous_code).exists()
+                    or ResultNotificationItem.objects.filter(
+                        hold_status_snapshot=previous_code
+                    ).exists()
+                ):
+                    raise ValidationError(
+                        {"code": "The code cannot be changed because this category is already in use."}
+                    )
+
+    def save(self, *args, **kwargs):
+        self.full_clean()
+        return super().save(*args, **kwargs)
+
+    @property
+    def is_in_use(self) -> bool:
+        return (
+            SemesterResult.objects.filter(hold_status=self.code).exists()
+            or ResultNotificationItem.objects.filter(
+                hold_status_snapshot=self.code
+            ).exists()
+        )
+
+    def delete(self, *args, **kwargs):
+        if self.is_in_use:
+            raise ValidationError(
+                "This hold category is already used in results or notification history. "
+                "Deactivate it instead of deleting it."
+            )
+        return super().delete(*args, **kwargs)
+
+    def __str__(self) -> str:
+        return self.name
+
+
 class GradeScale(models.Model):
     min_percentage = models.DecimalField(max_digits=5, decimal_places=2)
     max_percentage = models.DecimalField(max_digits=5, decimal_places=2)
@@ -299,15 +373,10 @@ class SemesterResult(models.Model):
     HOLD_DUES = "dues"
     HOLD_DOCUMENTS = "documents"
 
-    HOLD_CHOICES = (
-        (HOLD_NONE, "None"),
-        (HOLD_DUES, "RL Dues"),
-        (HOLD_DOCUMENTS, "RL Documents"),
-    )
-
+    # Legacy constants remain for backward compatibility with existing data and
+    # callers. Assignable categories are loaded from HoldCategory.
     hold_status = models.CharField(
-        max_length=16,
-        choices=HOLD_CHOICES,
+        max_length=32,
         default=HOLD_NONE,
     )
     hold_note = models.CharField(max_length=255, blank=True)
@@ -326,6 +395,26 @@ class SemesterResult(models.Model):
     def clean(self):
         """Safety checks so semester results can never be saved in the wrong batch."""
         super().clean()
+        self.hold_status = (self.hold_status or self.HOLD_NONE).strip().lower()
+        if self.hold_status != self.HOLD_NONE:
+            category = HoldCategory.objects.filter(code=self.hold_status).first()
+            if not category:
+                raise ValidationError(
+                    {"hold_status": "Select a valid configured hold category."}
+                )
+
+            previous_status = None
+            if self.pk:
+                previous_status = (
+                    SemesterResult.objects.filter(pk=self.pk)
+                    .values_list("hold_status", flat=True)
+                    .first()
+                )
+            if not category.is_active and previous_status != self.hold_status:
+                raise ValidationError(
+                    {"hold_status": "Inactive hold categories cannot be newly assigned."}
+                )
+
         if self.batch_id and self.enrollment_id:
             if self.enrollment.department_id != self.batch.department_id:
                 raise ValidationError(
@@ -344,6 +433,16 @@ class SemesterResult(models.Model):
         # Enforce constraints at model-level (prevents future import bugs)
         self.full_clean()
         return super().save(*args, **kwargs)
+
+    def get_hold_status_display(self) -> str:
+        if (self.hold_status or self.HOLD_NONE) == self.HOLD_NONE:
+            return "None"
+        return (
+            HoldCategory.objects.filter(code=self.hold_status)
+            .values_list("name", flat=True)
+            .first()
+            or self.hold_status
+        )
 
     def __str__(self):
         return f"{self.enrollment.roll_no} | Sem {self.batch.semester_number}"
@@ -421,8 +520,7 @@ class ResultNotificationItem(models.Model):
     )
 
     hold_status_snapshot = models.CharField(
-        max_length=16,
-        choices=SemesterResult.HOLD_CHOICES,
+        max_length=32,
         default=SemesterResult.HOLD_NONE,
     )
     hold_label_snapshot = models.CharField(max_length=100, blank=True)

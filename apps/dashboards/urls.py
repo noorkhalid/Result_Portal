@@ -70,6 +70,13 @@ from dashboards.views.exam_type_views import (
     exam_type_delete,
 )
 
+from dashboards.views.hold_category_views import (
+    hold_category_list,
+    hold_category_create,
+    hold_category_update,
+    hold_category_delete,
+)
+
 from dashboards.views.result_batch_views import (
     batch_list,
     batch_create,
@@ -265,6 +272,11 @@ urlpatterns = [
     path("admin-dashboard/exam-types/add/", exam_type_create, name="admin_exam_type_add"),
     path("admin-dashboard/exam-types/<int:pk>/edit/", exam_type_update, name="admin_exam_type_edit"),
     path("admin-dashboard/exam-types/<int:pk>/delete/", exam_type_delete, name="admin_exam_type_delete"),
+
+    path("admin-dashboard/hold-categories/", hold_category_list, name="admin_hold_category_list"),
+    path("admin-dashboard/hold-categories/add/", hold_category_create, name="admin_hold_category_add"),
+    path("admin-dashboard/hold-categories/<int:pk>/edit/", hold_category_update, name="admin_hold_category_edit"),
+    path("admin-dashboard/hold-categories/<int:pk>/delete/", hold_category_delete, name="admin_hold_category_delete"),
 
     # System Admin — Documents
     path(

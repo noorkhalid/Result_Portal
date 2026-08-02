@@ -7,6 +7,7 @@ from typing import Iterable
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 
+from results.hold_services import hold_category_map, hold_label_for_code
 from results.models import (
     CourseResult,
     ResultBatch,
@@ -267,13 +268,15 @@ def create_result_notification(
                 f'Notification number "{notification_no}" is already assigned.'
             ) from exc
 
+        hold_categories = hold_category_map(
+            semester_result.hold_status for semester_result in semester_results
+        )
         items = []
         for semester_result in semester_results:
             hold_code = semester_result.hold_status or SemesterResult.HOLD_NONE
-            hold_label = (
-                semester_result.get_hold_status_display()
-                if hold_code != SemesterResult.HOLD_NONE
-                else ""
+            hold_label = hold_label_for_code(
+                hold_code,
+                categories=hold_categories,
             )
             items.append(
                 ResultNotificationItem(

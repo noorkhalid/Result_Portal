@@ -19,6 +19,7 @@ from weasyprint import HTML
 
 from academics.models import Program, Curriculum, CurriculumCourse
 from students.models import Enrollment
+from .hold_services import hold_category_map, hold_label_for_code
 from .models import ResultBatch, SemesterResult, CourseResult, GradeScale, ResultNotification, ResultNotificationItem
 from .services import find_grade_by_gpa, q2
 from dashboards.access import get_accessible_batch_or_none, get_accessible_notification_or_none, get_accessible_enrollment_or_none, is_system_admin, is_dealing_assistant
@@ -292,11 +293,11 @@ def result_notification_pdf(request, batch_id):
     # -------------------------------------------------
     # 3.1) Hold map for RL masking (per student)
     # -------------------------------------------------
+    hold_categories = hold_category_map(sr.hold_status for sr in results_list)
     hold_map = {
-        sr.enrollment_id: (
-            sr.get_hold_status_display()
-            if (sr.hold_status or SemesterResult.HOLD_NONE) != SemesterResult.HOLD_NONE
-            else ""
+        sr.enrollment_id: hold_label_for_code(
+            sr.hold_status,
+            categories=hold_categories,
         )
         for sr in results_list
     }
@@ -461,14 +462,21 @@ def result_notification_by_id_pdf(request, notification_id):
     for cr in cr_qs:
         grades_map[cr.enrollment_id][cr.course_id] = (cr.letter_grade or "")
 
-    # hold_map from snapshot
+    # hold_map from immutable notification snapshots
+    notification_items = list(notification.items.select_related("semester_result"))
+    snapshot_categories = hold_category_map(
+        item.hold_status_snapshot for item in notification_items
+    )
     hold_map = {}
-    for item in notification.items.select_related("semester_result"):
+    for item in notification_items:
         hold_code = item.hold_status_snapshot or SemesterResult.HOLD_NONE
-        hold_label = item.hold_label_snapshot
-        if not hold_label and hold_code != SemesterResult.HOLD_NONE:
-            hold_label = item.get_hold_status_snapshot_display()
-        hold_map[item.semester_result.enrollment_id] = hold_label if hold_code != SemesterResult.HOLD_NONE else ""
+        hold_label = item.hold_label_snapshot or hold_label_for_code(
+            hold_code,
+            categories=snapshot_categories,
+        )
+        hold_map[item.semester_result.enrollment_id] = (
+            hold_label if hold_code != SemesterResult.HOLD_NONE else ""
+        )
 
     session_display = batch.session.display_for_program(batch.program)
     try:

@@ -38,10 +38,16 @@
                 <td>{{ sr.enrollment.student.father_name }}</td>
                 <td>
                   <select name="hold_status_{{ sr.id }}" class="form-select form-select-sm">
-                    {% for val,label in hold_choices %}
-                      <option value="{{ val }}" {% if sr.hold_status == val %}selected{% endif %}>{{ label }}</option>
+                    {% for option in sr.hold_options %}
+                      <option value="{{ option.code }}" {% if sr.hold_status == option.code %}selected{% endif %}>{{ option.name }}</option>
                     {% endfor %}
                   </select>
+                  {% if sr.hold_status == 'none' and sr.hold_cleared_at %}
+                    <div class="small text-success mt-1">
+                      Cleared {{ sr.hold_cleared_at|date:"d-m-Y H:i" }}
+                      {% if sr.hold_cleared_by %}by {{ sr.hold_cleared_by.username }}{% endif %}
+                    </div>
+                  {% endif %}
                 </td>
                 <td>
                   <input type="text" name="hold_note_{{ sr.id }}" value="{{ sr.hold_note }}" class="form-control form-control-sm" placeholder="Reason / reference (optional)">

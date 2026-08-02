@@ -2,7 +2,7 @@ from django.contrib import messages
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.core.exceptions import ValidationError
-from django.db import IntegrityError
+from django.db import IntegrityError, transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date
 
@@ -15,7 +15,7 @@ from dashboards.access import (
     is_system_admin,
     restrict_department_queryset,
 )
-from results.models import ExamType, ResultBatch
+from results.models import ExamType, HoldCategory, ResultBatch
 from results.models import SemesterResult, CourseResult, ResultNotification, ResultNotificationItem
 from academics.models import Program, Session
 from results.services import recompute_batch
@@ -198,29 +198,132 @@ def batch_students_holds(request, pk):
     batch = get_accessible_batch_or_none(request.user, pk)
     if not batch:
         return deny_department_access(request)
-    enrollment_ids = list(CourseResult.objects.filter(batch=batch).values_list("enrollment_id", flat=True).distinct())
-    for eid in enrollment_ids:
-        SemesterResult.objects.get_or_create(batch=batch, enrollment_id=eid)
-    qs = SemesterResult.objects.filter(batch=batch).select_related("enrollment", "enrollment__student").order_by("enrollment__roll_no")
+
+    enrollment_ids = list(
+        CourseResult.objects.filter(batch=batch)
+        .values_list("enrollment_id", flat=True)
+        .distinct()
+    )
+    for enrollment_id in enrollment_ids:
+        SemesterResult.objects.get_or_create(
+            batch=batch,
+            enrollment_id=enrollment_id,
+        )
+
+    queryset = (
+        SemesterResult.objects.filter(batch=batch)
+        .select_related(
+            "enrollment",
+            "enrollment__student",
+            "hold_cleared_by",
+        )
+        .order_by("enrollment__roll_no")
+    )
+    rows = list(queryset)
+    categories = list(HoldCategory.objects.all())
+    category_by_code = {category.code: category for category in categories}
+    active_categories = [category for category in categories if category.is_active]
+
     if request.method == "POST":
+        submitted_rows = []
+        for semester_result in rows:
+            previous_status = (
+                semester_result.hold_status or SemesterResult.HOLD_NONE
+            )
+            status = (
+                request.POST.get(f"hold_status_{semester_result.id}") or ""
+            ).strip().lower() or SemesterResult.HOLD_NONE
+            note = (
+                request.POST.get(f"hold_note_{semester_result.id}") or ""
+            ).strip()
+
+            if status != SemesterResult.HOLD_NONE:
+                category = category_by_code.get(status)
+                if not category:
+                    messages.error(
+                        request,
+                        "One or more selected hold categories are invalid. Refresh the page and try again.",
+                    )
+                    return redirect("admin_batch_students_holds", pk=batch.pk)
+                if not category.is_active and status != previous_status:
+                    messages.error(
+                        request,
+                        f'Hold category "{category.name}" is inactive and cannot be newly assigned.',
+                    )
+                    return redirect("admin_batch_students_holds", pk=batch.pk)
+
+            submitted_rows.append(
+                (semester_result.id, previous_status, status, note)
+            )
+
         updated = 0
-        for sr in qs:
-            status = (request.POST.get(f"hold_status_{sr.id}") or "").strip() or SemesterResult.HOLD_NONE
-            note = (request.POST.get(f"hold_note_{sr.id}") or "").strip()
-            if status == SemesterResult.HOLD_NONE:
-                sr.hold_cleared_at = None
-                sr.hold_cleared_by = None
-            else:
-                sr.hold_cleared_at = None
-                sr.hold_cleared_by = None
-            if sr.hold_status != status or (sr.hold_note or "") != note:
-                sr.hold_status = status
-                sr.hold_note = note
-                sr.save(update_fields=["hold_status", "hold_note", "hold_cleared_at", "hold_cleared_by"])
+        cleared_at = timezone.now()
+        with transaction.atomic():
+            locked_rows = {
+                semester_result.id: semester_result
+                for semester_result in SemesterResult.objects.select_for_update().filter(
+                    batch=batch,
+                    id__in=[row[0] for row in submitted_rows],
+                )
+            }
+            for result_id, previous_status, status, note in submitted_rows:
+                semester_result = locked_rows[result_id]
+                changed = (
+                    previous_status != status
+                    or (semester_result.hold_note or "") != note
+                )
+                if not changed:
+                    continue
+
+                semester_result.hold_status = status
+                semester_result.hold_note = note
+                if (
+                    previous_status != SemesterResult.HOLD_NONE
+                    and status == SemesterResult.HOLD_NONE
+                ):
+                    semester_result.hold_cleared_at = cleared_at
+                    semester_result.hold_cleared_by = request.user
+                elif status != SemesterResult.HOLD_NONE:
+                    semester_result.hold_cleared_at = None
+                    semester_result.hold_cleared_by = None
+
+                semester_result.save(
+                    update_fields=[
+                        "hold_status",
+                        "hold_note",
+                        "hold_cleared_at",
+                        "hold_cleared_by",
+                    ]
+                )
                 updated += 1
+
         messages.success(request, f"Saved holds for {updated} student(s).")
         return redirect("admin_batch_students_holds", pk=batch.pk)
-    return render(request, "dashboards/result_batches/students_holds.html", {"batch": batch, "rows": qs, "hold_choices": SemesterResult.HOLD_CHOICES})
+
+    for semester_result in rows:
+        options = [
+            {"code": SemesterResult.HOLD_NONE, "name": "None", "is_active": True}
+        ]
+        options.extend(
+            {"code": category.code, "name": category.name, "is_active": True}
+            for category in active_categories
+        )
+        current_category = category_by_code.get(semester_result.hold_status)
+        if current_category and not current_category.is_active:
+            options.append(
+                {
+                    "code": current_category.code,
+                    "name": f"{current_category.name} (Inactive — current only)",
+                    "is_active": False,
+                }
+            )
+        semester_result.hold_options = options
+
+    return render(
+        request,
+        "dashboards/result_batches/students_holds.html",
+        {"batch": batch, "rows": rows},
+    )
 
 
 @group_required("System Admin", "Dealing Assistant")

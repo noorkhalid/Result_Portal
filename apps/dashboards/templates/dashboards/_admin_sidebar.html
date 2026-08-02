@@ -25,6 +25,7 @@
         {% if is_system_admin %}
         <a href="{% url 'admin_grade_scale_list' %}" class="sidebar-item {% if '/admin-dashboard/grade-scales/' in request.path %}active{% endif %}">Grade Scales</a>
         <a href="{% url 'admin_exam_type_list' %}" class="sidebar-item {% if '/admin-dashboard/exam-types/' in request.path %}active{% endif %}">Exam Types</a>
+        <a href="{% url 'admin_hold_category_list' %}" class="sidebar-item {% if '/admin-dashboard/hold-categories/' in request.path %}active{% endif %}">Hold Categories</a>
         {% endif %}
       </div>
 
