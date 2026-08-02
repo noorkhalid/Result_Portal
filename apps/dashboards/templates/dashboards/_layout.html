@@ -78,7 +78,7 @@
 <nav class="topbar py-2">
   <div class="container-fluid px-3 d-flex justify-content-between align-items-center">
     <div class="d-flex align-items-center gap-2">
-      {% if is_system_admin or is_dealing_assistant %}
+      {% if show_sidebar %}
         <button type="button" class="mobile-menu-btn" id="mobileSidebarToggle" aria-label="Open menu" aria-controls="dashboardSidebar" aria-expanded="false">
           <span></span><span></span><span></span>
         </button>
@@ -137,13 +137,13 @@
 
   <div class="row g-0">
 
-    {% if is_system_admin or is_dealing_assistant %}
+    {% if show_sidebar %}
       <div class="col-12 col-md-3 p-0 sidebar-col" id="dashboardSidebar">
         {% include "dashboards/_admin_sidebar.html" %}
       </div>
     {% endif %}
 
-    <div class="{% if is_system_admin or is_dealing_assistant %}col-12 col-md-9{% else %}col-12{% endif %} p-4 main-col dashboard-content">
+    <div class="{% if show_sidebar %}col-12 col-md-9{% else %}col-12{% endif %} p-4 main-col dashboard-content">
       {% block content %}{% endblock %}
     </div>
 
@@ -164,7 +164,7 @@
 </script>
 
 
-{% if is_system_admin or is_dealing_assistant %}
+{% if show_sidebar %}
 <script>
   (function () {
     const KEY = "rp_sidebar_open_sections";
@@ -238,7 +238,7 @@
 
 
 
-{% if is_system_admin or is_dealing_assistant %}
+{% if show_sidebar %}
 <script>
   (function () {
     const body = document.body;
