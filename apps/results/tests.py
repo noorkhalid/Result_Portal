@@ -1,13 +1,20 @@
 from datetime import date
 
 from django.contrib.auth import get_user_model
+from django.contrib.auth.models import Group
 from django.core.exceptions import ValidationError
 from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 from academics.models import Curriculum, Department, Program, ProgramOffering, Session
-from results.models import ExamType, ResultBatch, ResultNotification, SemesterResult
+from results.models import (
+    ExamType,
+    HoldCategory,
+    ResultBatch,
+    ResultNotification,
+    SemesterResult,
+)
 from results.notification_services import (
     create_result_notification,
     eligible_clearance_results,
@@ -326,3 +333,120 @@ class ResultNotificationFoundationTests(TestCase):
         self.assertContains(response, "Deselect All")
         self.assertContains(response, held_result.enrollment.student.name)
         self.assertContains(response, "0002-2026/Results/Exam/GU")
+
+    def _hold_form_data(self, overrides=None):
+        overrides = overrides or {}
+        data = {}
+        for semester_result in self.results:
+            data[f"hold_status_{semester_result.id}"] = overrides.get(
+                semester_result.id, semester_result.hold_status
+            )
+            data[f"hold_note_{semester_result.id}"] = semester_result.hold_note
+        return data
+
+    def test_seeded_and_custom_hold_categories_are_supported(self):
+        self.assertTrue(
+            HoldCategory.objects.filter(code="dues", name="RL Dues").exists()
+        )
+        self.assertTrue(
+            HoldCategory.objects.filter(
+                code="documents", name="RL Documents"
+            ).exists()
+        )
+
+        custom = HoldCategory.objects.create(
+            code="verification",
+            name="RL Verification",
+            sort_order=30,
+        )
+        held_result = self.results[2]
+        held_result.hold_status = custom.code
+        held_result.save(update_fields=["hold_status"])
+
+        notification = self.create_full()
+        item = notification.items.get(semester_result=held_result)
+        self.assertEqual(item.hold_status_snapshot, "verification")
+        self.assertEqual(item.hold_label_snapshot, "RL Verification")
+
+    def test_used_hold_category_cannot_be_deleted_or_recoded(self):
+        category = HoldCategory.objects.get(code="documents")
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "This hold category is already used in results or notification history.",
+        ):
+            category.delete()
+
+        category.code = "documents-updated"
+        with self.assertRaisesMessage(
+            ValidationError,
+            "The code cannot be changed because this category is already in use.",
+        ):
+            category.save()
+
+        self.assertTrue(HoldCategory.objects.filter(code="documents").exists())
+
+    def test_clearing_hold_records_user_and_time(self):
+        self.client.force_login(self.user)
+        held_result = self.results[0]
+        response = self.client.post(
+            reverse("admin_batch_students_holds", args=[self.batch.id]),
+            data=self._hold_form_data(
+                {held_result.id: SemesterResult.HOLD_NONE}
+            ),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        held_result.refresh_from_db()
+        self.assertEqual(held_result.hold_status, SemesterResult.HOLD_NONE)
+        self.assertIsNotNone(held_result.hold_cleared_at)
+        self.assertEqual(held_result.hold_cleared_by, self.user)
+
+    def test_inactive_hold_category_cannot_be_newly_assigned(self):
+        inactive = HoldCategory.objects.create(
+            code="legacy-check",
+            name="RL Legacy Check",
+            is_active=False,
+        )
+        clear_result = self.results[2]
+
+        clear_result.hold_status = inactive.code
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Inactive hold categories cannot be newly assigned.",
+        ):
+            clear_result.save(update_fields=["hold_status"])
+        clear_result.hold_status = SemesterResult.HOLD_NONE
+
+        self.client.force_login(self.user)
+
+        response = self.client.post(
+            reverse("admin_batch_students_holds", args=[self.batch.id]),
+            data=self._hold_form_data({clear_result.id: inactive.code}),
+        )
+
+        self.assertEqual(response.status_code, 302)
+        clear_result.refresh_from_db()
+        self.assertEqual(clear_result.hold_status, SemesterResult.HOLD_NONE)
+
+    def test_hold_category_setup_is_system_admin_only(self):
+        from dashboards.views.hold_category_views import hold_category_list
+
+        request = RequestFactory().get(reverse("admin_hold_category_list"))
+        request.user = self.user
+        request.session = {}
+        response = hold_category_list(request)
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, "Hold Categories")
+
+        assistant = get_user_model().objects.create_user(
+            username="assistant",
+            password="test-pass-123",
+        )
+        assistant_group, _ = Group.objects.get_or_create(name="Dealing Assistant")
+        assistant.groups.add(assistant_group)
+        self.client.force_login(assistant)
+
+        response = self.client.get(reverse("admin_hold_category_list"))
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse("dashboard"))

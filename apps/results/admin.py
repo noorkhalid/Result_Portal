@@ -5,11 +5,19 @@ from django.db.models import Sum
 from django.urls import reverse
 from django.utils.html import format_html
 
-from .models import ExamType, ResultBatch, CourseResult, SemesterResult, GradeScale
+from .models import ExamType, HoldCategory, ResultBatch, CourseResult, SemesterResult, GradeScale
 
 
 @admin.register(ExamType)
 class ExamTypeAdmin(admin.ModelAdmin):
+    list_display = ("code", "name", "sort_order", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("code", "name")
+    ordering = ("sort_order", "name")
+
+
+@admin.register(HoldCategory)
+class HoldCategoryAdmin(admin.ModelAdmin):
     list_display = ("code", "name", "sort_order", "is_active")
     list_filter = ("is_active",)
     search_fields = ("code", "name")
