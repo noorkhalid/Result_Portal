@@ -47,20 +47,21 @@
         </thead>
         <tbody>
           {% for r in students %}
-            {% with ok=completed_map|get_item:r.enrollment_id %}
+            {% with status=eligibility_map|get_item:r.enrollment_id %}
               <tr>
                 <td class="text-center">
-                  <input type="checkbox" name="enrollment_ids" value="{{ r.enrollment_id }}" class="student-check" {% if not ok %}disabled{% endif %}>
+                  <input type="checkbox" name="enrollment_ids" value="{{ r.enrollment_id }}" class="student-check" {% if not status.is_eligible %}disabled{% endif %}>
                 </td>
                 <td>{{ r.roll }}</td>
                 <td>{{ r.reg }}</td>
                 <td>{{ r.name }}</td>
                 <td>{{ r.father_name }}</td>
                 <td>
-                  {% if ok %}
+                  {% if status.is_eligible %}
                     <span class="badge bg-success">Eligible</span>
                   {% else %}
-                    <span class="badge bg-danger">Incomplete</span>
+                    <span class="badge bg-danger">Not Eligible</span>
+                    <div class="text-danger small mt-1">{{ status.reason }}</div>
                   {% endif %}
                 </td>
               </tr>

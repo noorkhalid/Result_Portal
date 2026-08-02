@@ -22,6 +22,7 @@ from students.models import Enrollment
 from .hold_services import hold_category_map, hold_label_for_code
 from .models import ResultBatch, SemesterResult, CourseResult, GradeScale, ResultNotification, ResultNotificationItem
 from .services import find_grade_by_gpa, q2
+from .transcript_services import evaluate_transcript_eligibility, transcript_eligibility_map
 from dashboards.access import get_accessible_batch_or_none, get_accessible_notification_or_none, get_accessible_enrollment_or_none, is_system_admin, is_dealing_assistant
 
 def _fail_letter_set():
@@ -720,23 +721,9 @@ def _semester_span_for_program_session(program_id: int, session_id: int) -> tupl
 def _enrollment_is_completed(
     enrollment: Enrollment, sem_start: int, sem_end: int, total_semesters: int
 ) -> bool:
-    """Completed means: at least one SemesterResult exists for every semester in sem_start..sem_end."""
-    if total_semesters <= 0 or sem_end <= 0:
-        return False
+    """Backward-compatible wrapper for the full transcript eligibility rule."""
 
-    done = (
-        SemesterResult.objects.filter(
-            enrollment=enrollment,
-            batch__program_id=enrollment.program_id,
-            batch__session_id=enrollment.session_id,
-            batch__semester_number__gte=sem_start,
-            batch__semester_number__lte=sem_end,
-        )
-        .values_list("batch__semester_number", flat=True)
-        .distinct()
-    )
-    return len(list(done)) >= int(total_semesters)
-
+    return evaluate_transcript_eligibility(enrollment).is_eligible
 
 @login_required
 def transcript_pdf(request, enrollment_id: int):
@@ -765,9 +752,10 @@ def transcript_pdf(request, enrollment_id: int):
             status=400,
         )
 
-    if not _enrollment_is_completed(enrollment, sem_start, sem_end, total):
+    eligibility = evaluate_transcript_eligibility(enrollment)
+    if not eligibility.is_eligible:
         return HttpResponse(
-            "Transcript is not available because all semester results are not completed yet.",
+            f"Transcript is not available: {eligibility.reason}",
             status=403,
         )
 
@@ -959,12 +947,54 @@ def transcript_batch_pdf(request, batch_id: int):
     if selected_enrollment_ids:
         results = results.filter(enrollment_id__in=selected_enrollment_ids)
 
-    results = (
+    results = list(
         results
-        .select_related("enrollment", "enrollment__student")
+        .select_related(
+            "enrollment",
+            "enrollment__student",
+            "enrollment__program",
+            "enrollment__session",
+            "enrollment__department",
+            "enrollment__curriculum",
+        )
         .annotate(roll_suffix=_roll_suffix_annotation())
         .order_by("roll_suffix", "enrollment__roll_no")
     )
+
+    batch_enrollment_ids = {result.enrollment_id for result in results}
+    if selected_enrollment_ids:
+        invalid_ids = sorted(set(selected_enrollment_ids) - batch_enrollment_ids)
+        if invalid_ids:
+            return HttpResponse(
+                "One or more selected students do not belong to this final-semester batch.",
+                status=403,
+            )
+
+    eligibility_map = transcript_eligibility_map(
+        [result.enrollment for result in results]
+    )
+    if selected_enrollment_ids:
+        ineligible_results = [
+            result
+            for result in results
+            if not eligibility_map[result.enrollment_id].is_eligible
+        ]
+        if ineligible_results:
+            details = "; ".join(
+                f"{result.enrollment.roll_no}: "
+                f"{eligibility_map[result.enrollment_id].reason}"
+                for result in ineligible_results
+            )
+            return HttpResponse(
+                f"Transcript is not available for the selected student(s): {details}",
+                status=403,
+            )
+    else:
+        results = [
+            result
+            for result in results
+            if eligibility_map[result.enrollment_id].is_eligible
+        ]
 
     items = []
     # Always use the uniform two-column transcript layout.
@@ -974,8 +1004,6 @@ def transcript_batch_pdf(request, batch_id: int):
 
     for sr in results:
         enrollment = sr.enrollment
-        if not _enrollment_is_completed(enrollment, sem_start, sem_end, total):
-            continue
 
         qs = (
             SemesterResult.objects.filter(
@@ -1125,7 +1153,7 @@ def transcript_batch_pdf(request, batch_id: int):
 
     if not items:
         return HttpResponse(
-            "No eligible transcripts were found for this batch (all-semester completion required).",
+            "No eligible transcripts were found for this batch.",
             status=400,
         )
 

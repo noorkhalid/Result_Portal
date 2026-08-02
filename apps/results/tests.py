@@ -7,8 +7,17 @@ from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
-from academics.models import Curriculum, Department, Program, ProgramOffering, Session
+from academics.models import (
+    Course,
+    Curriculum,
+    CurriculumCourse,
+    Department,
+    Program,
+    ProgramOffering,
+    Session,
+)
 from results.models import (
+    CourseResult,
     ExamType,
     HoldCategory,
     ResultBatch,
@@ -20,6 +29,7 @@ from results.notification_services import (
     eligible_clearance_results,
     suggest_next_notification_number,
 )
+from results.transcript_services import evaluate_transcript_eligibility
 from students.models import Enrollment, Student
 
 
@@ -450,3 +460,254 @@ class ResultNotificationFoundationTests(TestCase):
         response = self.client.get(reverse("admin_hold_category_list"))
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse("dashboard"))
+
+
+class TranscriptEligibilityTests(TestCase):
+    def setUp(self):
+        self.user = get_user_model().objects.create_superuser(
+            username="transcript-admin",
+            email="transcript@example.com",
+            password="test-pass-123",
+        )
+        self.department = Department.objects.create(name="Transcript Department")
+        self.program = Program.objects.create(
+            name="BS Transcript Test",
+            total_semesters=2,
+            semester_start=1,
+        )
+        ProgramOffering.objects.create(
+            department=self.department,
+            program=self.program,
+        )
+        self.session = Session.objects.create(start_year=2024)
+        self.curriculum = Curriculum.objects.create(
+            program=self.program,
+            session=self.session,
+            total_semesters=2,
+            semester_start=1,
+        )
+        self.regular = ExamType.objects.create(
+            code="regular-transcript-test",
+            name="Regular Transcript Test",
+            sort_order=1,
+        )
+        self.repeat, _ = ExamType.objects.get_or_create(
+            code="repeat",
+            defaults={"name": "Repeat", "sort_order": 2},
+        )
+        self.course_one = Course.objects.create(
+            code="TR-101",
+            title="Transcript Course One",
+            credit_hours="3.0",
+        )
+        self.course_two = Course.objects.create(
+            code="TR-102",
+            title="Transcript Course Two",
+            credit_hours="3.0",
+        )
+        CurriculumCourse.objects.create(
+            curriculum=self.curriculum,
+            semester_number=1,
+            course=self.course_one,
+        )
+        CurriculumCourse.objects.create(
+            curriculum=self.curriculum,
+            semester_number=2,
+            course=self.course_two,
+        )
+        self.student = Student.objects.create(
+            department=self.department,
+            name="Transcript Student",
+            father_name="Transcript Father",
+            registration_no="TRANSCRIPT-REG-1",
+        )
+        self.enrollment = Enrollment.objects.create(
+            department=self.department,
+            student=self.student,
+            program=self.program,
+            session=self.session,
+            curriculum=self.curriculum,
+            roll_no="TRANSCRIPT-ROLL-1",
+        )
+        self.batch_one = ResultBatch.objects.create(
+            department=self.department,
+            program=self.program,
+            session=self.session,
+            curriculum=self.curriculum,
+            semester_number=1,
+            exam_type=self.regular,
+        )
+        self.batch_two = ResultBatch.objects.create(
+            department=self.department,
+            program=self.program,
+            session=self.session,
+            curriculum=self.curriculum,
+            semester_number=2,
+            exam_type=self.regular,
+        )
+        self.semester_one = SemesterResult.objects.create(
+            batch=self.batch_one,
+            enrollment=self.enrollment,
+            gpa="3.00",
+            cgpa="3.00",
+        )
+        self.semester_two = SemesterResult.objects.create(
+            batch=self.batch_two,
+            enrollment=self.enrollment,
+            gpa="3.00",
+            cgpa="3.00",
+        )
+        self.result_one = CourseResult.objects.create(
+            batch=self.batch_one,
+            enrollment=self.enrollment,
+            course=self.course_one,
+            marks_obtained="45.00",
+            letter_grade="B",
+            grade_point="3.00",
+        )
+        self.result_two = CourseResult.objects.create(
+            batch=self.batch_two,
+            enrollment=self.enrollment,
+            course=self.course_two,
+            marks_obtained="45.00",
+            letter_grade="B",
+            grade_point="3.00",
+        )
+
+    def publish(self, batch, number, selected_ids=None, notification_type="full"):
+        return create_result_notification(
+            batch=batch,
+            notification_type=notification_type,
+            notification_no=number,
+            notification_date=date(2026, 8, 2),
+            selected_semester_result_ids=selected_ids,
+        )
+
+    def publish_regular_results(self):
+        self.publish(self.batch_one, "0101-2026/Results/Exam/GU")
+        self.publish(self.batch_two, "0102-2026/Results/Exam/GU")
+
+    def test_eligible_only_after_all_required_results_are_officially_released(self):
+        before = evaluate_transcript_eligibility(self.enrollment)
+        self.assertFalse(before.is_eligible)
+        self.assertIn("Result not officially released", before.reason)
+
+        self.publish_regular_results()
+
+        after = evaluate_transcript_eligibility(self.enrollment)
+        self.assertTrue(after.is_eligible)
+        self.assertEqual(after.reasons, ())
+
+    def test_missing_semester_result_is_reported(self):
+        self.semester_one.delete()
+
+        status = evaluate_transcript_eligibility(self.enrollment)
+
+        self.assertFalse(status.is_eligible)
+        self.assertIn("Missing semester result(s): 1.", status.reason)
+
+    def test_missing_required_course_result_is_reported(self):
+        self.result_two.delete()
+        self.publish_regular_results()
+
+        status = evaluate_transcript_eligibility(self.enrollment)
+
+        self.assertFalse(status.is_eligible)
+        self.assertIn("Missing required course result(s): TR-102.", status.reason)
+
+    def test_active_hold_requires_clearance_notification(self):
+        HoldCategory.objects.get_or_create(
+            code="documents",
+            defaults={"name": "RL Documents", "sort_order": 20},
+        )
+        self.semester_two.hold_status = SemesterResult.HOLD_DOCUMENTS
+        self.semester_two.save(update_fields=["hold_status"])
+        self.publish_regular_results()
+
+        held = evaluate_transcript_eligibility(self.enrollment)
+        self.assertFalse(held.is_eligible)
+        self.assertIn("Active result hold(s)", held.reason)
+        self.assertIn("Result not officially released", held.reason)
+
+        self.semester_two.hold_status = SemesterResult.HOLD_NONE
+        self.semester_two.save(update_fields=["hold_status"])
+        self.publish(
+            self.batch_two,
+            "0103-2026/Results/Exam/GU",
+            selected_ids=[self.semester_two.id],
+            notification_type=ResultNotification.NotificationType.CLEARANCE,
+        )
+
+        cleared = evaluate_transcript_eligibility(self.enrollment)
+        self.assertTrue(cleared.is_eligible)
+
+    def test_later_repeat_pass_clears_an_earlier_failed_course(self):
+        self.result_one.letter_grade = "F"
+        self.result_one.grade_point = "0.00"
+        self.result_one.save(update_fields=["letter_grade", "grade_point"])
+        self.publish_regular_results()
+
+        failed = evaluate_transcript_eligibility(self.enrollment)
+        self.assertFalse(failed.is_eligible)
+        self.assertIn("Uncleared failed course(s): TR-101.", failed.reason)
+
+        repeat_batch = ResultBatch.objects.create(
+            department=self.department,
+            program=self.program,
+            session=self.session,
+            curriculum=self.curriculum,
+            semester_number=1,
+            exam_type=self.repeat,
+        )
+        repeat_semester = SemesterResult.objects.create(
+            batch=repeat_batch,
+            enrollment=self.enrollment,
+            gpa="3.00",
+            cgpa="3.00",
+        )
+        CourseResult.objects.create(
+            batch=repeat_batch,
+            enrollment=self.enrollment,
+            course=self.course_one,
+            marks_obtained="45.00",
+            letter_grade="B",
+            grade_point="3.00",
+        )
+        self.publish(repeat_batch, "0103-2026/Results/Exam/GU")
+
+        passed = evaluate_transcript_eligibility(self.enrollment)
+        self.assertTrue(passed.is_eligible)
+        self.assertTrue(
+            repeat_semester.notification_items.filter(
+                hold_status_snapshot=SemesterResult.HOLD_NONE
+            ).exists()
+        )
+
+    def test_direct_single_pdf_url_is_protected_by_eligibility_rule(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse("transcript_pdf", args=[self.enrollment.id])
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(
+            response,
+            "Result not officially released",
+            status_code=403,
+        )
+
+    def test_direct_selected_pdf_url_rejects_ineligible_student(self):
+        self.client.force_login(self.user)
+
+        response = self.client.get(
+            reverse("transcript_batch_pdf", args=[self.batch_two.id]),
+            {"enrollments": str(self.enrollment.id)},
+        )
+
+        self.assertEqual(response.status_code, 403)
+        self.assertContains(
+            response,
+            "Transcript is not available for the selected student",
+            status_code=403,
+        )
