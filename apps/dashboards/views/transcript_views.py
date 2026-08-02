@@ -1,13 +1,14 @@
 from __future__ import annotations
 
 from django.contrib import messages
-from django.db.models import Count, F
+from django.db.models import F
 from django.shortcuts import redirect, render, get_object_or_404
 
 from dashboards.decorators import group_required
 from dashboards.access import assigned_departments_qs, restrict_department_queryset
 from academics.models import Department, Program, Session, Curriculum
 from results.models import ResultBatch, SemesterResult
+from results.transcript_services import transcript_eligibility_map
 from students.models import Enrollment
 
 
@@ -39,8 +40,8 @@ def transcript_single(request):
     """UI: pick Department → Program → Session → (auto last semester batch) → Student, then print Transcript.
 
     Rule:
-      Transcript is only available when the student has results for ALL semesters
-      defined in all semesters (1..Program.total_semesters) for that program+session.
+      Transcript availability is decided by the shared transcript eligibility
+      service used by both dashboard and direct PDF endpoints.
 
     Entry point:
       From Result Batch detail page we expect: ?batch=<id>
@@ -125,8 +126,8 @@ def transcript_single(request):
             batch_id = str(only[0])
 
     students = []
-    completed_map = {}
-    selected_completed = None
+    eligibility_map = {}
+    selected_eligibility = None
 
     if batch_id:
         # Students shown from this last-semester batch
@@ -143,26 +144,13 @@ def transcript_single(request):
 
         students = list(students_qs)
 
-        # Completion check in bulk (count distinct semester numbers for each enrollment)
+        # Use the same eligibility rule that protects the PDF endpoint.
         b = ResultBatch.objects.select_related("program", "session").filter(id=batch_id).first()
         if b:
             sem_start, sem_end, total_semesters = _semester_span_for(b.program_id, b.session_id)
-            enrollment_ids = [r.enrollment_id for r in students]
-            counts = (
-                SemesterResult.objects.filter(
-                    enrollment_id__in=enrollment_ids,
-                    batch__program_id=b.program_id,
-                    batch__session_id=b.session_id,
-                    batch__semester_number__gte=sem_start,
-                    batch__semester_number__lte=sem_end,
-                )
-                .values("enrollment_id")
-                .annotate(sem_count=Count("batch__semester_number", distinct=True))
+            eligibility_map = transcript_eligibility_map(
+                [result.enrollment for result in students]
             )
-            completed_map = {
-                row["enrollment_id"]: (row["sem_count"] >= total_semesters and total_semesters > 0)
-                for row in counts
-            }
 
         # If only one student, auto-select
         if not enrollment_id and request.GET.get("action") != "print":
@@ -172,10 +160,10 @@ def transcript_single(request):
 
         # Reset stale selection
         if enrollment_id and enrollment_id.isdigit():
-            selected_completed = completed_map.get(int(enrollment_id))
+            selected_eligibility = eligibility_map.get(int(enrollment_id))
             if int(enrollment_id) not in [r.enrollment_id for r in students]:
                 enrollment_id = ""
-                selected_completed = None
+                selected_eligibility = None
 
     # Action: print
     if request.GET.get("action") == "print":
@@ -183,10 +171,19 @@ def transcript_single(request):
             messages.error(request, "Please select a last-semester Result Batch.")
         elif not enrollment_id:
             messages.error(request, "Please select a Student.")
-        elif enrollment_id.isdigit() and not completed_map.get(int(enrollment_id), False):
-            messages.error(request, "Transcript is not available: student has not completed all semester results yet.")
+        elif not enrollment_id.isdigit():
+            messages.error(request, "Please select a valid Student.")
         else:
-            return redirect("transcript_pdf", enrollment_id=int(enrollment_id))
+            eligibility = eligibility_map.get(int(enrollment_id))
+            if not eligibility or not eligibility.is_eligible:
+                reason = (
+                    eligibility.reason
+                    if eligibility
+                    else "Student is not part of the selected final-semester batch."
+                )
+                messages.error(request, f"Transcript is not available: {reason}")
+            else:
+                return redirect("transcript_pdf", enrollment_id=int(enrollment_id))
 
     return render(
         request,
@@ -205,9 +202,9 @@ def transcript_single(request):
             "batches": last_sem_batches,
             "batch_id": str(batch_id) if batch_id else "",
             "students": students,
-            "completed_map": completed_map,
+            "eligibility_map": eligibility_map,
             "enrollment_id": str(enrollment_id) if enrollment_id else "",
-            "selected_completed": selected_completed,
+            "selected_eligibility": selected_eligibility,
         },
     )
 
@@ -248,23 +245,9 @@ def transcript_selected(request, batch_id):
     )
     students = list(students_qs)
 
-    enrollment_ids = [r.enrollment_id for r in students]
-    counts = (
-        SemesterResult.objects.filter(
-            enrollment_id__in=enrollment_ids,
-            batch__program_id=batch.program_id,
-            batch__session_id=batch.session_id,
-            batch__semester_number__gte=sem_start,
-            batch__semester_number__lte=sem_end,
-        )
-        .values("enrollment_id")
-        .annotate(sem_count=Count("batch__semester_number", distinct=True))
+    eligibility_map = transcript_eligibility_map(
+        [result.enrollment for result in students]
     )
-    completed_map = {
-        row["enrollment_id"]: (row["sem_count"] >= total_semesters and total_semesters > 0)
-        for row in counts
-    }
-
     if request.method == "POST":
         selected_ids = request.POST.getlist("enrollment_ids")
         selected_ids = [x for x in selected_ids if x.isdigit()]
@@ -272,13 +255,33 @@ def transcript_selected(request, batch_id):
         if not selected_ids:
             messages.error(request, "Please select at least one student.")
         else:
-            allowed_ids = {str(r.enrollment_id) for r in students if completed_map.get(r.enrollment_id, False)}
-            valid_ids = [x for x in selected_ids if x in allowed_ids]
+            student_ids = {str(result.enrollment_id) for result in students}
+            invalid_batch_ids = [
+                value for value in selected_ids if value not in student_ids
+            ]
+            ineligible_ids = [
+                value
+                for value in selected_ids
+                if value in student_ids
+                and not eligibility_map[int(value)].is_eligible
+            ]
 
-            if not valid_ids:
-                messages.error(request, "No selected student is eligible for transcript printing.")
+            if invalid_batch_ids:
+                messages.error(
+                    request,
+                    "One or more selected students do not belong to this final-semester batch.",
+                )
+            elif ineligible_ids:
+                first_status = eligibility_map[int(ineligible_ids[0])]
+                messages.error(
+                    request,
+                    f"One or more selected students are not eligible: {first_status.reason}",
+                )
             else:
-                return redirect(f"/results/transcript/batch/{batch.id}/pdf/?enrollments={','.join(valid_ids)}")
+                return redirect(
+                    f"/results/transcript/batch/{batch.id}/pdf/"
+                    f"?enrollments={','.join(selected_ids)}"
+                )
 
     return render(
         request,
@@ -286,6 +289,6 @@ def transcript_selected(request, batch_id):
         {
             "batch": batch,
             "students": students,
-            "completed_map": completed_map,
+            "eligibility_map": eligibility_map,
         },
     )
