@@ -936,3 +936,185 @@ class DMCEligibilityTests(TestCase):
         self.assertContains(response, "Not Eligible")
         self.assertContains(response, "Active result hold: RL Documents.")
         self.assertContains(response, "Select All Eligible")
+
+
+class DocumentRoleAccessTests(TestCase):
+    def setUp(self):
+        self.department = Department.objects.create(name="Document Access Department")
+        self.other_department = Department.objects.create(name="Other Department")
+        self.program = Program.objects.create(
+            name="BS Document Access",
+            total_semesters=1,
+            semester_start=1,
+        )
+        ProgramOffering.objects.create(
+            department=self.department,
+            program=self.program,
+        )
+        self.session = Session.objects.create(start_year=2026)
+        self.curriculum = Curriculum.objects.create(
+            program=self.program,
+            session=self.session,
+            total_semesters=1,
+            semester_start=1,
+        )
+        self.exam_type = ExamType.objects.create(
+            code="document-access-regular",
+            name="Document Access Regular",
+            sort_order=1,
+        )
+        self.batch = ResultBatch.objects.create(
+            department=self.department,
+            program=self.program,
+            session=self.session,
+            curriculum=self.curriculum,
+            semester_number=1,
+            exam_type=self.exam_type,
+        )
+        self.student = Student.objects.create(
+            department=self.department,
+            name="Document Access Student",
+            father_name="Document Access Father",
+            registration_no="DOC-ACCESS-REG",
+        )
+        self.enrollment = Enrollment.objects.create(
+            department=self.department,
+            student=self.student,
+            program=self.program,
+            session=self.session,
+            curriculum=self.curriculum,
+            roll_no="DOC-ACCESS-ROLL",
+        )
+
+        document_group, _ = Group.objects.get_or_create(name="Document Generator")
+        controller_group, _ = Group.objects.get_or_create(name="Controller")
+        assistant_group, _ = Group.objects.get_or_create(name="Dealing Assistant")
+
+        self.document_user = get_user_model().objects.create_user(
+            username="document-user",
+            password="test-pass-123",
+        )
+        self.document_user.groups.add(document_group)
+
+        self.controller_user = get_user_model().objects.create_user(
+            username="controller-user",
+            password="test-pass-123",
+        )
+        self.controller_user.groups.add(controller_group)
+
+        self.assistant_user = get_user_model().objects.create_user(
+            username="assistant-user",
+            password="test-pass-123",
+        )
+        self.assistant_user.groups.add(assistant_group)
+        self.department.assigned_assistant = self.assistant_user
+        self.department.save(update_fields=["assigned_assistant"])
+
+    def _request(self, path: str, user):
+        request = RequestFactory().get(path)
+        request.user = user
+        request.session = {}
+        return request
+
+    def test_document_generator_has_portal_wide_document_read_access(self):
+        from dashboards.access import (
+            get_accessible_batch_or_none,
+            get_accessible_enrollment_or_none,
+            restrict_department_queryset,
+        )
+
+        self.assertEqual(
+            get_accessible_batch_or_none(self.document_user, self.batch.id),
+            self.batch,
+        )
+        self.assertEqual(
+            get_accessible_enrollment_or_none(
+                self.document_user,
+                self.enrollment.id,
+            ),
+            self.enrollment,
+        )
+        self.assertEqual(
+            restrict_department_queryset(
+                Department.objects.all(),
+                self.document_user,
+                "self",
+            ).count(),
+            Department.objects.count(),
+        )
+
+    def test_controller_has_portal_wide_document_read_access(self):
+        from dashboards.access import (
+            get_accessible_batch_or_none,
+            get_accessible_enrollment_or_none,
+        )
+
+        self.assertEqual(
+            get_accessible_batch_or_none(self.controller_user, self.batch.id),
+            self.batch,
+        )
+        self.assertEqual(
+            get_accessible_enrollment_or_none(
+                self.controller_user,
+                self.enrollment.id,
+            ),
+            self.enrollment,
+        )
+
+    def test_dealing_assistant_remains_limited_to_assigned_departments(self):
+        from dashboards.access import assigned_departments_qs
+
+        self.assertEqual(
+            list(
+                assigned_departments_qs(self.assistant_user).values_list(
+                    "id", flat=True
+                )
+            ),
+            [self.department.id],
+        )
+
+    def test_document_generator_can_open_document_pages_and_navigation(self):
+        from dashboards.views.core import document_generator_dashboard
+        from dashboards.views.dmc_views import dmc_single
+        from dashboards.views.transcript_views import transcript_single
+
+        dashboard_response = document_generator_dashboard(
+            self._request(reverse("dash_document_generator"), self.document_user)
+        )
+        dmc_response = dmc_single(
+            self._request(reverse("admin_dmc_single"), self.document_user)
+        )
+        transcript_response = transcript_single(
+            self._request(reverse("admin_transcript_single"), self.document_user)
+        )
+
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertContains(dashboard_response, "Open DMC Generator")
+        self.assertContains(dashboard_response, "Open Transcript Generator")
+        self.assertContains(dashboard_response, "DOCUMENTS")
+        self.assertNotContains(dashboard_response, "ACADEMICS")
+        self.assertEqual(dmc_response.status_code, 200)
+        self.assertEqual(transcript_response.status_code, 200)
+
+    def test_controller_can_open_document_pages_and_navigation(self):
+        from dashboards.views.core import controller_dashboard
+        from dashboards.views.dmc_views import dmc_single
+        from dashboards.views.transcript_views import transcript_single
+
+        dashboard_response = controller_dashboard(
+            self._request(reverse("dash_controller"), self.controller_user)
+        )
+        dmc_response = dmc_single(
+            self._request(reverse("admin_dmc_single"), self.controller_user)
+        )
+        transcript_response = transcript_single(
+            self._request(reverse("admin_transcript_single"), self.controller_user)
+        )
+
+        self.assertEqual(dashboard_response.status_code, 200)
+        self.assertContains(dashboard_response, "Open DMC Generator")
+        self.assertContains(dashboard_response, "Open Transcript Generator")
+        self.assertContains(dashboard_response, "DOCUMENTS")
+        self.assertNotContains(dashboard_response, "STUDENTS")
+        self.assertEqual(dmc_response.status_code, 200)
+        self.assertEqual(transcript_response.status_code, 200)

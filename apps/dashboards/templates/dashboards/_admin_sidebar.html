@@ -1,7 +1,13 @@
 <aside class="sidebar">
   <div class="sidebar-inner">
-    <h6 class="sidebar-title">{% if is_dealing_assistant and not is_system_admin %}Dealing Assistant{% else %}System Admin{% endif %}</h6>
+    <h6 class="sidebar-title">
+      {% if is_dealing_assistant and not is_system_admin %}Dealing Assistant
+      {% elif is_document_generator %}Document Generator
+      {% elif is_controller %}Controller
+      {% else %}System Admin{% endif %}
+    </h6>
     <nav class="sidebar-nav" aria-label="Portal navigation">
+      {% if can_manage_results %}
       <button type="button" class="sidebar-section-toggle" data-target="academics" aria-expanded="false">ACADEMICS</button>
       <div class="sidebar-group" data-group="academics">
         {% if is_system_admin %}<a href="{% url 'admin_department_list' %}" class="sidebar-item {% if '/admin-dashboard/departments/' in request.path %}active{% endif %}">Departments</a>{% endif %}
@@ -28,13 +34,16 @@
         <a href="{% url 'admin_hold_category_list' %}" class="sidebar-item {% if '/admin-dashboard/hold-categories/' in request.path %}active{% endif %}">Hold Categories</a>
         {% endif %}
       </div>
+      {% endif %}
 
+      {% if can_access_documents %}
       <button type="button" class="sidebar-section-toggle" data-target="documents" aria-expanded="false">DOCUMENTS</button>
       <div class="sidebar-group" data-group="documents">
-        <a href="{% url 'admin_result_notifications' %}" class="sidebar-item {% if '/admin-dashboard/documents/result-notifications/' in request.path %}active{% endif %}">Result Notifications</a>
+        {% if can_manage_results %}<a href="{% url 'admin_result_notifications' %}" class="sidebar-item {% if '/admin-dashboard/documents/result-notifications/' in request.path %}active{% endif %}">Result Notifications</a>{% endif %}
         <a href="{% url 'admin_dmc_single' %}" class="sidebar-item {% if '/admin-dashboard/documents/dmc-single/' in request.path %}active{% endif %}">DMC (Single Student)</a>
         <a href="{% url 'admin_transcript_single' %}" class="sidebar-item {% if '/admin-dashboard/documents/transcript-single/' in request.path %}active{% endif %}">Transcript (Single Student)</a>
       </div>
+      {% endif %}
     </nav>
   </div>
 </aside>
