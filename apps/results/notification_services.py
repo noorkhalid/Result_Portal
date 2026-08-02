@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import date
+import re
 from typing import Iterable
 
 from django.core.exceptions import ValidationError
@@ -13,6 +14,70 @@ from results.models import (
     ResultNotificationItem,
     SemesterResult,
 )
+
+
+NOTIFICATION_NUMBER_SUFFIX = "/Results/Exam/GU"
+NOTIFICATION_NUMBER_PATTERN = re.compile(
+    r"^(?P<sequence>\d{4,})-(?P<year>\d{4})/Results/Exam/GU$",
+    re.IGNORECASE,
+)
+
+
+def format_notification_number(sequence: int, year: int) -> str:
+    """Return the official notification number format for one yearly sequence."""
+
+    if sequence < 1:
+        raise ValueError("Notification sequence must be positive.")
+    return f"{sequence:04d}-{year}{NOTIFICATION_NUMBER_SUFFIX}"
+
+
+def suggest_next_notification_number(notification_date: date) -> str:
+    """Suggest the smallest unassigned official number for the date's year.
+
+    Gaps are intentionally reusable. Legacy notification numbers are preserved but
+    do not participate in the new yearly sequence.
+    """
+
+    if not notification_date:
+        raise ValidationError("Notification date is required.")
+
+    year = notification_date.year
+    suffix = f"-{year}{NOTIFICATION_NUMBER_SUFFIX}"
+    used_sequences: set[int] = set()
+
+    for stored_number in ResultNotification.objects.filter(
+        notification_no__iendswith=suffix
+    ).values_list("notification_no", flat=True):
+        match = NOTIFICATION_NUMBER_PATTERN.fullmatch(stored_number or "")
+        if not match or int(match.group("year")) != year:
+            continue
+        used_sequences.add(int(match.group("sequence")))
+
+    sequence = 1
+    while sequence in used_sequences:
+        sequence += 1
+    return format_notification_number(sequence, year)
+
+
+def validate_notification_number(notification_no: str, notification_date: date) -> None:
+    """Validate a newly issued notification number without touching legacy rows."""
+
+    match = NOTIFICATION_NUMBER_PATTERN.fullmatch(notification_no)
+    if not match:
+        raise ValidationError(
+            'Use the notification number format "0001-YYYY/Results/Exam/GU".'
+        )
+
+    sequence = int(match.group("sequence"))
+    year = int(match.group("year"))
+    if sequence < 1 or match.group("sequence") != f"{sequence:04d}":
+        raise ValidationError(
+            'Use the notification number format "0001-YYYY/Results/Exam/GU".'
+        )
+    if year != notification_date.year:
+        raise ValidationError(
+            "The notification number year must match the Notification Date year."
+        )
 
 
 def ensure_batch_semester_results(batch: ResultBatch) -> None:
@@ -101,6 +166,7 @@ def create_result_notification(
         raise ValidationError("Notification date is required.")
     if notification_type not in ResultNotification.NotificationType.values:
         raise ValidationError("Invalid notification type.")
+    validate_notification_number(notification_no, notification_date)
 
     with transaction.atomic():
         locked_batch = ResultBatch.objects.select_for_update().get(pk=batch.pk)

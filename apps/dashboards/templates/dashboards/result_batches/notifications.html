@@ -43,12 +43,13 @@
               {% csrf_token %}
               <input type="hidden" name="action" value="create_full">
               <div class="mb-2">
-                <label class="form-label form-label-sm">Notification No</label>
-                <input name="notification_no" class="form-control form-control-sm" placeholder="e.g., FECS (43/08)/2025" required>
+                <label class="form-label form-label-sm">Notification Date</label>
+                <input type="date" name="notification_date" value="{{ today|date:'Y-m-d' }}" class="form-control form-control-sm notification-date-input" required>
               </div>
               <div class="mb-3">
-                <label class="form-label form-label-sm">Notification Date</label>
-                <input type="date" name="notification_date" value="{{ today|date:'Y-m-d' }}" class="form-control form-control-sm" required>
+                <label class="form-label form-label-sm">Notification No</label>
+                <input name="notification_no" value="{{ suggested_notification_no }}" class="form-control form-control-sm notification-number-input" data-suggestion-url="{% url 'admin_batch_notification_number_suggestion' batch.id %}" maxlength="100" required>
+                <div class="form-text">Suggested from the Notification Date. You may edit it before saving.</div>
               </div>
               <button type="submit" class="btn btn-primary btn-sm">
                 <i class="bi bi-megaphone me-1"></i>Create Full Notification
@@ -76,12 +77,13 @@
               {% csrf_token %}
               <input type="hidden" name="action" value="create_clearance">
               <div class="mb-2">
-                <label class="form-label form-label-sm">Notification No</label>
-                <input name="notification_no" class="form-control form-control-sm" placeholder="e.g., FECS (44/08)/2025" required>
+                <label class="form-label form-label-sm">Notification Date</label>
+                <input type="date" name="notification_date" value="{{ today|date:'Y-m-d' }}" class="form-control form-control-sm notification-date-input" required>
               </div>
               <div class="mb-3">
-                <label class="form-label form-label-sm">Notification Date</label>
-                <input type="date" name="notification_date" value="{{ today|date:'Y-m-d' }}" class="form-control form-control-sm" required>
+                <label class="form-label form-label-sm">Notification No</label>
+                <input name="notification_no" value="{{ suggested_notification_no }}" class="form-control form-control-sm notification-number-input" data-suggestion-url="{% url 'admin_batch_notification_number_suggestion' batch.id %}" maxlength="100" required>
+                <div class="form-text">Suggested from the Notification Date. You may edit it before saving.</div>
               </div>
 
               <div class="d-flex align-items-center justify-content-between mb-2">
@@ -143,7 +145,7 @@
                     <th style="width:120px;">Date</th>
                     <th style="width:135px;">Declaration Date</th>
                     <th style="width:85px;">Students</th>
-                    <th style="width:120px;">Actions</th>
+                    <th style="width:85px;">Action</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -163,12 +165,6 @@
                       <td class="notification-actions">
                         <a href="{% url 'result_notification_by_id_pdf' notification.id %}" target="_blank" rel="noopener" class="btn btn-outline-secondary btn-sm py-1 px-2 btn-icon-only" title="Print" aria-label="Print"><i class="bi bi-printer"></i></a>
 
-                        {% if can_delete_results %}
-                          <form method="post" action="{% url 'admin_batch_notification_delete' batch.id notification.id %}" style="display:inline;" onsubmit="return confirm('Delete this notification? This cannot be undone.');">
-                            {% csrf_token %}
-                            <button type="submit" class="btn btn-outline-danger btn-sm py-1 px-2 btn-icon-only" title="Delete" aria-label="Delete"><i class="bi bi-trash"></i></button>
-                          </form>
-                        {% endif %}
                       </td>
                     </tr>
                   {% endfor %}
@@ -187,6 +183,27 @@
     const checkboxes = Array.from(document.querySelectorAll(".clearance-student-checkbox"));
     const selectAllButton = document.getElementById("select-all-clearance");
     const deselectAllButton = document.getElementById("deselect-all-clearance");
+
+    document.querySelectorAll("form").forEach(function (form) {
+      const dateInput = form.querySelector(".notification-date-input");
+      const numberInput = form.querySelector(".notification-number-input");
+      if (!dateInput || !numberInput) return;
+
+      dateInput.addEventListener("change", function () {
+        if (!dateInput.value) return;
+        const url = new URL(numberInput.dataset.suggestionUrl, window.location.origin);
+        url.searchParams.set("notification_date", dateInput.value);
+        fetch(url, { headers: { "X-Requested-With": "XMLHttpRequest" } })
+          .then(function (response) {
+            if (!response.ok) throw new Error("Unable to suggest notification number.");
+            return response.json();
+          })
+          .then(function (data) { numberInput.value = data.suggested_number; })
+          .catch(function () {
+            numberInput.value = "";
+          });
+      });
+    });
 
     if (selectAllButton) {
       selectAllButton.addEventListener("click", function () {

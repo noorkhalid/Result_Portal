@@ -349,6 +349,13 @@ class SemesterResult(models.Model):
         return f"{self.enrollment.roll_no} | Sem {self.batch.semester_number}"
 
 
+class ProtectedNotificationQuerySet(models.QuerySet):
+    def delete(self):
+        raise ValidationError(
+            "Result notification history is permanent and cannot be deleted."
+        )
+
+
 class ResultNotification(models.Model):
     """A Full or Clearance notification for one ResultBatch."""
 
@@ -357,7 +364,7 @@ class ResultNotification(models.Model):
         CLEARANCE = "clearance", "Clearance Notification"
 
     batch = models.ForeignKey(
-        ResultBatch, on_delete=models.CASCADE, related_name="notifications"
+        ResultBatch, on_delete=models.PROTECT, related_name="notifications"
     )
     notification_type = models.CharField(
         max_length=16,
@@ -373,6 +380,8 @@ class ResultNotification(models.Model):
 
     remarks = models.CharField(max_length=255, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
+
+    objects = ProtectedNotificationQuerySet.as_manager()
 
     class Meta:
         ordering = ["notification_date", "created_at", "id"]
@@ -392,6 +401,11 @@ class ResultNotification(models.Model):
                     {"declaration_date": "Clearance notifications must retain the official declaration date."}
                 )
 
+    def delete(self, *args, **kwargs):
+        raise ValidationError(
+            "Result notification history is permanent and cannot be deleted."
+        )
+
     def __str__(self) -> str:
         return f"{self.batch} | {self.notification_no} | {self.get_notification_type_display()}"
 
@@ -403,7 +417,7 @@ class ResultNotificationItem(models.Model):
         ResultNotification, on_delete=models.CASCADE, related_name="items"
     )
     semester_result = models.ForeignKey(
-        SemesterResult, on_delete=models.CASCADE, related_name="notification_items"
+        SemesterResult, on_delete=models.PROTECT, related_name="notification_items"
     )
 
     hold_status_snapshot = models.CharField(
