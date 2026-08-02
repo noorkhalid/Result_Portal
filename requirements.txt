@@ -2,7 +2,7 @@ asgiref==3.11.0
 brotli==1.2.0
 cffi==2.0.0
 cssselect2==0.8.0
-Django==5.0.14
+Django==5.2.16
 et_xmlfile==2.0.0
 fonttools==4.61.1
 mysqlclient==2.2.8
