@@ -4,6 +4,8 @@ from academics.models import Department, get_default_department
 from dashboards.access import (
     assigned_departments_qs,
     can_access_documents,
+    can_issue_documents,
+    can_manage_document_inventory,
     is_controller,
     is_dealing_assistant,
     is_document_generator,
@@ -31,6 +33,8 @@ def role_flags(request):
     controller = is_controller(user)
     document_generator = is_document_generator(user)
     document_access = can_access_documents(user)
+    issue_documents = can_issue_documents(user)
+    manage_document_inventory = can_manage_document_inventory(user)
     manage_results = is_admin or is_assistant
     show_sidebar = manage_results or document_access
 
@@ -42,6 +46,8 @@ def role_flags(request):
         "can_manage_results": manage_results,
         "can_delete_results": is_admin,
         "can_access_documents": document_access,
+        "can_issue_documents": issue_documents,
+        "can_manage_document_inventory": manage_document_inventory,
         "show_sidebar": show_sidebar,
     }
 

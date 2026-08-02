@@ -1,0 +1,70 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}{% if is_reissue %}Reissue{% else %}Issue{% endif %} {{ document_type_label }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <div>
+    <h3 class="mb-0">{% if is_reissue %}Reissue{% else %}Issue{% endif %} {{ document_type_label }}</h3>
+    <div class="text-muted">The next unused printed serial is suggested automatically. Every document must be linked to a paid bank slip.</div>
+  </div>
+  <a href="{% url 'admin_document_issuance_register' %}" class="btn btn-outline-secondary btn-icon-only" title="Register" aria-label="Register"><i class="bi bi-arrow-left"></i></a>
+</div>
+
+<div class="card mb-3">
+  <div class="card-body">
+    <div class="row g-2">
+      <div class="col-md-4"><strong>Student:</strong> {{ enrollment.student.name }}</div>
+      <div class="col-md-4"><strong>Registration No:</strong> {{ enrollment.student.registration_no }}</div>
+      <div class="col-md-4"><strong>Roll No:</strong> {{ enrollment.roll_no }}</div>
+      <div class="col-md-4"><strong>Program:</strong> {{ enrollment.program.name }}</div>
+      <div class="col-md-4"><strong>Session:</strong> {{ enrollment.session.start_year }}</div>
+      <div class="col-md-4"><strong>Department:</strong> {{ enrollment.department.name }}</div>
+      {% if semester_result %}<div class="col-md-4"><strong>Semester:</strong> {{ source_batch.semester_number }}</div>{% endif %}
+      {% if original %}<div class="col-md-8"><strong>Original Document:</strong> {{ original.document_no }} issued on {{ original.issue_date|date:"d-m-Y" }}</div>{% endif %}
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <div class="card-body">
+    {% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+    {% if not has_available_inventory %}<div class="alert alert-warning">No active sheet bundle has an unused serial. Ask the Controller or System Admin to add a bundle first.</div>{% endif %}
+    <form method="post" novalidate id="issuance-form">
+      {% csrf_token %}
+      <div class="row g-3">
+        {% for field in form %}
+          <div class="{% if field.name == 'remarks' or field.name == 'reissue_reason' %}col-12{% else %}col-md-6{% endif %}" data-field-wrap="{{ field.name }}">
+            <label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>
+            {{ field }}
+            {% if field.help_text %}<div class="form-text">{{ field.help_text }}</div>{% endif %}
+            {% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}
+          </div>
+        {% endfor %}
+      </div>
+      <div class="d-flex justify-content-end gap-2 mt-4">
+        <a href="{% url 'admin_document_issuance_register' %}" class="btn btn-outline-secondary">Cancel</a>
+        <button type="submit" class="btn btn-primary" {% if not has_available_inventory %}disabled{% endif %}>{% if is_reissue %}Create Reissue{% else %}Issue Document{% endif %}</button>
+      </div>
+    </form>
+  </div>
+</div>
+<script>
+(function () {
+  const source = document.getElementById('id_payment_source');
+  const existingNames = ['existing_payment_slip'];
+  const newNames = ['bank', 'deposit_type', 'bank_slip_no', 'bank_slip_date', 'bank_slip_total_amount', 'depositor_name'];
+  function setVisible(name, visible) {
+    const wrap = document.querySelector('[data-field-wrap="' + name + '"]');
+    if (wrap) wrap.style.display = visible ? '' : 'none';
+  }
+  function updatePaymentFields() {
+    const existing = source && source.value === 'existing';
+    existingNames.forEach((name) => setVisible(name, existing));
+    newNames.forEach((name) => setVisible(name, !existing));
+  }
+  if (source) {
+    source.addEventListener('change', updatePaymentFields);
+    updatePaymentFields();
+  }
+})();
+</script>
+{% endblock %}

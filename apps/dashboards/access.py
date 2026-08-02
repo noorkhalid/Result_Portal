@@ -62,6 +62,22 @@ def can_access_documents(user) -> bool:
     )
 
 
+def can_issue_documents(user) -> bool:
+    """Only designated document roles may create permanent issuance records."""
+
+    return bool(
+        is_system_admin(user)
+        or is_controller(user)
+        or is_document_generator(user)
+    )
+
+
+def can_manage_document_inventory(user) -> bool:
+    """Serial inventory is controlled by System Admin and Controller roles."""
+
+    return bool(is_system_admin(user) or is_controller(user))
+
+
 def assigned_departments_qs(user):
     if can_access_all_departments(user):
         return Department.objects.all().order_by("name")

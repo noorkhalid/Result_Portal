@@ -117,6 +117,24 @@ from dashboards.views.transcript_views import (
     transcript_selected,
 )
 
+from dashboards.views.document_issuance_views import (
+    bank_create,
+    bank_list,
+    bank_slip_create,
+    bank_slip_detail,
+    bank_slip_list,
+    bank_slip_update,
+    bank_update,
+    document_inventory_create,
+    document_inventory_list,
+    document_inventory_update,
+    document_issuance_detail,
+    document_issuance_register,
+    issue_dmc,
+    issue_transcript,
+    reissue_document,
+)
+
 urlpatterns = [
     # Home / router
     path("", core.home, name="home"),
@@ -305,5 +323,81 @@ urlpatterns = [
         "admin-dashboard/result-batches/<int:batch_id>/transcripts-selected/",
         transcript_selected,
         name="admin_transcript_selected",
+    ),
+
+    path(
+        "admin-dashboard/documents/issuance-register/",
+        document_issuance_register,
+        name="admin_document_issuance_register",
+    ),
+    path(
+        "admin-dashboard/documents/issuance-register/<int:pk>/",
+        document_issuance_detail,
+        name="admin_document_issuance_detail",
+    ),
+    path(
+        "admin-dashboard/documents/issuance-register/<int:pk>/reissue/",
+        reissue_document,
+        name="admin_document_reissue",
+    ),
+    path(
+        "admin-dashboard/documents/issue-dmc/<int:semester_result_id>/",
+        issue_dmc,
+        name="admin_issue_dmc",
+    ),
+    path(
+        "admin-dashboard/documents/issue-transcript/<int:enrollment_id>/",
+        issue_transcript,
+        name="admin_issue_transcript",
+    ),
+    path(
+        "admin-dashboard/documents/banks/",
+        bank_list,
+        name="admin_document_bank_list",
+    ),
+    path(
+        "admin-dashboard/documents/banks/add/",
+        bank_create,
+        name="admin_document_bank_add",
+    ),
+    path(
+        "admin-dashboard/documents/banks/<int:pk>/edit/",
+        bank_update,
+        name="admin_document_bank_edit",
+    ),
+    path(
+        "admin-dashboard/documents/bank-slips/",
+        bank_slip_list,
+        name="admin_document_bank_slip_list",
+    ),
+    path(
+        "admin-dashboard/documents/bank-slips/add/",
+        bank_slip_create,
+        name="admin_document_bank_slip_add",
+    ),
+    path(
+        "admin-dashboard/documents/bank-slips/<int:pk>/",
+        bank_slip_detail,
+        name="admin_document_bank_slip_detail",
+    ),
+    path(
+        "admin-dashboard/documents/bank-slips/<int:pk>/edit/",
+        bank_slip_update,
+        name="admin_document_bank_slip_edit",
+    ),
+    path(
+        "admin-dashboard/documents/inventory/",
+        document_inventory_list,
+        name="admin_document_inventory_list",
+    ),
+    path(
+        "admin-dashboard/documents/inventory/add/",
+        document_inventory_create,
+        name="admin_document_inventory_add",
+    ),
+    path(
+        "admin-dashboard/documents/inventory/<int:pk>/edit/",
+        document_inventory_update,
+        name="admin_document_inventory_edit",
     ),
 ]

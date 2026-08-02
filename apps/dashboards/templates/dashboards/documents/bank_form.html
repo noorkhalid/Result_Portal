@@ -1,0 +1,10 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3"><div><h3 class="mb-0">{{ title }}</h3></div><a href="{% url 'admin_document_bank_list' %}" class="btn btn-outline-secondary btn-icon-only"><i class="bi bi-arrow-left"></i></a></div>
+<div class="card"><div class="card-body"><form method="post" novalidate>{% csrf_token %}
+{% if form.non_field_errors %}<div class="alert alert-danger">{{ form.non_field_errors }}</div>{% endif %}
+<div class="row g-3">{% for field in form %}<div class="col-md-6">{% if field.field.widget.input_type == 'checkbox' %}<div class="form-check mt-4">{{ field }} <label class="form-check-label" for="{{ field.id_for_label }}">{{ field.label }}</label></div>{% else %}<label class="form-label" for="{{ field.id_for_label }}">{{ field.label }}</label>{{ field }}{% endif %}{% for error in field.errors %}<div class="text-danger small">{{ error }}</div>{% endfor %}</div>{% endfor %}</div>
+<div class="d-flex justify-content-end gap-2 mt-4"><a href="{% url 'admin_document_bank_list' %}" class="btn btn-outline-secondary">Cancel</a><button class="btn btn-primary" type="submit">Save Bank</button></div>
+</form></div></div>
+{% endblock %}

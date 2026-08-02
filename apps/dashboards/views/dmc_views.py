@@ -102,6 +102,7 @@ def dmc_single(request):
     students = []
     eligibility_map = {}
     selected_eligibility = None
+    selected_result = None
     if batch_id:
         students = list(
             SemesterResult.objects.filter(batch_id=batch_id)
@@ -173,6 +174,7 @@ def dmc_single(request):
             "eligibility_map": eligibility_map,
             "enrollment_id": str(enrollment_id) if enrollment_id else "",
             "selected_eligibility": selected_eligibility,
+            "selected_semester_result": selected_result,
         },
     )
 

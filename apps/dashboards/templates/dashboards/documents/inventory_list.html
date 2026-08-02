@@ -1,0 +1,50 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Sheet Inventory{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+  <div>
+    <h3 class="mb-0">Sheet Inventory</h3>
+    <div class="text-muted">Common preprinted sheet bundles used for both DMCs and transcripts</div>
+  </div>
+  <a href="{% url 'admin_document_inventory_add' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Add Bundle</a>
+</div>
+
+<div class="card">
+  <div class="card-body p-0">
+    <div class="table-responsive">
+      <table class="table table-bordered table-striped align-middle mb-0">
+        <thead>
+          <tr>
+            <th>Serial Range</th>
+            <th class="text-center">Bundle Size</th>
+            <th class="text-center">Used</th>
+            <th class="text-center">Available</th>
+            <th>Received</th>
+            <th>Status</th>
+            <th style="width:70px;">Action</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for inventory in inventories %}
+            <tr>
+              <td>{{ inventory.start_number }} – {{ inventory.end_number }}</td>
+              <td class="text-center">{{ inventory.bundle_size }}</td>
+              <td class="text-center">{{ inventory.used_count }}</td>
+              <td class="text-center">{{ inventory.available_count }}</td>
+              <td>{{ inventory.received_date|date:"d-m-Y" }}</td>
+              <td>
+                {% if not inventory.is_active %}<span class="badge bg-secondary">Inactive</span>
+                {% elif inventory.is_exhausted %}<span class="badge bg-danger">Exhausted</span>
+                {% else %}<span class="badge bg-success">Active</span>{% endif %}
+              </td>
+              <td><a href="{% url 'admin_document_inventory_edit' inventory.id %}" class="btn btn-sm btn-outline-primary btn-icon-only" title="Edit" aria-label="Edit"><i class="bi bi-pencil"></i></a></td>
+            </tr>
+          {% empty %}
+            <tr><td colspan="7" class="text-center text-muted py-4">No sheet bundle has been added.</td></tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,11 @@
+{% extends "dashboards/_layout.html" %}
+{% block title %}Bank Slips{% endblock %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3"><div><h3 class="mb-0">Bank Slips</h3><div class="text-muted">Deposits and their allocation across issued documents</div></div><a href="{% url 'admin_document_bank_slip_add' %}" class="btn btn-primary"><i class="bi bi-plus-lg"></i> Record Bank Slip</a></div>
+<div class="card mb-3"><div class="card-body"><form method="get" class="row g-2"><div class="col-md-5"><input class="form-control" name="q" value="{{ query }}" placeholder="Search bank, slip number, depositor or college"></div><div class="col-md-auto"><button class="btn btn-primary">Search</button> <a href="{% url 'admin_document_bank_slip_list' %}" class="btn btn-outline-secondary">Reset</a></div></form></div></div>
+<div class="card"><div class="card-body p-0"><div class="table-responsive"><table class="table table-bordered table-striped align-middle mb-0">
+<thead><tr><th>Bank</th><th>Slip / Transaction ID</th><th>Date</th><th>Depositor / College</th><th class="text-end">Deposited</th><th class="text-end">Allocated</th><th class="text-end">Available</th><th>Status</th><th style="width:70px;">Action</th></tr></thead>
+<tbody>{% for slip in slips %}<tr><td>{{ slip.bank.name }}</td><td>{{ slip.slip_no }}<div class="small text-muted">{{ slip.get_deposit_type_display }}</div></td><td>{{ slip.deposit_date|date:"d-m-Y" }}</td><td>{{ slip.depositor_name|default:"—" }}</td><td class="text-end">Rs. {{ slip.total_amount }}</td><td class="text-end">Rs. {{ slip.allocated_amount }}</td><td class="text-end">Rs. {{ slip.remaining_amount }}</td><td>{% if slip.is_fully_allocated %}<span class="badge bg-secondary">Fully Used</span>{% elif slip.allocations.exists %}<span class="badge bg-info text-dark">Partly Used</span>{% else %}<span class="badge bg-success">Available</span>{% endif %}</td><td><a href="{% url 'admin_document_bank_slip_detail' slip.id %}" class="btn btn-sm btn-outline-primary btn-icon-only"><i class="bi bi-eye"></i></a></td></tr>{% empty %}<tr><td colspan="9" class="text-center text-muted py-4">No bank slips found.</td></tr>{% endfor %}</tbody>
+</table></div></div></div>
+{% include "dashboards/_pagination.html" with page_obj=page_obj qs_params=qs_params %}
+{% endblock %}
