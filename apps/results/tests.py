@@ -2,6 +2,7 @@ from datetime import date
 
 from django.contrib.auth import get_user_model
 from django.core.exceptions import ValidationError
+from django.db.models.deletion import ProtectedError
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
@@ -10,6 +11,7 @@ from results.models import ExamType, ResultBatch, ResultNotification, SemesterRe
 from results.notification_services import (
     create_result_notification,
     eligible_clearance_results,
+    suggest_next_notification_number,
 )
 from students.models import Enrollment, Student
 
@@ -83,7 +85,11 @@ class ResultNotificationFoundationTests(TestCase):
                 )
             )
 
-    def create_full(self, number="NOT-001", notification_date=date(2026, 8, 1)):
+    def create_full(
+        self,
+        number="0001-2026/Results/Exam/GU",
+        notification_date=date(2026, 8, 1),
+    ):
         return create_result_notification(
             batch=self.batch,
             notification_type=ResultNotification.NotificationType.FULL,
@@ -129,10 +135,10 @@ class ResultNotificationFoundationTests(TestCase):
             ValidationError,
             "A Full Result Notification already exists for this batch.",
         ):
-            self.create_full(number="NOT-002", notification_date=date(2026, 8, 2))
+            self.create_full(number="0002-2026/Results/Exam/GU", notification_date=date(2026, 8, 2))
 
     def test_duplicate_notification_number_is_blocked(self):
-        self.create_full(number="NOT-001")
+        self.create_full(number="0001-2026/Results/Exam/GU")
 
         other_batch = ResultBatch.objects.create(
             department=self.department,
@@ -144,12 +150,12 @@ class ResultNotificationFoundationTests(TestCase):
         )
         with self.assertRaisesMessage(
             ValidationError,
-            'Notification number "NOT-001" is already assigned.',
+            'Notification number "0001-2026/Results/Exam/GU" is already assigned.',
         ):
             create_result_notification(
                 batch=other_batch,
                 notification_type=ResultNotification.NotificationType.FULL,
-                notification_no="not-001",
+                notification_no="0001-2026/Results/Exam/GU",
                 notification_date=date(2026, 8, 2),
             )
 
@@ -161,7 +167,7 @@ class ResultNotificationFoundationTests(TestCase):
             create_result_notification(
                 batch=self.batch,
                 notification_type=ResultNotification.NotificationType.CLEARANCE,
-                notification_no="CLR-001",
+                notification_no="0001-2026/Results/Exam/GU",
                 notification_date=date(2026, 8, 2),
                 selected_semester_result_ids=[self.results[0].id],
             )
@@ -187,7 +193,7 @@ class ResultNotificationFoundationTests(TestCase):
         clearance = create_result_notification(
             batch=self.batch,
             notification_type=ResultNotification.NotificationType.CLEARANCE,
-            notification_no="CLR-001",
+            notification_no="0002-2026/Results/Exam/GU",
             notification_date=date(2026, 8, 10),
             selected_semester_result_ids=[first_withheld.id],
         )
@@ -212,7 +218,7 @@ class ResultNotificationFoundationTests(TestCase):
             create_result_notification(
                 batch=self.batch,
                 notification_type=ResultNotification.NotificationType.CLEARANCE,
-                notification_no="CLR-002",
+                notification_no="0003-2026/Results/Exam/GU",
                 notification_date=date(2026, 8, 11),
                 selected_semester_result_ids=[first_withheld.id],
             )
@@ -227,6 +233,78 @@ class ResultNotificationFoundationTests(TestCase):
             "The official result declaration date cannot be changed once set.",
         ):
             self.batch.save()
+
+    def test_number_suggestion_restarts_each_year_and_reuses_gap(self):
+        ResultNotification.objects.create(
+            batch=self.batch,
+            notification_type=ResultNotification.NotificationType.FULL,
+            notification_no="0001-2026/Results/Exam/GU",
+            notification_date=date(2026, 1, 10),
+            declaration_date=date(2026, 1, 10),
+        )
+        ResultNotification.objects.create(
+            batch=self.batch,
+            notification_type=ResultNotification.NotificationType.CLEARANCE,
+            notification_no="0003-2026/Results/Exam/GU",
+            notification_date=date(2026, 2, 10),
+            declaration_date=date(2026, 1, 10),
+        )
+        ResultNotification.objects.create(
+            batch=self.batch,
+            notification_type=ResultNotification.NotificationType.CLEARANCE,
+            notification_no="FECS (43/08)/2025",
+            notification_date=date(2025, 8, 1),
+            declaration_date=date(2025, 8, 1),
+        )
+
+        self.assertEqual(
+            suggest_next_notification_number(date(2026, 8, 1)),
+            "0002-2026/Results/Exam/GU",
+        )
+        self.assertEqual(
+            suggest_next_notification_number(date(2027, 1, 1)),
+            "0001-2027/Results/Exam/GU",
+        )
+
+    def test_notification_number_year_must_match_notification_date(self):
+        with self.assertRaisesMessage(
+            ValidationError,
+            "The notification number year must match the Notification Date year.",
+        ):
+            self.create_full(
+                number="0001-2027/Results/Exam/GU",
+                notification_date=date(2026, 8, 1),
+            )
+
+    def test_new_notification_number_must_use_official_format(self):
+        with self.assertRaisesMessage(
+            ValidationError,
+            'Use the notification number format "0001-YYYY/Results/Exam/GU".',
+        ):
+            self.create_full(number="FECS (43/08)/2026")
+
+    def test_notification_history_cannot_be_deleted(self):
+        notification = self.create_full()
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Result notification history is permanent and cannot be deleted.",
+        ):
+            notification.delete()
+
+        with self.assertRaisesMessage(
+            ValidationError,
+            "Result notification history is permanent and cannot be deleted.",
+        ):
+            ResultNotification.objects.filter(pk=notification.pk).delete()
+
+        with self.assertRaises(ProtectedError):
+            notification.items.first().semester_result.delete()
+
+        with self.assertRaises(ProtectedError):
+            self.batch.delete()
+
+        self.assertTrue(ResultNotification.objects.filter(pk=notification.pk).exists())
 
     def test_notification_page_shows_bulk_clearance_controls(self):
         self.create_full()
@@ -247,3 +325,4 @@ class ResultNotificationFoundationTests(TestCase):
         self.assertContains(response, "Select All")
         self.assertContains(response, "Deselect All")
         self.assertContains(response, held_result.enrollment.student.name)
+        self.assertContains(response, "0002-2026/Results/Exam/GU")

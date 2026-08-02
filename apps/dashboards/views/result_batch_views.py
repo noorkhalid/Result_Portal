@@ -1,4 +1,5 @@
 from django.contrib import messages
+from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError
@@ -22,6 +23,7 @@ from results.notification_services import (
     create_result_notification,
     eligible_clearance_results,
     ensure_batch_semester_results,
+    suggest_next_notification_number,
 )
 
 
@@ -151,10 +153,17 @@ def batch_update(request, pk):
 @group_required("System Admin")
 def batch_delete(request, pk):
     batch = get_object_or_404(ResultBatch, pk=pk)
-    delete_blocked = batch.course_results.exists() or batch.semester_results.exists()
+    delete_blocked = (
+        batch.course_results.exists()
+        or batch.semester_results.exists()
+        or batch.notifications.exists()
+    )
     if request.method == "POST":
         if delete_blocked:
-            messages.error(request, "Cannot delete: results exist in this batch.")
+            messages.error(
+                request,
+                "Cannot delete: results or notification history exist in this batch.",
+            )
             return redirect("admin_batch_list")
         batch.delete()
         messages.success(request, "Result batch deleted successfully.")
@@ -230,6 +239,8 @@ def batch_notifications(request, pk):
         notification_type=ResultNotification.NotificationType.FULL
     ).first()
     eligible_clearance = eligible_clearance_results(batch)
+    today = timezone.localdate()
+    suggested_notification_no = suggest_next_notification_number(today)
 
     if request.method == "POST":
         action = (request.POST.get("action") or "").strip()
@@ -277,36 +288,37 @@ def batch_notifications(request, pk):
             "full_notification": full_notification,
             "eligible_clearance": eligible_clearance,
             "eligible_clearance_count": eligible_clearance.count(),
-            "today": timezone.localdate(),
+            "today": today,
+            "suggested_notification_no": suggested_notification_no,
         },
+    )
+
+
+@group_required("System Admin", "Dealing Assistant")
+def batch_notification_number_suggestion(request, pk):
+    batch = get_accessible_batch_or_none(request.user, pk)
+    if not batch:
+        return JsonResponse({"error": "Access denied."}, status=403)
+
+    notification_date = parse_date(request.GET.get("notification_date") or "")
+    if not notification_date:
+        return JsonResponse(
+            {"error": "A valid notification date is required."}, status=400
+        )
+
+    return JsonResponse(
+        {"suggested_number": suggest_next_notification_number(notification_date)}
     )
 
 
 @group_required("System Admin")
 def batch_notification_delete(request, pk, notification_id):
     batch = get_object_or_404(ResultBatch, pk=pk)
-    if request.method != "POST":
-        messages.error(request, "Invalid request method.")
-        return redirect("admin_batch_notifications", pk=batch.pk)
-
-    notification = get_object_or_404(
-        ResultNotification, pk=notification_id, batch=batch
+    get_object_or_404(ResultNotification, pk=notification_id, batch=batch)
+    messages.error(
+        request,
+        "Result notification history is permanent and cannot be deleted.",
     )
-    if (
-        notification.notification_type == ResultNotification.NotificationType.FULL
-        and batch.notifications.filter(
-            notification_type=ResultNotification.NotificationType.CLEARANCE
-        ).exists()
-    ):
-        messages.error(
-            request,
-            "The Full Notification cannot be deleted after a Clearance Notification exists.",
-        )
-        return redirect("admin_batch_notifications", pk=batch.pk)
-
-    notification_no = notification.notification_no
-    notification.delete()
-    messages.success(request, f"Notification deleted: {notification_no}.")
     return redirect("admin_batch_notifications", pk=batch.pk)
 
 
